@@ -1,0 +1,27 @@
+[binding(0)]
+let hello : struct {
+	uint hello,
+};
+
+[push_constant]
+let pc : struct {
+	image_index: uint32,
+};
+
+[binding(1)] let images : []@Image(float3);
+[binding(2)] let samplers : []@Sampler;
+
+[entry_point]
+let vertex() = {
+
+};
+
+[entry_point]
+let pixel() = {
+	[input, location(0)] let pos : float3;
+	[input, location(1)] let uv : float3;
+
+	[output, location(0)] let main_color : float4;
+
+	main_color = float4(1, 1, 1, 1.0);
+};
