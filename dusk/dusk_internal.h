@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdarg.h>
+#include <setjmp.h>
 
 #if defined(_MSC_VER)
 #define DUSK_INLINE __forceinline
@@ -184,13 +185,106 @@ bool duskMapGet(DuskMap *map, const char *key, void **value_ptr);
 void duskMapRemove(DuskMap *map, const char *key);
 // }}}
 
+// AST {{{
+typedef struct DuskDecl DuskDecl;
+typedef struct DuskStmt DuskStmt;
+typedef struct DuskExpr DuskExpr;
+
+typedef enum DuskDeclKind
+{
+    DUSK_DECL_MODULE,
+    DUSK_DECL_FUNCTION,
+} DuskDeclKind;
+
+struct DuskDecl
+{
+    DuskDeclKind kind;
+
+    union
+    {
+        struct
+        {
+            const char *name;
+            DuskArray(DuskDecl *) decls;
+        } module;
+        struct
+        {
+            DuskArray(DuskDecl *) parameter_decls;
+            DuskExpr *return_type_expr;
+            DuskArray(DuskStmt *) stmts;
+        } function;
+    };
+};
+
+typedef enum DuskStmtKind
+{
+    DUSK_STMT_DECL,
+} DuskStmtKind;
+
+struct DuskStmt
+{
+    DuskStmtKind kind;
+
+    union
+    {
+        DuskDecl *decl;
+    };
+};
+
+typedef enum DuskExprKind
+{
+    DUSK_EXPR_BLOCK,
+} DuskExprKind;
+
+struct DuskExpr
+{
+    DuskExprKind kind;
+
+    union
+    {
+        struct {
+            DuskArray(DuskStmt *) stmts;
+        } block;
+    };
+};
+// }}}
+
 // Compiler {{{
+typedef struct DuskFile
+{
+    const char *path;
+
+    const char *text;
+    size_t text_length;
+
+    DuskArray(DuskDecl *) decls;
+} DuskFile;
+
+typedef struct DuskLocation
+{
+    DuskFile *file;
+    size_t offset;
+    size_t length;
+    size_t line;
+    size_t col;
+} DuskLocation;
+
+typedef struct DuskError
+{
+    DuskLocation location;
+    const char *message;
+} DuskError;
+
 typedef struct DuskCompiler
 {
     DuskArena *main_arena;
+    DuskArray(DuskError) errors;
+    jmp_buf jump_buffer;
 } DuskCompiler;
 // }}}
 
-void duskParse(DuskCompiler *compiler, const char *text, size_t text_size);
+void duskThrow(DuskCompiler *compiler);
+void duskAddError(DuskCompiler *compiler, DuskLocation loc, const char *fmt, ...);
+void duskParse(DuskCompiler *compiler, DuskFile *file);
 
 #endif

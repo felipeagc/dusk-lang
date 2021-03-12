@@ -12,7 +12,8 @@ typedef struct DuskCompiler DuskCompiler;
 DuskCompiler *duskCompilerCreate(void);
 void duskCompilerDestroy(DuskCompiler *compiler);
 
-void duskCompile(DuskCompiler *compiler, const char *text, size_t text_size);
+void duskCompile(
+    DuskCompiler *compiler, const char *path, const char *text, size_t text_length);
 
 #ifdef __cplusplus
 }

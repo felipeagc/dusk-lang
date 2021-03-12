@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
 
     size_t text_size = 0;
     const char *text = loadFile(path, &text_size);
-    duskCompile(compiler, text, text_size);
+    duskCompile(compiler, path, text, text_size);
 
     duskCompilerDestroy(compiler);
 
