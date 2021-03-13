@@ -302,6 +302,8 @@ typedef enum DuskExprKind {
     DUSK_EXPR_FLOAT_LITERAL,
     DUSK_EXPR_IDENT,
     DUSK_EXPR_STRUCT_TYPE,
+    DUSK_EXPR_ARRAY_TYPE,
+    DUSK_EXPR_RUNTIME_ARRAY_TYPE,
 } DuskExprKind;
 
 struct DuskExpr
@@ -332,6 +334,11 @@ struct DuskExpr
             DuskArray(const char *) field_names;
             DuskArray(DuskExpr *) field_type_exprs;
         } struct_type;
+        struct
+        {
+            DuskExpr *sub_expr;
+            DuskExpr *size_expr;
+        } array_type;
     };
 };
 // }}}

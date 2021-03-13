@@ -1255,6 +1255,21 @@ static DuskExpr *parsePrimaryExpr(DuskCompiler *compiler, TokenizerState *state)
         consumeToken(compiler, state, TOKEN_RPAREN);
         break;
     }
+    case TOKEN_LBRACKET: {
+        expr->kind = DUSK_EXPR_RUNTIME_ARRAY_TYPE;
+
+        tokenizerNextToken(allocator, *state, &token);
+        if (token.type != TOKEN_RBRACKET)
+        {
+            expr->kind = DUSK_EXPR_ARRAY_TYPE;
+            expr->array_type.size_expr = parseExpr(compiler, state);
+        }
+
+        consumeToken(compiler, state, TOKEN_RBRACKET);
+
+        expr->array_type.sub_expr = parseExpr(compiler, state);
+        break;
+    }
     case TOKEN_STRUCT: {
         expr->kind = DUSK_EXPR_STRUCT_TYPE;
         expr->struct_type.field_type_exprs = duskArrayCreate(allocator, DuskExpr *);
