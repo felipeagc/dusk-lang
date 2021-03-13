@@ -18,24 +18,24 @@
 #endif
 
 #ifdef __GNUC__
-    #define DUSK_PRINTF_FORMATTING(x, y) __attribute__((format(printf, x, y)))
+#define DUSK_PRINTF_FORMATTING(x, y) __attribute__((format(printf, x, y)))
 #else
-    #define DUSK_PRINTF_FORMATTING(x, y)
+#define DUSK_PRINTF_FORMATTING(x, y)
 #endif
 
 #define DUSK_CARRAY_LENGTH(arr) (sizeof(arr) / sizeof(arr[0]))
 
 #define DUSK_STR(a) #a
 
-#define DUSK_ASSERT(value)                                                                 \
+#define DUSK_ASSERT(value)                                                               \
     do                                                                                   \
     {                                                                                    \
         if (!(value))                                                                    \
         {                                                                                \
             fprintf(                                                                     \
                 stderr,                                                                  \
-                "Dusk assertion failed: '%s' at %s:%d\n",                              \
-                DUSK_STR(value),                                                           \
+                "Dusk assertion failed: '%s' at %s:%d\n",                                \
+                DUSK_STR(value),                                                         \
                 __FILE__,                                                                \
                 __LINE__);                                                               \
             abort();                                                                     \
@@ -63,7 +63,7 @@ void *duskAllocateZeroed(DuskAllocator *allocator, size_t size);
 void *duskReallocate(DuskAllocator *allocator, void *ptr, size_t size);
 void duskFree(DuskAllocator *allocator, void *ptr);
 
-#define DUSK_NEW(allocator, type) ((type*)duskAllocateZeroed(allocator, sizeof(type)))
+#define DUSK_NEW(allocator, type) ((type *)duskAllocateZeroed(allocator, sizeof(type)))
 
 typedef struct DuskArena DuskArena;
 
@@ -75,8 +75,8 @@ const char *duskStrdup(DuskAllocator *allocator, const char *str);
 const char *duskNullTerminate(DuskAllocator *allocator, const char *str, size_t length);
 
 DUSK_PRINTF_FORMATTING(2, 3)
-const char* duskSprintf(DuskAllocator *allocator, const char *format, ...);
-const char* duskVsprintf(DuskAllocator *allocator, const char *format, va_list args);
+const char *duskSprintf(DuskAllocator *allocator, const char *format, ...);
+const char *duskVsprintf(DuskAllocator *allocator, const char *format, va_list args);
 // }}}
 
 // Array {{{
@@ -92,25 +92,28 @@ const char* duskVsprintf(DuskAllocator *allocator, const char *format, va_list a
 #define _duskArrayCapacity(arr) (*((uint64_t *)(arr)-3))
 #define _duskArrayAllocator(arr) (*((DuskAllocator **)(arr)-4))
 
-#define duskArrayCreate(allocator, type) ((type *)_duskArrayCreate(allocator, sizeof(type)))
-#define duskArrayPush(arr, value)                                                          \
-    (_duskArrayEnsure((void **)arr, duskArrayLength(*arr) + 1),                              \
+#define duskArrayCreate(allocator, type)                                                 \
+    ((type *)_duskArrayCreate(allocator, sizeof(type)))
+#define duskArrayPush(arr, value)                                                        \
+    (_duskArrayEnsure((void **)arr, duskArrayLength(*arr) + 1),                          \
      (*arr)[_duskArrayLength(*arr)++] = value)
 #define duskArrayPop(arr) ((duskArrayLength(*arr) > 0) ? (--_duskArrayLength(*arr)) : 0)
-#define duskArrayEnsure(arr, wanted_capacity) _duskArrayEnsure((void **)arr, wanted_capacity)
-#define duskArrayResize(arr, wanted_size)                                                  \
+#define duskArrayEnsure(arr, wanted_capacity)                                            \
+    _duskArrayEnsure((void **)arr, wanted_capacity)
+#define duskArrayResize(arr, wanted_size)                                                \
     (_duskArrayEnsure((void **)arr, wanted_size), _duskArrayLength(*arr) = wanted_size)
-#define duskArrayFree(arr) ((*arr) != NULL ? (_duskArrayFree(*(arr)), (*(arr)) = NULL) : 0)
+#define duskArrayFree(arr)                                                               \
+    ((*arr) != NULL ? (_duskArrayFree(*(arr)), (*(arr)) = NULL) : 0)
 
 #define DUSK_ARRAY_HEADER_SIZE (sizeof(uint64_t) * 4)
 #define DUSK_ARRAY_INITIAL_CAPACITY 8
 
 DUSK_INLINE static void *_duskArrayCreate(DuskAllocator *allocator, size_t item_size)
 {
-    void *ptr =
-        ((uint64_t *)duskAllocate(
-            allocator, DUSK_ARRAY_HEADER_SIZE + (item_size * DUSK_ARRAY_INITIAL_CAPACITY))) +
-        4;
+    void *ptr = ((uint64_t *)duskAllocate(
+                    allocator,
+                    DUSK_ARRAY_HEADER_SIZE + (item_size * DUSK_ARRAY_INITIAL_CAPACITY))) +
+                4;
 
     _duskArrayItemSize(ptr) = item_size;
     _duskArrayAllocator(ptr) = allocator;
@@ -157,7 +160,7 @@ static inline uint64_t duskStringMapHash(const char *string)
     uint64_t hash = 14695981039346656037ULL;
     while (*string)
     {
-        hash = ((hash) * 1099511628211) ^ (*string);
+        hash = ((hash)*1099511628211) ^ (*string);
         ++string;
     }
     return hash;
@@ -186,19 +189,39 @@ void duskMapRemove(DuskMap *map, const char *key);
 // }}}
 
 // AST {{{
+typedef struct DuskFile DuskFile;
+
 typedef struct DuskDecl DuskDecl;
 typedef struct DuskStmt DuskStmt;
 typedef struct DuskExpr DuskExpr;
 
-typedef enum DuskDeclKind
+typedef struct DuskLocation
 {
+    DuskFile *file;
+    size_t offset;
+    size_t length;
+    size_t line;
+    size_t col;
+} DuskLocation;
+
+typedef enum DuskStorageClass {
+    DUSK_STORAGE_CLASS_FUNCTION,
+    DUSK_STORAGE_CLASS_PARAMETER,
+    DUSK_STORAGE_CLASS_UNIFORM,
+    DUSK_STORAGE_CLASS_INPUT,
+    DUSK_STORAGE_CLASS_OUTPUT,
+} DuskStorageClass;
+
+typedef enum DuskDeclKind {
     DUSK_DECL_MODULE,
     DUSK_DECL_FUNCTION,
+    DUSK_DECL_VAR,
 } DuskDeclKind;
 
 struct DuskDecl
 {
     DuskDeclKind kind;
+    DuskLocation location;
 
     union
     {
@@ -213,44 +236,85 @@ struct DuskDecl
             DuskExpr *return_type_expr;
             DuskArray(DuskStmt *) stmts;
         } function;
+        struct
+        {
+            const char *name;
+            DuskExpr *type_expr;
+            DuskExpr *value_expr;
+            DuskStorageClass storage_class;
+        } var;
     };
 };
 
-typedef enum DuskStmtKind
-{
+typedef enum DuskStmtKind {
     DUSK_STMT_DECL,
+    DUSK_STMT_ASSIGN,
+    DUSK_STMT_EXPR,
 } DuskStmtKind;
 
 struct DuskStmt
 {
     DuskStmtKind kind;
+    DuskLocation location;
 
     union
     {
         DuskDecl *decl;
+        DuskExpr *expr;
+        struct
+        {
+            DuskExpr *assigned_expr;
+            DuskExpr *value_expr;
+        } assign;
     };
 };
 
-typedef enum DuskExprKind
-{
-    DUSK_EXPR_BLOCK,
+typedef enum DuskScalarType {
+    DUSK_SCALAR_TYPE_FLOAT,
+    DUSK_SCALAR_TYPE_DOUBLE,
+    DUSK_SCALAR_TYPE_INT,
+    DUSK_SCALAR_TYPE_UINT,
+} DuskScalarType;
+
+typedef enum DuskExprKind {
+    DUSK_EXPR_VOID_TYPE,
+    DUSK_EXPR_BOOL_TYPE,
+    DUSK_EXPR_SCALAR_TYPE,
+    DUSK_EXPR_VECTOR_TYPE,
+    DUSK_EXPR_MATRIX_TYPE,
+    DUSK_EXPR_INT_LITERAL,
+    DUSK_EXPR_FLOAT_LITERAL,
+    DUSK_EXPR_IDENT,
 } DuskExprKind;
 
 struct DuskExpr
 {
     DuskExprKind kind;
+    DuskLocation location;
 
     union
     {
-        struct {
-            DuskArray(DuskStmt *) stmts;
-        } block;
+        DuskScalarType scalar_type;
+        struct
+        {
+            DuskScalarType scalar_type;
+            uint32_t length;
+        } vector_type;
+        struct
+        {
+            DuskScalarType scalar_type;
+            uint32_t cols;
+            uint32_t rows;
+        } matrix_type;
+        int64_t int_literal;
+        double float_literal;
+        const char *ident;
     };
 };
 // }}}
 
 // Compiler {{{
-typedef struct DuskFile
+struct DuskFile
 {
     const char *path;
 
@@ -258,16 +322,7 @@ typedef struct DuskFile
     size_t text_length;
 
     DuskArray(DuskDecl *) decls;
-} DuskFile;
-
-typedef struct DuskLocation
-{
-    DuskFile *file;
-    size_t offset;
-    size_t length;
-    size_t line;
-    size_t col;
-} DuskLocation;
+};
 
 typedef struct DuskError
 {
