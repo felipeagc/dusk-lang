@@ -1,12 +1,12 @@
 type Hello struct {
 
-}
+};
 
 [push_constant] let pc : struct {
 	
 };
 
-[binding(0)] let hello Hello; 
+[binding(0)] let hello : Hello; 
 [binding(1)] let image : @Image(float3);
 [binding(2)] let sampler : @Sampler;
 

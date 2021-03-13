@@ -1124,8 +1124,9 @@ tokenizerNextToken(DuskAllocator *allocator, TokenizerState state, Token *token)
                     number_length++;
                 }
 
-                if (tokenizerLengthLeft(state, number_length) > 0 &&
-                    state.file->text[state.pos + number_length] == '.')
+                if (tokenizerLengthLeft(state, number_length) > 1 &&
+                    state.file->text[state.pos + number_length] == '.' &&
+                    isNum(state.file->text[state.pos + number_length + 1]))
                 {
                     token->type = TOKEN_FLOAT_LITERAL;
                     number_length++;
@@ -1254,6 +1255,36 @@ static DuskExpr *parsePrimaryExpr(DuskCompiler *compiler, TokenizerState *state)
         consumeToken(compiler, state, TOKEN_RPAREN);
         break;
     }
+    case TOKEN_STRUCT: {
+        expr->kind = DUSK_EXPR_STRUCT_TYPE;
+        expr->struct_type.field_type_exprs = duskArrayCreate(allocator, DuskExpr *);
+        expr->struct_type.field_names = duskArrayCreate(allocator, const char *);
+
+        consumeToken(compiler, state, TOKEN_LCURLY);
+
+        Token next_token = {0};
+        tokenizerNextToken(allocator, *state, &next_token);
+        while (next_token.type != TOKEN_RCURLY)
+        {
+            Token field_name_token = consumeToken(compiler, state, TOKEN_IDENT);
+            consumeToken(compiler, state, TOKEN_COLON);
+
+            DuskExpr *type_expr = parseExpr(compiler, state);
+
+            duskArrayPush(&expr->struct_type.field_type_exprs, type_expr);
+            duskArrayPush(&expr->struct_type.field_names, field_name_token.str);
+
+            tokenizerNextToken(allocator, *state, &next_token);
+            if (next_token.type != TOKEN_RCURLY)
+            {
+                consumeToken(compiler, state, TOKEN_COMMA);
+                tokenizerNextToken(allocator, *state, &next_token);
+            }
+        }
+
+        consumeToken(compiler, state, TOKEN_RCURLY);
+        break;
+    }
     default: {
         duskAddError(
             compiler,
@@ -1299,13 +1330,34 @@ static DuskStmt *parseStmt(DuskCompiler *compiler, TokenizerState *state)
         DuskExpr *value_expr = parseExpr(compiler, state);
 
         decl->kind = DUSK_DECL_VAR;
-        decl->var.name = name_token.str;
+        decl->name = name_token.str;
         decl->var.storage_class = DUSK_STORAGE_CLASS_FUNCTION;
         decl->var.type_expr = type_expr;
         decl->var.value_expr = value_expr;
 
         stmt->kind = DUSK_STMT_DECL;
         stmt->decl = decl;
+
+        consumeToken(compiler, state, TOKEN_SEMICOLON);
+        break;
+    }
+
+    case TOKEN_LCURLY: {
+        stmt->kind = DUSK_STMT_BLOCK;
+        stmt->block.stmts = duskArrayCreate(allocator, DuskStmt *);
+
+        consumeToken(compiler, state, TOKEN_LCURLY);
+
+        tokenizerNextToken(allocator, *state, &next_token);
+        while (next_token.type != TOKEN_RCURLY)
+        {
+            DuskStmt *sub_stmt = parseStmt(compiler, state);
+            duskArrayPush(&stmt->block.stmts, sub_stmt);
+
+            tokenizerNextToken(allocator, *state, &next_token);
+        }
+
+        consumeToken(compiler, state, TOKEN_RCURLY);
         break;
     }
 
@@ -1332,11 +1384,11 @@ static DuskStmt *parseStmt(DuskCompiler *compiler, TokenizerState *state)
         }
         }
 
+        consumeToken(compiler, state, TOKEN_SEMICOLON);
+
         break;
     }
     }
-
-    consumeToken(compiler, state, TOKEN_SEMICOLON);
 
     return stmt;
 }
@@ -1350,6 +1402,59 @@ static DuskDecl *parseTopLevelDecl(DuskCompiler *compiler, TokenizerState *state
     Token next_token = {0};
     tokenizerNextToken(allocator, *state, &next_token);
     decl->location = next_token.location;
+
+    decl->attributes = duskArrayCreate(allocator, DuskAttribute);
+
+    tokenizerNextToken(allocator, *state, &next_token);
+    while (next_token.type == TOKEN_LBRACKET)
+    {
+        consumeToken(compiler, state, TOKEN_LBRACKET);
+
+        tokenizerNextToken(allocator, *state, &next_token);
+        while (next_token.type != TOKEN_RBRACKET)
+        {
+            Token attrib_name_token = consumeToken(compiler, state, TOKEN_IDENT);
+
+            DuskAttribute attrib = {0};
+            attrib.name = attrib_name_token.str;
+            attrib.value_exprs = duskArrayCreate(allocator, DuskExpr*);
+
+            tokenizerNextToken(allocator, *state, &next_token);
+            if (next_token.type == TOKEN_LPAREN)
+            {
+                consumeToken(compiler, state, TOKEN_LPAREN);
+
+                while (next_token.type != TOKEN_RPAREN)
+                {
+                    DuskExpr *value_expr = parseExpr(compiler, state);
+                    duskArrayPush(&attrib.value_exprs, value_expr);
+
+                    tokenizerNextToken(allocator, *state, &next_token);
+                    if (next_token.type != TOKEN_RPAREN)
+                    {
+                        consumeToken(compiler, state, TOKEN_COMMA);
+                    }
+
+                    tokenizerNextToken(allocator, *state, &next_token);
+                }
+
+                duskArrayPush(&decl->attributes, attrib);
+
+                consumeToken(compiler, state, TOKEN_RPAREN);
+            }
+
+            tokenizerNextToken(allocator, *state, &next_token);
+            if (next_token.type != TOKEN_RBRACKET)
+            {
+                consumeToken(compiler, state, TOKEN_COMMA);
+                tokenizerNextToken(allocator, *state, &next_token);
+            }
+        }
+
+        consumeToken(compiler, state, TOKEN_RBRACKET);
+
+        tokenizerNextToken(allocator, *state, &next_token);
+    }
 
     switch (next_token.type)
     {
@@ -1376,11 +1481,12 @@ static DuskDecl *parseTopLevelDecl(DuskCompiler *compiler, TokenizerState *state
     case TOKEN_FN: {
         consumeToken(compiler, state, TOKEN_FN);
 
+        Token name_token = consumeToken(compiler, state, TOKEN_IDENT);
+
         decl->kind = DUSK_DECL_FUNCTION;
+        decl->name = name_token.str;
         decl->function.parameter_decls = duskArrayCreate(allocator, DuskDecl *);
         decl->function.stmts = duskArrayCreate(allocator, DuskStmt *);
-
-        consumeToken(compiler, state, TOKEN_IDENT);
 
         consumeToken(compiler, state, TOKEN_LPAREN);
 
@@ -1396,7 +1502,7 @@ static DuskDecl *parseTopLevelDecl(DuskCompiler *compiler, TokenizerState *state
 
             DuskDecl *param_decl = DUSK_NEW(allocator, DuskDecl);
             param_decl->kind = DUSK_DECL_VAR;
-            param_decl->var.name = param_ident.str;
+            param_decl->name = param_ident.str;
             param_decl->var.type_expr = param_type_expr;
             param_decl->var.value_expr = NULL;
             param_decl->var.storage_class = DUSK_STORAGE_CLASS_PARAMETER;
@@ -1437,13 +1543,27 @@ static DuskDecl *parseTopLevelDecl(DuskCompiler *compiler, TokenizerState *state
         DuskExpr *type_expr = parseExpr(compiler, state);
 
         decl->kind = DUSK_DECL_VAR;
-        decl->var.name = name_token.str;
+        decl->name = name_token.str;
         decl->var.storage_class = DUSK_STORAGE_CLASS_FUNCTION;
         decl->var.type_expr = type_expr;
         decl->var.value_expr = NULL;
 
         consumeToken(compiler, state, TOKEN_SEMICOLON);
 
+        break;
+    }
+    case TOKEN_TYPE: {
+        consumeToken(compiler, state, TOKEN_TYPE);
+
+        Token name_token = consumeToken(compiler, state, TOKEN_IDENT);
+
+        DuskExpr *type_expr = parseExpr(compiler, state);
+
+        decl->kind = DUSK_DECL_TYPE;
+        decl->name = name_token.str;
+        decl->type.type_expr = type_expr;
+
+        consumeToken(compiler, state, TOKEN_SEMICOLON);
         break;
     }
     default: {

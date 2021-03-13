@@ -212,22 +212,30 @@ typedef enum DuskStorageClass {
     DUSK_STORAGE_CLASS_OUTPUT,
 } DuskStorageClass;
 
+typedef struct DuskAttribute
+{
+    const char *name;
+    DuskArray(DuskExpr *) value_exprs;
+} DuskAttribute;
+
 typedef enum DuskDeclKind {
     DUSK_DECL_MODULE,
     DUSK_DECL_FUNCTION,
     DUSK_DECL_VAR,
+    DUSK_DECL_TYPE,
 } DuskDeclKind;
 
 struct DuskDecl
 {
     DuskDeclKind kind;
     DuskLocation location;
+    const char *name;
+    DuskArray(DuskAttribute) attributes;
 
     union
     {
         struct
         {
-            const char *name;
             DuskArray(DuskDecl *) decls;
         } module;
         struct
@@ -238,11 +246,14 @@ struct DuskDecl
         } function;
         struct
         {
-            const char *name;
             DuskExpr *type_expr;
             DuskExpr *value_expr;
             DuskStorageClass storage_class;
         } var;
+        struct
+        {
+            DuskExpr *type_expr;
+        } type;
     };
 };
 
@@ -250,6 +261,7 @@ typedef enum DuskStmtKind {
     DUSK_STMT_DECL,
     DUSK_STMT_ASSIGN,
     DUSK_STMT_EXPR,
+    DUSK_STMT_BLOCK,
 } DuskStmtKind;
 
 struct DuskStmt
@@ -266,6 +278,10 @@ struct DuskStmt
             DuskExpr *assigned_expr;
             DuskExpr *value_expr;
         } assign;
+        struct
+        {
+            DuskArray(DuskStmt *) stmts;
+        } block;
     };
 };
 
@@ -285,6 +301,7 @@ typedef enum DuskExprKind {
     DUSK_EXPR_INT_LITERAL,
     DUSK_EXPR_FLOAT_LITERAL,
     DUSK_EXPR_IDENT,
+    DUSK_EXPR_STRUCT_TYPE,
 } DuskExprKind;
 
 struct DuskExpr
@@ -309,6 +326,12 @@ struct DuskExpr
         int64_t int_literal;
         double float_literal;
         const char *ident;
+        struct
+        {
+            const char *name;
+            DuskArray(const char *) field_names;
+            DuskArray(DuskExpr *) field_type_exprs;
+        } struct_type;
     };
 };
 // }}}
