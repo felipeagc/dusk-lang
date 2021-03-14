@@ -9,9 +9,12 @@ add_library(
   dusk/dusk.h
   dusk/dusk_internal.h
   dusk/dusk_map.c
+  dusk/dusk_string_builder.c
   dusk/dusk_allocator.c
   dusk/dusk_compiler.c
+  dusk/dusk_type.c
   dusk/dusk_parser.c
+  dusk/dusk_analysis.c
   dusk/spirv.h)
 target_include_directories(dusk PUBLIC dusk)
 

@@ -13,6 +13,7 @@ DuskCompiler *duskCompilerCreate(void)
     *compiler = (DuskCompiler){
         .main_arena = arena,
         .errors = duskArrayCreate(allocator, DuskError),
+        .type_cache = duskMapCreate(allocator, 32),
     };
     return compiler;
 }
@@ -30,6 +31,8 @@ void duskThrow(DuskCompiler *compiler)
 
 void duskAddError(DuskCompiler *compiler, DuskLocation loc, const char *fmt, ...)
 {
+    DUSK_ASSERT(loc.file);
+
     DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
     va_list vl;
     va_start(vl, fmt);
@@ -70,6 +73,14 @@ void duskCompile(
         .text = text,
         .text_length = text_length,
         .decls = duskArrayCreate(allocator, DuskDecl *),
+        .scope = duskScopeCreate(allocator, NULL, DUSK_SCOPE_OWNER_TYPE_NONE, NULL),
     };
+
     duskParse(compiler, file);
+
+    duskAnalyzeFile(compiler, file);
+    if (duskArrayLength(compiler->errors) > 0)
+    {
+        duskThrow(compiler);
+    }
 }

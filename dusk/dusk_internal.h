@@ -7,6 +7,8 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdarg.h>
+#include <stdlib.h>
+#include <stdio.h>
 #include <setjmp.h>
 
 #if defined(_MSC_VER)
@@ -188,7 +190,20 @@ bool duskMapGet(DuskMap *map, const char *key, void **value_ptr);
 void duskMapRemove(DuskMap *map, const char *key);
 // }}}
 
-// AST {{{
+// String builder {{{
+typedef struct DuskStringBuilder DuskStringBuilder;
+
+DuskStringBuilder *duskStringBuilderCreate(DuskAllocator *allocator, size_t initial_length);
+void duskStringBuilderDestroy(DuskStringBuilder *sb);
+
+void duskStringBuilderAppend(DuskStringBuilder *sb, const char *str);
+void duskStringBuilderAppendLen(DuskStringBuilder *sb, const char *str, size_t length);
+DUSK_PRINTF_FORMATTING(2, 3)
+void duskStringBuilderAppendFormat(DuskStringBuilder *sb, const char *format, ...);
+const char *duskStringBuilderBuild(DuskStringBuilder *sb, DuskAllocator *allocator);
+// }}}
+
+// Typedefs {{{
 typedef struct DuskFile DuskFile;
 
 typedef struct DuskDecl DuskDecl;
@@ -204,6 +219,113 @@ typedef struct DuskLocation
     size_t col;
 } DuskLocation;
 
+typedef enum DuskScalarType {
+    DUSK_SCALAR_TYPE_FLOAT,
+    DUSK_SCALAR_TYPE_DOUBLE,
+    DUSK_SCALAR_TYPE_INT,
+    DUSK_SCALAR_TYPE_UINT,
+} DuskScalarType;
+// }}}
+
+// Scope {{{
+typedef enum DuskScopeOwnerType {
+    DUSK_SCOPE_OWNER_TYPE_NONE = 0,
+    DUSK_SCOPE_OWNER_TYPE_FUNCTION,
+    DUSK_SCOPE_OWNER_TYPE_MODULE,
+    DUSK_SCOPE_OWNER_TYPE_STRUCT,
+    DUSK_SCOPE_OWNER_TYPE_VARIABLE,
+} DuskScopeOwnerType;
+
+typedef struct DuskScope
+{
+    DuskScopeOwnerType type;
+    struct DuskScope *parent;
+    DuskMap *map;
+    union
+    {
+        DuskDecl *decl;
+        DuskExpr *expr;
+        DuskStmt *stmt;
+    } owner;
+} DuskScope;
+
+DuskScope *duskScopeCreate(
+    DuskAllocator *allocator, DuskScope *parent, DuskScopeOwnerType type, void *owner);
+DuskDecl *duskScopeLookup(DuskScope *scope, const char *name);
+void duskScopeSet(DuskScope *scope, const char *name, DuskDecl *decl);
+// }}}
+
+// Type {{{
+typedef enum DuskTypeKind {
+    DUSK_TYPE_VOID,
+    DUSK_TYPE_TYPE,
+    DUSK_TYPE_BOOL,
+    DUSK_TYPE_UNTYPED_INT,
+    DUSK_TYPE_UNTYPED_FLOAT,
+    DUSK_TYPE_INT,
+    DUSK_TYPE_FLOAT,
+    DUSK_TYPE_VECTOR,
+    DUSK_TYPE_MATRIX,
+    DUSK_TYPE_RUNTIME_ARRAY,
+    DUSK_TYPE_ARRAY,
+    DUSK_TYPE_STRUCT,
+} DuskTypeKind;
+
+typedef struct DuskType DuskType;
+
+struct DuskType
+{
+    DuskTypeKind kind;
+    const char *string;
+    const char *pretty_string;
+
+    union
+    {
+        struct
+        {
+            uint32_t bits;
+            bool is_signed;
+        } int_;
+        struct
+        {
+            uint32_t bits;
+        } float_;
+        struct
+        {
+            DuskType *sub;
+            uint32_t size;
+        } vector;
+        struct
+        {
+            DuskType *sub;
+            uint32_t cols;
+            uint32_t rows;
+        } matrix;
+        struct
+        {
+            DuskType *sub;
+            size_t size;
+        } array;
+        struct
+        {
+            const char *name;
+            DuskArray(DuskType *) field_types;
+            DuskArray(const char *) field_names;
+        } struct_;
+    };
+};
+
+const char *duskTypeToPrettyString(DuskAllocator *allocator, DuskType *type);
+DuskType *duskTypeNewBasic(DuskCompiler *compiler, DuskTypeKind kind);
+DuskType *duskTypeNewScalar(DuskCompiler *compiler, DuskScalarType scalar_type);
+DuskType *duskTypeNewVector(DuskCompiler *compiler, DuskType *sub, uint32_t size);
+DuskType *
+duskTypeNewMatrix(DuskCompiler *compiler, DuskType *sub, uint32_t cols, uint32_t rows);
+DuskType *duskTypeNewRuntimeArray(DuskCompiler *compiler, DuskType *sub);
+DuskType *duskTypeNewArray(DuskCompiler *compiler, DuskType *sub, size_t size);
+// }}}
+
+// AST {{{
 typedef enum DuskStorageClass {
     DUSK_STORAGE_CLASS_FUNCTION,
     DUSK_STORAGE_CLASS_PARAMETER,
@@ -231,21 +353,25 @@ struct DuskDecl
     DuskLocation location;
     const char *name;
     DuskArray(DuskAttribute) attributes;
+    DuskType *type;
 
     union
     {
         struct
         {
+            DuskScope *scope;
             DuskArray(DuskDecl *) decls;
         } module;
         struct
         {
+            DuskScope *scope;
             DuskArray(DuskDecl *) parameter_decls;
             DuskExpr *return_type_expr;
             DuskArray(DuskStmt *) stmts;
         } function;
         struct
         {
+            DuskScope *scope;
             DuskExpr *type_expr;
             DuskExpr *value_expr;
             DuskStorageClass storage_class;
@@ -253,7 +379,7 @@ struct DuskDecl
         struct
         {
             DuskExpr *type_expr;
-        } type;
+        } typedef_;
     };
 };
 
@@ -281,16 +407,10 @@ struct DuskStmt
         struct
         {
             DuskArray(DuskStmt *) stmts;
+            DuskScope *scope;
         } block;
     };
 };
-
-typedef enum DuskScalarType {
-    DUSK_SCALAR_TYPE_FLOAT,
-    DUSK_SCALAR_TYPE_DOUBLE,
-    DUSK_SCALAR_TYPE_INT,
-    DUSK_SCALAR_TYPE_UINT,
-} DuskScalarType;
 
 typedef enum DuskExprKind {
     DUSK_EXPR_VOID_TYPE,
@@ -310,6 +430,8 @@ struct DuskExpr
 {
     DuskExprKind kind;
     DuskLocation location;
+    DuskType *type;
+    DuskType *as_type;
 
     union
     {
@@ -351,6 +473,7 @@ struct DuskFile
     const char *text;
     size_t text_length;
 
+    DuskScope *scope;
     DuskArray(DuskDecl *) decls;
 };
 
@@ -364,12 +487,15 @@ typedef struct DuskCompiler
 {
     DuskArena *main_arena;
     DuskArray(DuskError) errors;
+    DuskMap *type_cache;
     jmp_buf jump_buffer;
 } DuskCompiler;
 // }}}
 
 void duskThrow(DuskCompiler *compiler);
+DUSK_PRINTF_FORMATTING(3, 4)
 void duskAddError(DuskCompiler *compiler, DuskLocation loc, const char *fmt, ...);
 void duskParse(DuskCompiler *compiler, DuskFile *file);
+void duskAnalyzeFile(DuskCompiler *compiler, DuskFile *file);
 
 #endif
