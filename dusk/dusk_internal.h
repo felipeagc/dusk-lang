@@ -315,6 +315,7 @@ struct DuskType
     };
 };
 
+bool duskTypeIsRuntime(DuskType *type);
 const char *duskTypeToPrettyString(DuskAllocator *allocator, DuskType *type);
 DuskType *duskTypeNewBasic(DuskCompiler *compiler, DuskTypeKind kind);
 DuskType *duskTypeNewScalar(DuskCompiler *compiler, DuskScalarType scalar_type);

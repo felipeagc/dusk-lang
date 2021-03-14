@@ -235,6 +235,20 @@ static DuskType *duskTypeGetCached(DuskCompiler *compiler, DuskType *type)
     return type;
 }
 
+bool duskTypeIsRuntime(DuskType *type)
+{
+    switch (type->kind)
+    {
+    case DUSK_TYPE_UNTYPED_FLOAT:
+    case DUSK_TYPE_UNTYPED_INT:
+        return false;
+    default:
+        return true;
+    }
+
+    return true;
+}
+
 DuskType *duskTypeNewBasic(DuskCompiler *compiler, DuskTypeKind kind)
 {
     DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);

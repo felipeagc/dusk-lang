@@ -428,20 +428,39 @@ duskAnalyzeDecl(DuskCompiler *compiler, DuskAnalyzerState *state, DuskDecl *decl
     case DUSK_DECL_VAR: {
         DuskType *type_type = duskTypeNewBasic(compiler, DUSK_TYPE_TYPE);
 
-        duskAnalyzeExpr(compiler, state, decl->var.type_expr, type_type, false);
-
-        DuskType *var_type = decl->var.type_expr->as_type;
-        if (!var_type)
+        DuskType *var_type = NULL;
+        if (decl->var.type_expr)
         {
-            break;
+            duskAnalyzeExpr(compiler, state, decl->var.type_expr, type_type, false);
+            var_type = decl->var.type_expr->as_type;
+            if (!var_type) break;
         }
-
-        decl->type = var_type;
 
         if (decl->var.value_expr)
         {
             duskAnalyzeExpr(compiler, state, decl->var.value_expr, var_type, false);
+            if (var_type == NULL)
+            {
+                var_type = decl->var.value_expr->type;
+            }
         }
+
+        if (!var_type)
+        {
+            DUSK_ASSERT(duskArrayLength(compiler->errors) > 0);
+        }
+
+        if (!duskTypeIsRuntime(var_type))
+        {
+            duskAddError(
+                compiler,
+                decl->location,
+                "variable type is not representable at runtime: '%s'",
+                duskTypeToPrettyString(allocator, var_type));
+            break;
+        }
+
+        decl->type = var_type;
         break;
     }
     }
