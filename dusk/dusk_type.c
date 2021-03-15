@@ -126,6 +126,11 @@ const char *duskTypeToPrettyString(DuskAllocator *allocator, DuskType *type)
         duskStringBuilderDestroy(sb);
         break;
     }
+    case DUSK_TYPE_POINTER: {
+        const char *sub_str = duskTypeToPrettyString(allocator, type->pointer.sub);
+        type->pretty_string = duskSprintf(allocator, "*%s", sub_str);
+        break;
+    }
     }
 
     DUSK_ASSERT(type->pretty_string != NULL);
@@ -253,6 +258,21 @@ static const char *duskTypeToString(DuskAllocator *allocator, DuskType *type)
 
         type->string = duskStringBuilderBuild(sb, allocator);
         duskStringBuilderDestroy(sb);
+        break;
+    }
+    case DUSK_TYPE_POINTER: {
+        const char *storage_class = "default";
+        const char *sub_str = duskTypeToString(allocator, type->pointer.sub);
+
+        switch (type->pointer.storage_class)
+        {
+        case DUSK_STORAGE_CLASS_UNIFORM: storage_class = "uniform"; break;
+        case DUSK_STORAGE_CLASS_PARAMETER: storage_class = "parameter"; break;
+        case DUSK_STORAGE_CLASS_FUNCTION: storage_class = "function"; break;
+        case DUSK_STORAGE_CLASS_INPUT: storage_class = "input"; break;
+        case DUSK_STORAGE_CLASS_OUTPUT: storage_class = "output"; break;
+        }
+        type->string = duskSprintf(allocator, "@ptr(%s, %s)", sub_str, storage_class);
         break;
     }
     }
@@ -391,7 +411,7 @@ DuskType *duskTypeNewStruct(
     type->struct_.index_map = duskMapCreate(allocator, field_count);
     for (size_t i = 0; i < field_count; ++i)
     {
-        duskMapSet(type->struct_.index_map, field_names[i], (void*)i);
+        duskMapSet(type->struct_.index_map, field_names[i], (void *)i);
     }
 
     return duskTypeGetCached(compiler, type);
@@ -405,5 +425,16 @@ DuskType *duskTypeNewFunction(
     type->kind = DUSK_TYPE_FUNCTION;
     type->function.return_type = return_type;
     type->function.param_types = param_types;
+    return duskTypeGetCached(compiler, type);
+}
+
+DuskType *
+duskTypeNewPointer(DuskCompiler *compiler, DuskType *sub, DuskStorageClass storage_class)
+{
+    DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
+    DuskType *type = DUSK_NEW(allocator, DuskType);
+    type->kind = DUSK_TYPE_POINTER;
+    type->pointer.sub = sub;
+    type->pointer.storage_class = storage_class;
     return duskTypeGetCached(compiler, type);
 }

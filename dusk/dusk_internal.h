@@ -193,7 +193,8 @@ void duskMapRemove(DuskMap *map, const char *key);
 // String builder {{{
 typedef struct DuskStringBuilder DuskStringBuilder;
 
-DuskStringBuilder *duskStringBuilderCreate(DuskAllocator *allocator, size_t initial_length);
+DuskStringBuilder *
+duskStringBuilderCreate(DuskAllocator *allocator, size_t initial_length);
 void duskStringBuilderDestroy(DuskStringBuilder *sb);
 
 void duskStringBuilderAppend(DuskStringBuilder *sb, const char *str);
@@ -225,6 +226,14 @@ typedef enum DuskScalarType {
     DUSK_SCALAR_TYPE_INT,
     DUSK_SCALAR_TYPE_UINT,
 } DuskScalarType;
+
+typedef enum DuskStorageClass {
+    DUSK_STORAGE_CLASS_FUNCTION,
+    DUSK_STORAGE_CLASS_PARAMETER,
+    DUSK_STORAGE_CLASS_UNIFORM,
+    DUSK_STORAGE_CLASS_INPUT,
+    DUSK_STORAGE_CLASS_OUTPUT,
+} DuskStorageClass;
 // }}}
 
 // Scope {{{
@@ -270,6 +279,7 @@ typedef enum DuskTypeKind {
     DUSK_TYPE_ARRAY,
     DUSK_TYPE_STRUCT,
     DUSK_TYPE_FUNCTION,
+    DUSK_TYPE_POINTER,
 } DuskTypeKind;
 
 typedef struct DuskType DuskType;
@@ -319,6 +329,11 @@ struct DuskType
             DuskType *return_type;
             DuskArray(DuskType *) param_types;
         } function;
+        struct
+        {
+            DuskType *sub;
+            DuskStorageClass storage_class;
+        } pointer;
     };
 };
 
@@ -332,25 +347,17 @@ duskTypeNewMatrix(DuskCompiler *compiler, DuskType *sub, uint32_t cols, uint32_t
 DuskType *duskTypeNewRuntimeArray(DuskCompiler *compiler, DuskType *sub);
 DuskType *duskTypeNewArray(DuskCompiler *compiler, DuskType *sub, size_t size);
 DuskType *duskTypeNewStruct(
-        DuskCompiler *compiler,
-        const char *name,
-        DuskArray(const char *) field_names,
-        DuskArray(DuskType *) field_types);
+    DuskCompiler *compiler,
+    const char *name,
+    DuskArray(const char *) field_names,
+    DuskArray(DuskType *) field_types);
 DuskType *duskTypeNewFunction(
-        DuskCompiler *compiler,
-        DuskType *return_type,
-        DuskArray(DuskType *) param_types);
+    DuskCompiler *compiler, DuskType *return_type, DuskArray(DuskType *) param_types);
+DuskType *
+duskTypeNewPointer(DuskCompiler *compiler, DuskType *sub, DuskStorageClass storage_class);
 // }}}
 
 // AST {{{
-typedef enum DuskStorageClass {
-    DUSK_STORAGE_CLASS_FUNCTION,
-    DUSK_STORAGE_CLASS_PARAMETER,
-    DUSK_STORAGE_CLASS_UNIFORM,
-    DUSK_STORAGE_CLASS_INPUT,
-    DUSK_STORAGE_CLASS_OUTPUT,
-} DuskStorageClass;
-
 typedef struct DuskAttribute
 {
     const char *name;
