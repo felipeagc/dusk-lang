@@ -312,6 +312,7 @@ struct DuskType
             const char *name;
             DuskArray(DuskType *) field_types;
             DuskArray(const char *) field_names;
+            DuskMap *index_map;
         } struct_;
         struct
         {

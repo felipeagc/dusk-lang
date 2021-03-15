@@ -386,6 +386,14 @@ DuskType *duskTypeNewStruct(
     type->struct_.name = name;
     type->struct_.field_names = field_names;
     type->struct_.field_types = field_types;
+
+    size_t field_count = duskArrayLength(field_names);
+    type->struct_.index_map = duskMapCreate(allocator, field_count);
+    for (size_t i = 0; i < field_count; ++i)
+    {
+        duskMapSet(type->struct_.index_map, field_names[i], (void*)i);
+    }
+
     return duskTypeGetCached(compiler, type);
 }
 
