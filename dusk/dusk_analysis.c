@@ -221,10 +221,11 @@ static void duskAnalyzeExpr(
     case DUSK_EXPR_MATRIX_TYPE: {
         DuskType *scalar_type =
             duskTypeNewScalar(compiler, expr->matrix_type.scalar_type);
+        DuskType *col_type =
+            duskTypeNewVector(compiler, scalar_type, expr->matrix_type.rows);
 
         expr->type = duskTypeNewBasic(compiler, DUSK_TYPE_TYPE);
-        expr->as_type = duskTypeNewMatrix(
-            compiler, scalar_type, expr->matrix_type.cols, expr->matrix_type.rows);
+        expr->as_type = duskTypeNewMatrix(compiler, col_type, expr->matrix_type.cols);
         break;
     }
     case DUSK_EXPR_ARRAY_TYPE: {
@@ -464,10 +465,11 @@ duskAnalyzeDecl(DuskCompiler *compiler, DuskAnalyzerState *state, DuskDecl *decl
 
         bool got_all_param_types = true;
         DuskType *return_type = NULL;
-        DuskArray(DuskType*) param_types = duskArrayCreate(allocator, DuskType*);
+        DuskArray(DuskType *) param_types = duskArrayCreate(allocator, DuskType *);
         duskArrayResize(&param_types, param_count);
 
-        duskAnalyzeExpr(compiler, state, decl->function.return_type_expr, type_type, false);
+        duskAnalyzeExpr(
+            compiler, state, decl->function.return_type_expr, type_type, false);
         return_type = decl->function.return_type_expr->as_type;
 
         duskArrayPush(&state->scope_stack, decl->function.scope);

@@ -308,9 +308,8 @@ struct DuskType
         } vector;
         struct
         {
-            DuskType *sub;
+            DuskType *col_type;
             uint32_t cols;
-            uint32_t rows;
         } matrix;
         struct
         {
@@ -342,8 +341,7 @@ const char *duskTypeToPrettyString(DuskAllocator *allocator, DuskType *type);
 DuskType *duskTypeNewBasic(DuskCompiler *compiler, DuskTypeKind kind);
 DuskType *duskTypeNewScalar(DuskCompiler *compiler, DuskScalarType scalar_type);
 DuskType *duskTypeNewVector(DuskCompiler *compiler, DuskType *sub, uint32_t size);
-DuskType *
-duskTypeNewMatrix(DuskCompiler *compiler, DuskType *sub, uint32_t cols, uint32_t rows);
+DuskType *duskTypeNewMatrix(DuskCompiler *compiler, DuskType *col_type, uint32_t cols);
 DuskType *duskTypeNewRuntimeArray(DuskCompiler *compiler, DuskType *sub);
 DuskType *duskTypeNewArray(DuskCompiler *compiler, DuskType *sub, size_t size);
 DuskType *duskTypeNewStruct(

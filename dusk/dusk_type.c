@@ -60,9 +60,11 @@ const char *duskTypeToPrettyString(DuskAllocator *allocator, DuskType *type)
         break;
     }
     case DUSK_TYPE_MATRIX: {
-        const char *sub_str = duskTypeToPrettyString(allocator, type->matrix.sub);
+        DuskType *col_type = type->matrix.col_type;
+        DUSK_ASSERT(col_type->kind == DUSK_TYPE_VECTOR);
+        const char *sub_str = duskTypeToPrettyString(allocator, col_type->vector.sub);
         type->pretty_string = duskSprintf(
-            allocator, "%s%ux%u", sub_str, type->matrix.cols, type->matrix.rows);
+            allocator, "%s%ux%u", sub_str, type->matrix.cols, col_type->vector.size);
         break;
     }
     case DUSK_TYPE_RUNTIME_ARRAY: {
@@ -186,13 +188,9 @@ static const char *duskTypeToString(DuskAllocator *allocator, DuskType *type)
         break;
     }
     case DUSK_TYPE_MATRIX: {
-        const char *sub_str = duskTypeToString(allocator, type->matrix.sub);
-        type->string = duskSprintf(
-            allocator,
-            "@matrix(%s,%u,%u)",
-            sub_str,
-            type->matrix.cols,
-            type->matrix.rows);
+        const char *sub_str = duskTypeToString(allocator, type->matrix.col_type);
+        type->string =
+            duskSprintf(allocator, "@matrix(%u,%s)", type->matrix.cols, sub_str);
         break;
     }
     case DUSK_TYPE_RUNTIME_ARRAY: {
@@ -363,15 +361,13 @@ DuskType *duskTypeNewVector(DuskCompiler *compiler, DuskType *sub, uint32_t size
     return duskTypeGetCached(compiler, type);
 }
 
-DuskType *
-duskTypeNewMatrix(DuskCompiler *compiler, DuskType *sub, uint32_t cols, uint32_t rows)
+DuskType *duskTypeNewMatrix(DuskCompiler *compiler, DuskType *col_type, uint32_t cols)
 {
     DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
     DuskType *type = DUSK_NEW(allocator, DuskType);
     type->kind = DUSK_TYPE_MATRIX;
-    type->matrix.sub = sub;
+    type->matrix.col_type = col_type;
     type->matrix.cols = cols;
-    type->matrix.rows = rows;
     return duskTypeGetCached(compiler, type);
 }
 
