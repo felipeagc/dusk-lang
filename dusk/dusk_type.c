@@ -335,3 +335,18 @@ DuskType *duskTypeNewArray(DuskCompiler *compiler, DuskType *sub, size_t size)
     type->array.size = size;
     return duskTypeGetCached(compiler, type);
 }
+
+DuskType *duskTypeNewStruct(
+        DuskCompiler *compiler,
+        const char *name,
+        DuskArray(const char *) field_names,
+        DuskArray(DuskType *) field_types)
+{
+    DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
+    DuskType *type = DUSK_NEW(allocator, DuskType);
+    type->kind = DUSK_TYPE_STRUCT;
+    type->struct_.name = name;
+    type->struct_.field_names = field_names;
+    type->struct_.field_types = field_types;
+    return duskTypeGetCached(compiler, type);
+}

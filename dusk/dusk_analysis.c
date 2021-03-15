@@ -278,7 +278,64 @@ static void duskAnalyzeExpr(
         break;
     }
     case DUSK_EXPR_STRUCT_TYPE: {
-        duskAddError(compiler, expr->location, "struct type unimplemented");
+        size_t field_count = duskArrayLength(expr->struct_type.field_type_exprs);
+
+        bool got_duplicate_field_names = false;
+
+        DuskMap *field_map = duskMapCreate(NULL, field_count);
+
+        for (size_t i = 0; i < field_count; ++i)
+        {
+            if (duskMapGet(field_map, expr->struct_type.field_names[i], NULL))
+            {
+                duskAddError(
+                    compiler,
+                    expr->location,
+                    "duplicate struct member name: '%s'",
+                    expr->struct_type.field_names[i]);
+                got_duplicate_field_names = true;
+                continue;
+            }
+            duskMapSet(field_map, expr->struct_type.field_names[i], NULL);
+        }
+
+        duskMapDestroy(field_map);
+
+        if (got_duplicate_field_names)
+        {
+            DUSK_ASSERT(duskArrayLength(compiler->errors) > 0);
+            break;
+        }
+
+        DuskType *type_type = duskTypeNewBasic(compiler, DUSK_TYPE_TYPE);
+
+        bool got_all_field_types = true;
+
+        DuskArray(DuskType *) field_types = duskArrayCreate(allocator, DuskType *);
+        duskArrayResize(&field_types, field_count);
+
+        for (size_t i = 0; i < field_count; ++i)
+        {
+            DuskExpr *field_type_expr = expr->struct_type.field_type_exprs[i];
+            duskAnalyzeExpr(compiler, state, field_type_expr, type_type, false);
+            if (!field_type_expr->as_type)
+            {
+                got_all_field_types = false;
+                break;
+            }
+            field_types[i] = field_type_expr->as_type;
+        }
+
+        if (!got_all_field_types)
+        {
+            DUSK_ASSERT(duskArrayLength(compiler->errors) > 0);
+            break;
+        }
+
+        expr->type = type_type;
+        expr->as_type = duskTypeNewStruct(
+            compiler, expr->struct_type.name, expr->struct_type.field_names, field_types);
+
         break;
     }
     }

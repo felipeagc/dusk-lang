@@ -324,6 +324,11 @@ DuskType *
 duskTypeNewMatrix(DuskCompiler *compiler, DuskType *sub, uint32_t cols, uint32_t rows);
 DuskType *duskTypeNewRuntimeArray(DuskCompiler *compiler, DuskType *sub);
 DuskType *duskTypeNewArray(DuskCompiler *compiler, DuskType *sub, size_t size);
+DuskType *duskTypeNewStruct(
+        DuskCompiler *compiler,
+        const char *name,
+        DuskArray(const char *) field_names,
+        DuskArray(DuskType *) field_types);
 // }}}
 
 // AST {{{
