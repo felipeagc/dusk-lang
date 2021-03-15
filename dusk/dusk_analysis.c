@@ -458,13 +458,30 @@ duskAnalyzeDecl(DuskCompiler *compiler, DuskAnalyzerState *state, DuskDecl *decl
         decl->function.scope = duskScopeCreate(
             allocator, duskCurrentScope(state), DUSK_SCOPE_OWNER_TYPE_FUNCTION, decl);
 
+        DuskType *type_type = duskTypeNewBasic(compiler, DUSK_TYPE_TYPE);
+
+        size_t param_count = duskArrayLength(decl->function.parameter_decls);
+
+        bool got_all_param_types = true;
+        DuskType *return_type = NULL;
+        DuskArray(DuskType*) param_types = duskArrayCreate(allocator, DuskType*);
+        duskArrayResize(&param_types, param_count);
+
+        duskAnalyzeExpr(compiler, state, decl->function.return_type_expr, type_type, false);
+        return_type = decl->function.return_type_expr->as_type;
+
         duskArrayPush(&state->scope_stack, decl->function.scope);
 
-        for (size_t i = 0; i < duskArrayLength(decl->function.parameter_decls); ++i)
+        for (size_t i = 0; i < param_count; ++i)
         {
             DuskDecl *param_decl = decl->function.parameter_decls[i];
             duskTryRegisterDecl(compiler, state, param_decl);
             duskAnalyzeDecl(compiler, state, param_decl);
+            param_types[i] = param_decl->type;
+            if (param_types[i] == NULL)
+            {
+                got_all_param_types = false;
+            }
         }
 
         for (size_t i = 0; i < duskArrayLength(decl->function.stmts); ++i)
@@ -474,6 +491,14 @@ duskAnalyzeDecl(DuskCompiler *compiler, DuskAnalyzerState *state, DuskDecl *decl
         }
 
         duskArrayPop(&state->scope_stack);
+
+        if (!got_all_param_types || return_type == NULL)
+        {
+            DUSK_ASSERT(duskArrayLength(compiler->errors) > 0);
+            break;
+        }
+
+        decl->type = duskTypeNewFunction(compiler, return_type, param_types);
         break;
     }
     case DUSK_DECL_TYPE: {

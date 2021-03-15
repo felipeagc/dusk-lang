@@ -269,6 +269,7 @@ typedef enum DuskTypeKind {
     DUSK_TYPE_RUNTIME_ARRAY,
     DUSK_TYPE_ARRAY,
     DUSK_TYPE_STRUCT,
+    DUSK_TYPE_FUNCTION,
 } DuskTypeKind;
 
 typedef struct DuskType DuskType;
@@ -312,6 +313,11 @@ struct DuskType
             DuskArray(DuskType *) field_types;
             DuskArray(const char *) field_names;
         } struct_;
+        struct
+        {
+            DuskType *return_type;
+            DuskArray(DuskType *) param_types;
+        } function;
     };
 };
 
@@ -329,6 +335,10 @@ DuskType *duskTypeNewStruct(
         const char *name,
         DuskArray(const char *) field_names,
         DuskArray(DuskType *) field_types);
+DuskType *duskTypeNewFunction(
+        DuskCompiler *compiler,
+        DuskType *return_type,
+        DuskArray(DuskType *) param_types);
 // }}}
 
 // AST {{{

@@ -56,18 +56,13 @@ const char *duskTypeToPrettyString(DuskAllocator *allocator, DuskType *type)
     }
     case DUSK_TYPE_VECTOR: {
         const char *sub_str = duskTypeToPrettyString(allocator, type->vector.sub);
-        type->pretty_string =
-            duskSprintf(allocator, "%s%u", sub_str, type->vector.size);
+        type->pretty_string = duskSprintf(allocator, "%s%u", sub_str, type->vector.size);
         break;
     }
     case DUSK_TYPE_MATRIX: {
         const char *sub_str = duskTypeToPrettyString(allocator, type->matrix.sub);
         type->pretty_string = duskSprintf(
-            allocator,
-            "%s%ux%u",
-            sub_str,
-            type->matrix.cols,
-            type->matrix.rows);
+            allocator, "%s%ux%u", sub_str, type->matrix.cols, type->matrix.rows);
         break;
     }
     case DUSK_TYPE_RUNTIME_ARRAY: {
@@ -106,6 +101,29 @@ const char *duskTypeToPrettyString(DuskAllocator *allocator, DuskType *type)
             type->pretty_string = duskStringBuilderBuild(sb, allocator);
             duskStringBuilderDestroy(sb);
         }
+        break;
+    }
+    case DUSK_TYPE_FUNCTION: {
+        DuskStringBuilder *sb = duskStringBuilderCreate(NULL, 0);
+
+        duskStringBuilderAppend(sb, "fn (");
+
+        for (size_t i = 0; i < duskArrayLength(type->function.param_types); ++i)
+        {
+            if (i > 0) duskStringBuilderAppend(sb, ", ");
+
+            DuskType *field_type = type->function.param_types[i];
+            const char *field_string = duskTypeToPrettyString(allocator, field_type);
+            duskStringBuilderAppend(sb, field_string);
+        }
+
+        duskStringBuilderAppend(sb, ") ");
+
+        duskStringBuilderAppend(
+            sb, duskTypeToPrettyString(allocator, type->function.return_type));
+
+        type->pretty_string = duskStringBuilderBuild(sb, allocator);
+        duskStringBuilderDestroy(sb);
         break;
     }
     }
@@ -211,6 +229,32 @@ static const char *duskTypeToString(DuskAllocator *allocator, DuskType *type)
         }
         break;
     }
+    case DUSK_TYPE_FUNCTION: {
+        DuskStringBuilder *sb = duskStringBuilderCreate(NULL, 0);
+
+        duskStringBuilderAppend(sb, "@fn((");
+
+        for (size_t i = 0; i < duskArrayLength(type->function.param_types); ++i)
+        {
+            if (i > 0) duskStringBuilderAppend(sb, ",");
+
+            DuskType *field_type = type->function.param_types[i];
+            const char *field_string = duskTypeToString(allocator, field_type);
+            duskStringBuilderAppend(sb, field_string);
+        }
+
+        duskStringBuilderAppend(sb, "),");
+
+        const char *return_type_string =
+            duskTypeToString(allocator, type->function.return_type);
+        duskStringBuilderAppend(sb, return_type_string);
+
+        duskStringBuilderAppend(sb, ")");
+
+        type->string = duskStringBuilderBuild(sb, allocator);
+        duskStringBuilderDestroy(sb);
+        break;
+    }
     }
 
     DUSK_ASSERT(type->string != NULL);
@@ -240,10 +284,8 @@ bool duskTypeIsRuntime(DuskType *type)
     switch (type->kind)
     {
     case DUSK_TYPE_UNTYPED_FLOAT:
-    case DUSK_TYPE_UNTYPED_INT:
-        return false;
-    default:
-        return true;
+    case DUSK_TYPE_UNTYPED_INT: return false;
+    default: return true;
     }
 
     return true;
@@ -264,34 +306,30 @@ DuskType *duskTypeNewScalar(DuskCompiler *compiler, DuskScalarType scalar_type)
 
     switch (scalar_type)
     {
-    case DUSK_SCALAR_TYPE_INT:
-    {
+    case DUSK_SCALAR_TYPE_INT: {
         type->kind = DUSK_TYPE_INT;
         type->int_.is_signed = true;
         type->int_.bits = 32;
         break;
     }
-    case DUSK_SCALAR_TYPE_UINT:
-    {
+    case DUSK_SCALAR_TYPE_UINT: {
         type->kind = DUSK_TYPE_INT;
         type->int_.is_signed = false;
         type->int_.bits = 32;
         break;
     }
-    case DUSK_SCALAR_TYPE_FLOAT:
-    {
+    case DUSK_SCALAR_TYPE_FLOAT: {
         type->kind = DUSK_TYPE_FLOAT;
         type->float_.bits = 32;
         break;
     }
-    case DUSK_SCALAR_TYPE_DOUBLE:
-    {
+    case DUSK_SCALAR_TYPE_DOUBLE: {
         type->kind = DUSK_TYPE_FLOAT;
         type->float_.bits = 64;
         break;
     }
     }
-    
+
     return duskTypeGetCached(compiler, type);
 }
 
@@ -337,10 +375,10 @@ DuskType *duskTypeNewArray(DuskCompiler *compiler, DuskType *sub, size_t size)
 }
 
 DuskType *duskTypeNewStruct(
-        DuskCompiler *compiler,
-        const char *name,
-        DuskArray(const char *) field_names,
-        DuskArray(DuskType *) field_types)
+    DuskCompiler *compiler,
+    const char *name,
+    DuskArray(const char *) field_names,
+    DuskArray(DuskType *) field_types)
 {
     DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
     DuskType *type = DUSK_NEW(allocator, DuskType);
@@ -348,5 +386,16 @@ DuskType *duskTypeNewStruct(
     type->struct_.name = name;
     type->struct_.field_names = field_names;
     type->struct_.field_types = field_types;
+    return duskTypeGetCached(compiler, type);
+}
+
+DuskType *duskTypeNewFunction(
+    DuskCompiler *compiler, DuskType *return_type, DuskArray(DuskType *) param_types)
+{
+    DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
+    DuskType *type = DUSK_NEW(allocator, DuskType);
+    type->kind = DUSK_TYPE_FUNCTION;
+    type->function.return_type = return_type;
+    type->function.param_types = param_types;
     return duskTypeGetCached(compiler, type);
 }
