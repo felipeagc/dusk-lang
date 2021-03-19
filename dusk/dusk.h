@@ -6,14 +6,20 @@ extern "C" {
 #endif
 
 #include <stddef.h>
+#include <stdint.h>
 
 typedef struct DuskCompiler DuskCompiler;
 
 DuskCompiler *duskCompilerCreate(void);
 void duskCompilerDestroy(DuskCompiler *compiler);
 
-void duskCompile(
-    DuskCompiler *compiler, const char *path, const char *text, size_t text_length);
+uint8_t *duskCompile(
+    DuskCompiler *compiler,
+    const char *path,
+    const char *text,
+    size_t text_length,
+    const char *selected_module,
+    size_t *spirv_byte_size);
 
 #ifdef __cplusplus
 }

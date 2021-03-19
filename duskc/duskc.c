@@ -73,7 +73,26 @@ int main(int argc, char *argv[])
 
     size_t text_size = 0;
     const char *text = loadFile(path, &text_size);
-    duskCompile(compiler, path, text, text_size);
+
+    size_t spirv_size = 0;
+    uint8_t *spirv = duskCompile(compiler, path, text, text_size, "Fragment", &spirv_size);
+
+    if (!spirv)
+    {
+        fprintf(stderr, "Compilation failed!\n");
+        exit(1);
+    }
+
+    FILE *f = fopen("a.spv", "wb");
+    if (!f)
+    {
+        fprintf(stderr, "Failed to open output file\n");
+        exit(1);
+    }
+
+    fwrite(spirv, 1, spirv_size, f);
+
+    fclose(f);
 
     duskCompilerDestroy(compiler);
 

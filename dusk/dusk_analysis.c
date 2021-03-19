@@ -5,6 +5,7 @@ typedef struct DuskAnalyzerState
     DuskArray(DuskScope *) scope_stack;
     DuskArray(DuskStmt *) break_stack;
     DuskArray(DuskStmt *) continue_stack;
+    DuskArray(DuskDecl *) module_stack;
 } DuskAnalyzerState;
 
 static void
@@ -435,7 +436,13 @@ duskAnalyzeDecl(DuskCompiler *compiler, DuskAnalyzerState *state, DuskDecl *decl
         decl->module.scope = duskScopeCreate(
             allocator, duskCurrentScope(state), DUSK_SCOPE_OWNER_TYPE_MODULE, decl);
 
+        if (duskArrayLength(state->module_stack) > 0)
+        {
+            duskAddError(compiler, decl->location, "nested modules are not supported");
+        }
+
         duskArrayPush(&state->scope_stack, decl->module.scope);
+        duskArrayPush(&state->module_stack, decl);
 
         for (size_t i = 0; i < duskArrayLength(decl->module.decls); ++i)
         {
@@ -449,6 +456,7 @@ duskAnalyzeDecl(DuskCompiler *compiler, DuskAnalyzerState *state, DuskDecl *decl
             duskAnalyzeDecl(compiler, state, sub_decl);
         }
 
+        duskArrayPop(&state->module_stack);
         duskArrayPop(&state->scope_stack);
 
         break;
@@ -559,6 +567,7 @@ void duskAnalyzeFile(DuskCompiler *compiler, DuskFile *file)
         .scope_stack = duskArrayCreate(allocator, DuskScope *),
         .break_stack = duskArrayCreate(allocator, DuskStmt *),
         .continue_stack = duskArrayCreate(allocator, DuskStmt *),
+        .module_stack = duskArrayCreate(allocator, DuskDecl *),
     };
 
     duskArrayPush(&state->scope_stack, file->scope);

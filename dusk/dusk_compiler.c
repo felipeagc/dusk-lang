@@ -14,6 +14,7 @@ DuskCompiler *duskCompilerCreate(void)
         .main_arena = arena,
         .errors = duskArrayCreate(allocator, DuskError),
         .type_cache = duskMapCreate(allocator, 32),
+        .types = duskArrayCreate(allocator, DuskType*),
     };
     return compiler;
 }
@@ -46,10 +47,17 @@ void duskAddError(DuskCompiler *compiler, DuskLocation loc, const char *fmt, ...
     duskArrayPush(&compiler->errors, error);
 }
 
-void duskCompile(
-    DuskCompiler *compiler, const char *path, const char *text, size_t text_length)
+uint8_t *duskCompile(
+    DuskCompiler *compiler,
+    const char *path,
+    const char *text,
+    size_t text_length,
+    const char *selected_module,
+    size_t *spirv_byte_size)
 {
     DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
+
+    compiler->selected_module = duskStrdup(allocator, selected_module);
 
     if (setjmp(compiler->jump_buffer) != 0)
     {
@@ -64,7 +72,7 @@ void duskCompile(
                 err.location.col,
                 err.message);
         }
-        return;
+        return NULL;
     }
 
     DuskFile *file = DUSK_NEW(allocator, DuskFile);
@@ -83,4 +91,10 @@ void duskCompile(
     {
         duskThrow(compiler);
     }
+
+    DuskIRModule *module = duskGenerateIRModule(compiler, file);
+    DuskArray(uint32_t) spirv = duskIRModuleEmit(compiler, module);
+
+    *spirv_byte_size = duskArrayLength(spirv) * 4;
+    return (uint8_t *)spirv;
 }

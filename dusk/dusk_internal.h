@@ -66,6 +66,8 @@ void *duskReallocate(DuskAllocator *allocator, void *ptr, size_t size);
 void duskFree(DuskAllocator *allocator, void *ptr);
 
 #define DUSK_NEW(allocator, type) ((type *)duskAllocateZeroed(allocator, sizeof(type)))
+#define DUSK_NEW_ARRAY(allocator, type, count)                                           \
+    ((type *)duskAllocateZeroed(allocator, sizeof(type) * count))
 
 typedef struct DuskArena DuskArena;
 
@@ -211,6 +213,8 @@ typedef struct DuskDecl DuskDecl;
 typedef struct DuskStmt DuskStmt;
 typedef struct DuskExpr DuskExpr;
 
+typedef struct DuskIRValue DuskIRValue;
+
 typedef struct DuskLocation
 {
     DuskFile *file;
@@ -289,6 +293,8 @@ struct DuskType
     DuskTypeKind kind;
     const char *string;
     const char *pretty_string;
+    uint32_t id;
+    bool emit;
 
     union
     {
@@ -315,6 +321,7 @@ struct DuskType
         {
             DuskType *sub;
             size_t size;
+            DuskIRValue *size_ir_value;
         } array;
         struct
         {
@@ -353,6 +360,80 @@ DuskType *duskTypeNewFunction(
     DuskCompiler *compiler, DuskType *return_type, DuskArray(DuskType *) param_types);
 DuskType *
 duskTypeNewPointer(DuskCompiler *compiler, DuskType *sub, DuskStorageClass storage_class);
+
+void duskTypeEmit(DuskType *type);
+// }}}
+
+// IR {{{
+typedef enum DuskIRValueKind {
+    DUSK_IR_VALUE_CONSTANT_BOOL,
+    DUSK_IR_VALUE_CONSTANT,
+    DUSK_IR_VALUE_FUNCTION,
+    DUSK_IR_VALUE_BLOCK,
+    DUSK_IR_VALUE_RETURN,
+} DuskIRValueKind;
+
+struct DuskIRValue
+{
+    uint32_t id;
+    DuskIRValueKind kind;
+    const char *name;
+    DuskType *type;
+    const char *const_string;
+    bool emitted;
+
+    union
+    {
+        struct
+        {
+            bool value;
+        } const_bool;
+        struct
+        {
+            uint32_t *value_words;
+            size_t value_word_count;
+        } constant;
+        struct
+        {
+            const char *name;
+            DuskArray(DuskIRValue *) params;
+            DuskArray(DuskIRValue *) blocks;
+        } function;
+        struct
+        {
+            DuskArray(DuskIRValue *) insts;
+        } block;
+        struct
+        {
+            DuskIRValue *value;
+        } return_;
+    };
+};
+
+typedef struct DuskIRModule
+{
+    DuskCompiler *compiler;
+    DuskAllocator *allocator;
+    DuskArray(uint32_t) stream;
+    uint32_t last_id;
+
+    DuskMap *const_cache;
+    DuskArray(DuskIRValue *) consts;
+
+    uint32_t glsl_ext_inst_id;
+
+    DuskArray(DuskIRValue *) functions;
+} DuskIRModule;
+
+DuskIRValue *duskIRBlockCreate(DuskIRModule *module);
+DuskIRValue *duskIRFunctionCreate(DuskIRModule *module, DuskType *type, const char *name);
+void duskIRFunctionAddBlock(DuskIRValue *function, DuskIRValue *block);
+DuskIRModule *duskIRModuleCreate(DuskCompiler *compiler);
+
+DuskIRValue *duskIRConstBoolCreate(DuskIRModule *module, bool bool_value);
+DuskIRValue *duskIRConstIntCreate(DuskIRModule *module, DuskType *type, uint64_t int_value);
+DuskIRValue *duskIRConstFloatCreate(DuskIRModule *module, DuskType *type, double double_value);
+
 // }}}
 
 // AST {{{
@@ -376,6 +457,7 @@ struct DuskDecl
     const char *name;
     DuskArray(DuskAttribute) attributes;
     DuskType *type;
+    DuskIRValue *ir_value;
 
     union
     {
@@ -454,6 +536,7 @@ struct DuskExpr
     DuskLocation location;
     DuskType *type;
     DuskType *as_type;
+    DuskIRValue *ir_value;
 
     union
     {
@@ -510,6 +593,8 @@ typedef struct DuskCompiler
     DuskArena *main_arena;
     DuskArray(DuskError) errors;
     DuskMap *type_cache;
+    DuskArray(DuskType *) types;
+    const char *selected_module;
     jmp_buf jump_buffer;
 } DuskCompiler;
 // }}}
@@ -519,5 +604,7 @@ DUSK_PRINTF_FORMATTING(3, 4)
 void duskAddError(DuskCompiler *compiler, DuskLocation loc, const char *fmt, ...);
 void duskParse(DuskCompiler *compiler, DuskFile *file);
 void duskAnalyzeFile(DuskCompiler *compiler, DuskFile *file);
+DuskIRModule *duskGenerateIRModule(DuskCompiler *compiler, DuskFile *file);
+DuskArray(uint32_t) duskIRModuleEmit(DuskCompiler *compiler, DuskIRModule *module);
 
 #endif

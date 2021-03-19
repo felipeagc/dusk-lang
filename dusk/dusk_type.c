@@ -293,6 +293,7 @@ static DuskType *duskTypeGetCached(DuskCompiler *compiler, DuskType *type)
     }
 
     duskMapSet(compiler->type_cache, type_str, type);
+    duskArrayPush(&compiler->types, type);
 
     return type;
 }
@@ -387,6 +388,7 @@ DuskType *duskTypeNewArray(DuskCompiler *compiler, DuskType *sub, size_t size)
     type->kind = DUSK_TYPE_ARRAY;
     type->array.sub = sub;
     type->array.size = size;
+
     return duskTypeGetCached(compiler, type);
 }
 
@@ -433,4 +435,59 @@ duskTypeNewPointer(DuskCompiler *compiler, DuskType *sub, DuskStorageClass stora
     type->pointer.sub = sub;
     type->pointer.storage_class = storage_class;
     return duskTypeGetCached(compiler, type);
+}
+
+void duskTypeEmit(DuskType *type)
+{
+    DUSK_ASSERT(type);
+    type->emit = true;
+
+    switch (type->kind)
+    {
+        case DUSK_TYPE_POINTER:
+        {
+            duskTypeEmit(type->pointer.sub);
+            break;
+        }
+        case DUSK_TYPE_VECTOR:
+        {
+            duskTypeEmit(type->vector.sub);
+            break;
+        }
+        case DUSK_TYPE_RUNTIME_ARRAY:
+        case DUSK_TYPE_ARRAY:
+        {
+            duskTypeEmit(type->array.sub);
+            break;
+        }
+        case DUSK_TYPE_MATRIX:
+        {
+            duskTypeEmit(type->matrix.col_type);
+            break;
+        }
+        case DUSK_TYPE_STRUCT:
+        {
+            for (size_t i = 0; i < duskArrayLength(type->struct_.field_types); ++i)
+            {
+                duskTypeEmit(type->struct_.field_types[i]);
+            }
+            break;
+        }
+        case DUSK_TYPE_FUNCTION:
+        {
+            duskTypeEmit(type->function.return_type);
+            for (size_t i = 0; i < duskArrayLength(type->function.param_types); ++i)
+            {
+                duskTypeEmit(type->function.param_types[i]);
+            }
+            break;
+        }
+        case DUSK_TYPE_TYPE:
+        case DUSK_TYPE_FLOAT:
+        case DUSK_TYPE_INT:
+        case DUSK_TYPE_UNTYPED_FLOAT:
+        case DUSK_TYPE_UNTYPED_INT:
+        case DUSK_TYPE_BOOL:
+        case DUSK_TYPE_VOID: break;
+    }
 }
