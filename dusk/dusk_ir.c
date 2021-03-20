@@ -22,20 +22,44 @@ static const char *duskIRConstToString(DuskAllocator *allocator, DuskIRValue *va
             {
                 switch (value->type->int_.bits)
                 {
-                case 8: value->const_string = duskSprintf(allocator, "@i8(%c)", *(int8_t*)value->constant.value_words); break;
-                case 16: value->const_string = duskSprintf(allocator, "@i16(%hd)", *(int16_t*)value->constant.value_words); break;
-                case 32: value->const_string = duskSprintf(allocator, "@i32(%d)", *(int32_t*)value->constant.value_words); break;
-                case 64: value->const_string = duskSprintf(allocator, "@i64(%ld)",*(int64_t*)value->constant.value_words); break;
+                case 8:
+                    value->const_string = duskSprintf(
+                        allocator, "@i8(%c)", *(int8_t *)value->constant.value_words);
+                    break;
+                case 16:
+                    value->const_string = duskSprintf(
+                        allocator, "@i16(%hd)", *(int16_t *)value->constant.value_words);
+                    break;
+                case 32:
+                    value->const_string = duskSprintf(
+                        allocator, "@i32(%d)", *(int32_t *)value->constant.value_words);
+                    break;
+                case 64:
+                    value->const_string = duskSprintf(
+                        allocator, "@i64(%ld)", *(int64_t *)value->constant.value_words);
+                    break;
                 }
             }
             else
             {
                 switch (value->type->int_.bits)
                 {
-                case 8: value->const_string = duskSprintf(allocator, "@u8(%uc)", *(uint8_t*)value->constant.value_words); break;
-                case 16: value->const_string = duskSprintf(allocator, "@u16(%hu)", *(uint16_t*)value->constant.value_words); break;
-                case 32: value->const_string = duskSprintf(allocator, "@u32(%u)", *(uint32_t*)value->constant.value_words); break;
-                case 64: value->const_string = duskSprintf(allocator, "@u64(%lu)",*(uint64_t*)value->constant.value_words); break;
+                case 8:
+                    value->const_string = duskSprintf(
+                        allocator, "@u8(%uc)", *(uint8_t *)value->constant.value_words);
+                    break;
+                case 16:
+                    value->const_string = duskSprintf(
+                        allocator, "@u16(%hu)", *(uint16_t *)value->constant.value_words);
+                    break;
+                case 32:
+                    value->const_string = duskSprintf(
+                        allocator, "@u32(%u)", *(uint32_t *)value->constant.value_words);
+                    break;
+                case 64:
+                    value->const_string = duskSprintf(
+                        allocator, "@u64(%lu)", *(uint64_t *)value->constant.value_words);
+                    break;
                 }
             }
             break;
@@ -43,8 +67,14 @@ static const char *duskIRConstToString(DuskAllocator *allocator, DuskIRValue *va
         case DUSK_TYPE_FLOAT: {
             switch (value->type->float_.bits)
             {
-            case 32: value->const_string = duskSprintf(allocator, "@f32(%f)", *(float*)value->constant.value_words); break;
-            case 64: value->const_string = duskSprintf(allocator, "@f64(%lf)",*(double*)value->constant.value_words); break;
+            case 32:
+                value->const_string = duskSprintf(
+                    allocator, "@f32(%f)", *(float *)value->constant.value_words);
+                break;
+            case 64:
+                value->const_string = duskSprintf(
+                    allocator, "@f64(%lf)", *(double *)value->constant.value_words);
+                break;
             }
             break;
         }
@@ -109,6 +139,7 @@ DuskIRModule *duskIRModuleCreate(DuskCompiler *compiler)
 
     module->glsl_ext_inst_id = duskReserveId(module);
 
+    module->entry_points = duskArrayCreate(allocator, DuskIREntryPoint);
     module->functions = duskArrayCreate(allocator, DuskIRValue *);
 
     return module;
@@ -141,6 +172,17 @@ void duskIRFunctionAddBlock(DuskIRValue *function, DuskIRValue *block)
     DUSK_ASSERT(function->kind == DUSK_IR_VALUE_FUNCTION);
     DUSK_ASSERT(block->kind == DUSK_IR_VALUE_BLOCK);
     duskArrayPush(&function->function.blocks, block);
+}
+
+void duskIRModuleAddEntryPoint(
+    DuskIRModule *module, DuskIRValue *function, const char *name, DuskShaderStage stage)
+{
+    DuskIREntryPoint entry_point = {
+        .function = function,
+        .name = name,
+        .stage = stage,
+    };
+    duskArrayPush(&module->entry_points, entry_point);
 }
 
 DuskIRValue *duskIRConstBoolCreate(DuskIRModule *module, bool bool_value)
@@ -440,39 +482,7 @@ static void duskEmitFunction(DuskIRModule *module, DuskIRValue *function)
 
 DuskArray(uint32_t) duskIRModuleEmit(DuskCompiler *compiler, DuskIRModule *module)
 {
-    (void)compiler;
-
-    static const uint8_t MAGIC_NUMBER[4] = {'D', 'U', 'S', 'K'};
-    uint32_t uint_magic_number;
-    memcpy(&uint_magic_number, MAGIC_NUMBER, sizeof(uint32_t));
-
-    duskArrayPush(&module->stream, SpvMagicNumber);
-    duskArrayPush(&module->stream, SpvVersion);
-    duskArrayPush(&module->stream, uint_magic_number);
-    duskArrayPush(&module->stream, 0); // ID Bound (fill out later)
-    duskArrayPush(&module->stream, 0);
-
-    {
-        uint32_t params[1] = {SpvCapabilityShader};
-        duskEncodeInst(module, SpvOpCapability, params, DUSK_CARRAY_LENGTH(params));
-    }
-
-    {
-        uint32_t params[5];
-        memset(params, 0, sizeof(params));
-
-        params[0] = module->glsl_ext_inst_id;
-
-        char *str = "GLSL.std.450";
-        memcpy(&params[1], str, 12);
-
-        duskEncodeInst(module, SpvOpExtInstImport, params, DUSK_CARRAY_LENGTH(params));
-    }
-
-    {
-        uint32_t params[2] = {SpvAddressingModelLogical, SpvMemoryModelGLSL450};
-        duskEncodeInst(module, SpvOpMemoryModel, params, DUSK_CARRAY_LENGTH(params));
-    }
+    DuskAllocator *allocator = module->allocator;
 
     for (size_t i = 0; i < duskArrayLength(compiler->types); ++i)
     {
@@ -520,6 +530,82 @@ DuskArray(uint32_t) duskIRModuleEmit(DuskCompiler *compiler, DuskIRModule *modul
                 DuskIRValue *inst = block->block.insts[k];
                 inst->id = duskReserveId(module);
             }
+        }
+    }
+
+    static const uint8_t MAGIC_NUMBER[4] = {'D', 'U', 'S', 'K'};
+    uint32_t uint_magic_number;
+    memcpy(&uint_magic_number, MAGIC_NUMBER, sizeof(uint32_t));
+
+    duskArrayPush(&module->stream, SpvMagicNumber);
+    duskArrayPush(&module->stream, SpvVersion);
+    duskArrayPush(&module->stream, uint_magic_number);
+    duskArrayPush(&module->stream, 0); // ID Bound (fill out later)
+    duskArrayPush(&module->stream, 0);
+
+    {
+        uint32_t params[1] = {SpvCapabilityShader};
+        duskEncodeInst(module, SpvOpCapability, params, DUSK_CARRAY_LENGTH(params));
+    }
+
+    {
+        uint32_t params[5];
+        memset(params, 0, sizeof(params));
+
+        params[0] = module->glsl_ext_inst_id;
+
+        char *str = "GLSL.std.450";
+        memcpy(&params[1], str, 12);
+
+        duskEncodeInst(module, SpvOpExtInstImport, params, DUSK_CARRAY_LENGTH(params));
+    }
+
+    {
+        uint32_t params[2] = {SpvAddressingModelLogical, SpvMemoryModelGLSL450};
+        duskEncodeInst(module, SpvOpMemoryModel, params, DUSK_CARRAY_LENGTH(params));
+    }
+
+    for (size_t i = 0; i < duskArrayLength(module->entry_points); ++i)
+    {
+        DuskIREntryPoint *entry_point = &module->entry_points[i];
+        size_t entry_point_name_len = strlen(entry_point->name);
+
+        size_t name_word_count = DUSK_ROUND_TO_4(entry_point_name_len + 1) / 4;
+
+        size_t param_count = 2 + name_word_count;
+        uint32_t *params = DUSK_NEW_ARRAY(allocator, uint32_t, param_count);
+
+        switch (entry_point->stage)
+        {
+        case DUSK_SHADER_STAGE_FRAGMENT: params[0] = SpvExecutionModelFragment; break;
+        case DUSK_SHADER_STAGE_VERTEX: params[0] = SpvExecutionModelVertex; break;
+        case DUSK_SHADER_STAGE_COMPUTE: params[0] = SpvExecutionModelGLCompute; break;
+        }
+
+        params[1] = entry_point->function->id;
+
+        memcpy(&params[2], entry_point->name, entry_point_name_len + 1);
+
+        duskEncodeInst(module, SpvOpEntryPoint, params, param_count);
+    }
+
+    for (size_t i = 0; i < duskArrayLength(module->entry_points); ++i)
+    {
+        DuskIREntryPoint *entry_point = &module->entry_points[i];
+        switch (entry_point->stage)
+        {
+        case DUSK_SHADER_STAGE_FRAGMENT: {
+            uint32_t params[2] = {
+                entry_point->function->id,
+                SpvExecutionModeOriginUpperLeft,
+            };
+
+            duskEncodeInst(
+                module, SpvOpExecutionMode, params, DUSK_CARRAY_LENGTH(params));
+            break;
+        }
+        case DUSK_SHADER_STAGE_VERTEX: break;
+        case DUSK_SHADER_STAGE_COMPUTE: break;
         }
     }
 

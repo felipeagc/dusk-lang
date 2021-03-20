@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
     const char *text = loadFile(path, &text_size);
 
     size_t spirv_size = 0;
-    uint8_t *spirv = duskCompile(compiler, path, text, text_size, "Fragment", &spirv_size);
+    uint8_t *spirv = duskCompile(compiler, path, text, text_size, &spirv_size);
 
     if (!spirv)
     {

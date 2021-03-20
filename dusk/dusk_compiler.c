@@ -14,7 +14,7 @@ DuskCompiler *duskCompilerCreate(void)
         .main_arena = arena,
         .errors = duskArrayCreate(allocator, DuskError),
         .type_cache = duskMapCreate(allocator, 32),
-        .types = duskArrayCreate(allocator, DuskType*),
+        .types = duskArrayCreate(allocator, DuskType *),
     };
     return compiler;
 }
@@ -52,12 +52,9 @@ uint8_t *duskCompile(
     const char *path,
     const char *text,
     size_t text_length,
-    const char *selected_module,
     size_t *spirv_byte_size)
 {
     DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
-
-    compiler->selected_module = duskStrdup(allocator, selected_module);
 
     if (setjmp(compiler->jump_buffer) != 0)
     {
@@ -82,6 +79,7 @@ uint8_t *duskCompile(
         .text_length = text_length,
         .decls = duskArrayCreate(allocator, DuskDecl *),
         .scope = duskScopeCreate(allocator, NULL, DUSK_SCOPE_OWNER_TYPE_NONE, NULL),
+        .entry_points = duskArrayCreate(allocator, DuskEntryPoint),
     };
 
     duskParse(compiler, file);

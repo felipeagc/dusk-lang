@@ -464,6 +464,63 @@ duskAnalyzeDecl(DuskCompiler *compiler, DuskAnalyzerState *state, DuskDecl *decl
     case DUSK_DECL_FUNCTION: {
         DUSK_ASSERT(decl->function.scope == NULL);
 
+        for (size_t i = 0; i < duskArrayLength(decl->attributes); ++i)
+        {
+            DuskAttribute *attrib = &decl->attributes[i];
+            if (strcmp(attrib->name, "entry_point") == 0)
+            {
+                if (duskArrayLength(attrib->value_exprs) != 1)
+                {
+                    duskAddError(
+                        compiler,
+                        decl->location,
+                        "invalid value count for attribute \"%s\"",
+                        attrib->name);
+                    continue;
+                }
+
+                if (attrib->value_exprs[0]->kind != DUSK_EXPR_IDENT)
+                {
+                    duskAddError(
+                        compiler,
+                        decl->location,
+                        "invalid value for attribute \"%s\"",
+                        attrib->name);
+                    continue;
+                }
+
+                DuskEntryPoint entry_point = {
+                    .function_decl = decl,
+                    .name = decl->name,
+                };
+
+                const char *stage_str = attrib->value_exprs[0]->ident;
+                if (strcmp(stage_str, "fragment") == 0)
+                {
+                    entry_point.stage = DUSK_SHADER_STAGE_FRAGMENT;
+                }
+                else if (strcmp(stage_str, "vertex") == 0)
+                {
+                    entry_point.stage = DUSK_SHADER_STAGE_VERTEX;
+                }
+                else if (strcmp(stage_str, "compute") == 0)
+                {
+                    entry_point.stage = DUSK_SHADER_STAGE_COMPUTE;
+                }
+                else
+                {
+                    duskAddError(
+                        compiler,
+                        decl->location,
+                        "invalid shader stage for entry point: \"%s\"",
+                        stage_str);
+                    continue;
+                }
+
+                duskArrayPush(&decl->location.file->entry_points, entry_point);
+            }
+        }
+
         decl->function.scope = duskScopeCreate(
             allocator, duskCurrentScope(state), DUSK_SCOPE_OWNER_TYPE_FUNCTION, decl);
 
@@ -585,4 +642,10 @@ void duskAnalyzeFile(DuskCompiler *compiler, DuskFile *file)
     }
 
     duskArrayPop(&state->scope_stack);
+
+    if (duskArrayLength(file->entry_points) == 0)
+    {
+        duskAddError(
+            compiler, (DuskLocation){.file = file}, "no entrypoints found in file");
+    }
 }

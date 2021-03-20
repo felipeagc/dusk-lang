@@ -22,11 +22,6 @@ static void duskGenerateDecl(DuskCompiler *compiler, DuskIRModule *module, DuskD
         break;
     }
     case DUSK_DECL_MODULE: {
-        if (strcmp(decl->name, compiler->selected_module) != 0)
-        {
-            break;
-        }
-
         for (size_t i = 0; i < duskArrayLength(decl->module.decls); ++i)
         {
             DuskDecl *sub_decl = decl->module.decls[i];
@@ -49,6 +44,16 @@ DuskIRModule *duskGenerateIRModule(DuskCompiler *compiler, DuskFile *file)
         DuskDecl *decl = file->decls[i];
 
         duskGenerateDecl(compiler, module, decl);
+    }
+
+    for (size_t i = 0; i < duskArrayLength(file->entry_points); ++i)
+    {
+        DuskEntryPoint *entry_point = &file->entry_points[i];
+        duskIRModuleAddEntryPoint(
+            module,
+            entry_point->function_decl->ir_value,
+            entry_point->name,
+            entry_point->stage);
     }
 
     return module;

@@ -18,7 +18,6 @@ uint8_t *duskCompile(
     const char *path,
     const char *text,
     size_t text_length,
-    const char *selected_module,
     size_t *spirv_byte_size);
 
 #ifdef __cplusplus

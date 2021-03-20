@@ -50,6 +50,9 @@
 #define DUSK_STATIC_ASSERT(value, msg) static_assert(value, msg)
 #endif
 
+// Rounds to the next multiple of four
+#define DUSK_ROUND_TO_4(x) (((x) + 3) & ~0x03)
+
 // Allocator {{{
 typedef struct DuskAllocator DuskAllocator;
 
@@ -223,6 +226,12 @@ typedef struct DuskLocation
     size_t line;
     size_t col;
 } DuskLocation;
+
+typedef enum DuskShaderStage {
+    DUSK_SHADER_STAGE_FRAGMENT,
+    DUSK_SHADER_STAGE_VERTEX,
+    DUSK_SHADER_STAGE_COMPUTE,
+} DuskShaderStage;
 
 typedef enum DuskScalarType {
     DUSK_SCALAR_TYPE_FLOAT,
@@ -410,6 +419,13 @@ struct DuskIRValue
     };
 };
 
+typedef struct DuskIREntryPoint
+{
+    DuskIRValue *function;
+    const char *name;
+    DuskShaderStage stage;
+} DuskIREntryPoint;
+
 typedef struct DuskIRModule
 {
     DuskCompiler *compiler;
@@ -423,16 +439,21 @@ typedef struct DuskIRModule
     uint32_t glsl_ext_inst_id;
 
     DuskArray(DuskIRValue *) functions;
+    DuskArray(DuskIREntryPoint) entry_points;
 } DuskIRModule;
 
 DuskIRValue *duskIRBlockCreate(DuskIRModule *module);
 DuskIRValue *duskIRFunctionCreate(DuskIRModule *module, DuskType *type, const char *name);
 void duskIRFunctionAddBlock(DuskIRValue *function, DuskIRValue *block);
+void duskIRModuleAddEntryPoint(
+    DuskIRModule *module, DuskIRValue *function, const char *name, DuskShaderStage stage);
 DuskIRModule *duskIRModuleCreate(DuskCompiler *compiler);
 
 DuskIRValue *duskIRConstBoolCreate(DuskIRModule *module, bool bool_value);
-DuskIRValue *duskIRConstIntCreate(DuskIRModule *module, DuskType *type, uint64_t int_value);
-DuskIRValue *duskIRConstFloatCreate(DuskIRModule *module, DuskType *type, double double_value);
+DuskIRValue *
+duskIRConstIntCreate(DuskIRModule *module, DuskType *type, uint64_t int_value);
+DuskIRValue *
+duskIRConstFloatCreate(DuskIRModule *module, DuskType *type, double double_value);
 
 // }}}
 
@@ -571,6 +592,13 @@ struct DuskExpr
 // }}}
 
 // Compiler {{{
+typedef struct DuskEntryPoint
+{
+    DuskShaderStage stage;
+    const char *name;
+    DuskDecl *function_decl;
+} DuskEntryPoint;
+
 struct DuskFile
 {
     const char *path;
@@ -580,6 +608,7 @@ struct DuskFile
 
     DuskScope *scope;
     DuskArray(DuskDecl *) decls;
+    DuskArray(DuskEntryPoint) entry_points;
 };
 
 typedef struct DuskError
@@ -594,7 +623,6 @@ typedef struct DuskCompiler
     DuskArray(DuskError) errors;
     DuskMap *type_cache;
     DuskArray(DuskType *) types;
-    const char *selected_module;
     jmp_buf jump_buffer;
 } DuskCompiler;
 // }}}
