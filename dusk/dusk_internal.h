@@ -489,6 +489,7 @@ struct DuskDecl
         } module;
         struct
         {
+            const char *link_name;
             DuskScope *scope;
             DuskArray(DuskDecl *) parameter_decls;
             DuskExpr *return_type_expr;

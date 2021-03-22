@@ -464,6 +464,20 @@ duskAnalyzeDecl(DuskCompiler *compiler, DuskAnalyzerState *state, DuskDecl *decl
     case DUSK_DECL_FUNCTION: {
         DUSK_ASSERT(decl->function.scope == NULL);
 
+        {
+            DuskStringBuilder *sb = duskStringBuilderCreate(NULL, 1024);
+            for (size_t i = 0; i < duskArrayLength(state->module_stack); ++i)
+            {
+                DuskDecl *module_decl = state->module_stack[i];
+                duskStringBuilderAppendFormat(sb, "%s.", module_decl->name);
+            }
+            duskStringBuilderAppend(sb, decl->name);
+
+            decl->function.link_name = duskStringBuilderBuild(sb, allocator);
+
+            duskStringBuilderDestroy(sb);
+        }
+
         for (size_t i = 0; i < duskArrayLength(decl->attributes); ++i)
         {
             DuskAttribute *attrib = &decl->attributes[i];
@@ -491,7 +505,7 @@ duskAnalyzeDecl(DuskCompiler *compiler, DuskAnalyzerState *state, DuskDecl *decl
 
                 DuskEntryPoint entry_point = {
                     .function_decl = decl,
-                    .name = decl->name,
+                    .name = decl->function.link_name,
                 };
 
                 const char *stage_str = attrib->value_exprs[0]->ident;
