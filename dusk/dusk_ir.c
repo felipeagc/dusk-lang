@@ -2,7 +2,7 @@
 #include "spirv.h"
 
 static void duskEmitType(DuskIRModule *module, DuskType *type);
-static void duskEmitConst(DuskIRModule *module, DuskIRValue *value);
+static void duskEmitValue(DuskIRModule *module, DuskIRValue *value);
 
 static const char *duskIRConstToString(DuskAllocator *allocator, DuskIRValue *value)
 {
@@ -141,6 +141,7 @@ DuskIRModule *duskIRModuleCreate(DuskCompiler *compiler)
 
     module->entry_points = duskArrayCreate(allocator, DuskIREntryPoint);
     module->functions = duskArrayCreate(allocator, DuskIRValue *);
+    module->globals = duskArrayCreate(allocator, DuskIRValue *);
 
     return module;
 }
@@ -172,6 +173,17 @@ void duskIRFunctionAddBlock(DuskIRValue *function, DuskIRValue *block)
     DUSK_ASSERT(function->kind == DUSK_IR_VALUE_FUNCTION);
     DUSK_ASSERT(block->kind == DUSK_IR_VALUE_BLOCK);
     duskArrayPush(&function->function.blocks, block);
+}
+
+DuskIRValue *
+duskIRVariableCreate(DuskIRModule *module, DuskType *type, DuskStorageClass storage_class)
+{
+    DuskIRValue *value = DUSK_NEW(module->allocator, DuskIRValue);
+    value->kind = DUSK_IR_VALUE_VARIABLE;
+    value->type = duskTypeNewPointer(module->compiler, type, storage_class);
+    value->var.storage_class = storage_class;
+
+    return value;
 }
 
 void duskIRModuleAddEntryPoint(
@@ -264,6 +276,15 @@ duskIRConstFloatCreate(DuskIRModule *module, DuskType *type, double double_value
     return duskIRGetCachedConst(module, value);
 }
 
+DuskIRValue *duskIRCreateReturn(DuskIRModule *module, DuskIRValue *value)
+{
+    DuskIRValue *inst = DUSK_NEW(module->allocator, DuskIRValue);
+    inst->type = duskTypeNewBasic(module->compiler, DUSK_TYPE_VOID);
+    inst->kind = DUSK_IR_VALUE_RETURN;
+    inst->return_.value = value;
+    return inst;
+}
+
 static void duskEmitType(DuskIRModule *module, DuskType *type)
 {
     if (!type->emit) return;
@@ -303,6 +324,12 @@ static void duskEmitType(DuskIRModule *module, DuskType *type)
         case DUSK_STORAGE_CLASS_INPUT: storage_class = SpvStorageClassInput; break;
         case DUSK_STORAGE_CLASS_OUTPUT: storage_class = SpvStorageClassOutput; break;
         case DUSK_STORAGE_CLASS_UNIFORM: storage_class = SpvStorageClassUniform; break;
+        case DUSK_STORAGE_CLASS_UNIFORM_CONSTANT:
+            storage_class = SpvStorageClassUniformConstant;
+            break;
+        case DUSK_STORAGE_CLASS_PUSH_CONSTANT:
+            storage_class = SpvStorageClassPushConstant;
+            break;
         case DUSK_STORAGE_CLASS_PARAMETER: DUSK_ASSERT(0); break;
         }
 
@@ -321,7 +348,7 @@ static void duskEmitType(DuskIRModule *module, DuskType *type)
         DUSK_ASSERT(type->array.size_ir_value);
 
         duskEmitType(module, type->array.sub);
-        duskEmitConst(module, type->array.size_ir_value);
+        duskEmitValue(module, type->array.size_ir_value);
 
         uint32_t params[3] = {
             type->id, type->array.sub->id, type->array.size_ir_value->id};
@@ -387,33 +414,74 @@ static void duskEmitType(DuskIRModule *module, DuskType *type)
         duskEncodeInst(module, SpvOpTypeStruct, params, word_count);
         break;
     }
+    case DUSK_TYPE_SAMPLER: {
+        duskEncodeInst(module, SpvOpTypeSampler, &type->id, 1);
+        break;
+    }
+    case DUSK_TYPE_IMAGE: {
+        duskEmitType(module, type->image.sampled_type);
+
+        SpvDim dim = SpvDim2D;
+        switch (type->image.dim)
+        {
+        case DUSK_IMAGE_DIMENSION_1D: dim = SpvDim1D; break;
+        case DUSK_IMAGE_DIMENSION_2D: dim = SpvDim2D; break;
+        case DUSK_IMAGE_DIMENSION_3D: dim = SpvDim3D; break;
+        case DUSK_IMAGE_DIMENSION_CUBE: dim = SpvDimCube; break;
+        }
+
+        uint32_t params[] = {
+            type->id,
+            type->image.sampled_type->id,
+            dim,
+            type->image.depth,
+            type->image.arrayed,
+            type->image.multisampled,
+            type->image.sampled,
+            SpvImageFormatUnknown,
+        };
+        duskEncodeInst(module, SpvOpTypeImage, params, DUSK_CARRAY_LENGTH(params));
+        break;
+    }
+    case DUSK_TYPE_SAMPLED_IMAGE: {
+        duskEmitType(module, type->sampled_image.image_type);
+
+        uint32_t params[] = {
+            type->id,
+            type->sampled_image.image_type->id,
+        };
+        duskEncodeInst(module, SpvOpTypeSampledImage, params, DUSK_CARRAY_LENGTH(params));
+        break;
+    }
     case DUSK_TYPE_UNTYPED_INT:
     case DUSK_TYPE_UNTYPED_FLOAT:
     case DUSK_TYPE_TYPE: break;
     }
 }
 
-static void duskEmitConst(DuskIRModule *module, DuskIRValue *value)
+static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
 {
     if (value->emitted) return;
+    value->emitted = true;
 
     DuskAllocator *allocator = module->allocator;
 
-    value->emitted = true;
-
     switch (value->kind)
     {
-    case DUSK_IR_VALUE_CONSTANT_BOOL: {
-        DUSK_ASSERT(value->type->kind == DUSK_TYPE_BOOL);
-
-        duskEmitType(module, value->type);
-
-        uint32_t params[2] = {value->type->id, value->id};
-        duskEncodeInst(
-            module,
-            value->const_bool.value ? SpvOpConstantTrue : SpvOpConstantFalse,
-            params,
-            DUSK_CARRAY_LENGTH(params));
+    case DUSK_IR_VALUE_VARIABLE: {
+        break;
+    }
+    case DUSK_IR_VALUE_RETURN: {
+        if (value->return_.value)
+        {
+            duskEmitValue(module, value->return_.value);
+            uint32_t params[1] = {value->return_.value->id};
+            duskEncodeInst(module, SpvOpReturnValue, params, DUSK_CARRAY_LENGTH(params));
+        }
+        else
+        {
+            duskEncodeInst(module, SpvOpReturn, NULL, 0);
+        }
         break;
     }
     case DUSK_IR_VALUE_CONSTANT: {
@@ -433,51 +501,62 @@ static void duskEmitConst(DuskIRModule *module, DuskIRValue *value)
         duskEncodeInst(module, SpvOpConstant, params, param_count);
         break;
     }
-    default: {
-        DUSK_ASSERT(0);
+    case DUSK_IR_VALUE_CONSTANT_BOOL: {
+        DUSK_ASSERT(value->type->kind == DUSK_TYPE_BOOL);
+
+        duskEmitType(module, value->type);
+
+        uint32_t params[2] = {value->type->id, value->id};
+        duskEncodeInst(
+            module,
+            value->const_bool.value ? SpvOpConstantTrue : SpvOpConstantFalse,
+            params,
+            DUSK_CARRAY_LENGTH(params));
+        break;
+    }
+    case DUSK_IR_VALUE_FUNCTION: {
+        {
+            uint32_t params[4] = {
+                value->type->function.return_type->id,
+                value->id,
+                SpvFunctionControlMaskNone,
+                value->type->id,
+            };
+            duskEncodeInst(module, SpvOpFunction, params, DUSK_CARRAY_LENGTH(params));
+        }
+
+        for (size_t i = 0; i < duskArrayLength(value->function.params); ++i)
+        {
+            DuskIRValue *func_param = value->function.params[i];
+            uint32_t params[2] = {
+                func_param->type->id,
+                func_param->id,
+            };
+            duskEncodeInst(
+                module, SpvOpFunctionParameter, params, DUSK_CARRAY_LENGTH(params));
+        }
+
+        for (size_t i = 0; i < duskArrayLength(value->function.blocks); ++i)
+        {
+            DuskIRValue *block = value->function.blocks[i];
+            duskEmitValue(module, block);
+        }
+
+        duskEncodeInst(module, SpvOpFunctionEnd, NULL, 0);
+        break;
+    }
+    case DUSK_IR_VALUE_BLOCK: {
+        uint32_t params[1] = {value->id};
+        duskEncodeInst(module, SpvOpLabel, params, DUSK_CARRAY_LENGTH(params));
+
+        for (size_t i = 0; i < duskArrayLength(value->block.insts); ++i)
+        {
+            DuskIRValue *inst = value->block.insts[i];
+            duskEmitValue(module, inst);
+        }
         break;
     }
     }
-}
-
-static void duskEmitBlock(DuskIRModule *module, DuskIRValue *block)
-{
-    (void)module;
-    (void)block;
-}
-
-static void duskEmitFunction(DuskIRModule *module, DuskIRValue *function)
-{
-    DUSK_ASSERT(function->kind == DUSK_IR_VALUE_FUNCTION);
-
-    {
-        uint32_t params[4] = {
-            function->type->function.return_type->id,
-            function->id,
-            SpvFunctionControlMaskNone,
-            function->type->id,
-        };
-        duskEncodeInst(module, SpvOpFunction, params, DUSK_CARRAY_LENGTH(params));
-    }
-
-    for (size_t i = 0; i < duskArrayLength(function->function.params); ++i)
-    {
-        DuskIRValue *func_param = function->function.params[i];
-        uint32_t params[2] = {
-            func_param->type->id,
-            func_param->id,
-        };
-        duskEncodeInst(
-            module, SpvOpFunctionParameter, params, DUSK_CARRAY_LENGTH(params));
-    }
-
-    for (size_t i = 0; i < duskArrayLength(function->function.blocks); ++i)
-    {
-        DuskIRValue *block = function->function.blocks[i];
-        duskEmitBlock(module, block);
-    }
-
-    duskEncodeInst(module, SpvOpFunctionEnd, NULL, 0);
 }
 
 DuskArray(uint32_t) duskIRModuleEmit(DuskCompiler *compiler, DuskIRModule *module)
@@ -618,13 +697,13 @@ DuskArray(uint32_t) duskIRModuleEmit(DuskCompiler *compiler, DuskIRModule *modul
     for (size_t i = 0; i < duskArrayLength(module->consts); ++i)
     {
         DuskIRValue *value = module->consts[i];
-        duskEmitConst(module, value);
+        duskEmitValue(module, value);
     }
 
     for (size_t i = 0; i < duskArrayLength(module->functions); ++i)
     {
         DuskIRValue *function = module->functions[i];
-        duskEmitFunction(module, function);
+        duskEmitValue(module, function);
     }
 
     // Fill out ID bound

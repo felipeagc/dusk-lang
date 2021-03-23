@@ -133,6 +133,42 @@ const char *duskTypeToPrettyString(DuskAllocator *allocator, DuskType *type)
         type->pretty_string = duskSprintf(allocator, "*%s", sub_str);
         break;
     }
+    case DUSK_TYPE_SAMPLER: {
+        type->pretty_string = "@Sampler";
+        break;
+    }
+    case DUSK_TYPE_SAMPLED_IMAGE: {
+        const char *image_str = "";
+        switch (type->sampled_image.image_type->image.dim)
+        {
+        case DUSK_IMAGE_DIMENSION_1D: image_str = "@SampledImage1D"; break;
+        case DUSK_IMAGE_DIMENSION_2D: image_str = "@SampledImage2D"; break;
+        case DUSK_IMAGE_DIMENSION_3D: image_str = "@SampledImage3D"; break;
+        case DUSK_IMAGE_DIMENSION_CUBE: image_str = "@SampledImageCube"; break;
+        }
+
+        const char *sampled_type_str = duskTypeToPrettyString(
+            allocator, type->sampled_image.image_type->image.sampled_type);
+        type->pretty_string =
+            duskSprintf(allocator, "%s(%s)", image_str, sampled_type_str);
+        break;
+    }
+    case DUSK_TYPE_IMAGE: {
+        const char *image_str = "";
+        switch (type->image.dim)
+        {
+        case DUSK_IMAGE_DIMENSION_1D: image_str = "@Image1D"; break;
+        case DUSK_IMAGE_DIMENSION_2D: image_str = "@Image2D"; break;
+        case DUSK_IMAGE_DIMENSION_3D: image_str = "@Image3D"; break;
+        case DUSK_IMAGE_DIMENSION_CUBE: image_str = "@ImageCube"; break;
+        }
+
+        const char *sampled_type_str =
+            duskTypeToPrettyString(allocator, type->image.sampled_type);
+        type->pretty_string =
+            duskSprintf(allocator, "%s(%s)", image_str, sampled_type_str);
+        break;
+    }
     }
 
     DUSK_ASSERT(type->pretty_string != NULL);
@@ -265,12 +301,37 @@ static const char *duskTypeToString(DuskAllocator *allocator, DuskType *type)
         switch (type->pointer.storage_class)
         {
         case DUSK_STORAGE_CLASS_UNIFORM: storage_class = "uniform"; break;
+        case DUSK_STORAGE_CLASS_UNIFORM_CONSTANT: storage_class = "uniform_constant"; break;
         case DUSK_STORAGE_CLASS_PARAMETER: storage_class = "parameter"; break;
         case DUSK_STORAGE_CLASS_FUNCTION: storage_class = "function"; break;
         case DUSK_STORAGE_CLASS_INPUT: storage_class = "input"; break;
         case DUSK_STORAGE_CLASS_OUTPUT: storage_class = "output"; break;
+        case DUSK_STORAGE_CLASS_PUSH_CONSTANT: storage_class = "push_constant"; break;
         }
         type->string = duskSprintf(allocator, "@ptr(%s, %s)", sub_str, storage_class);
+        break;
+    }
+    case DUSK_TYPE_SAMPLER: {
+        type->string = "@sampler";
+        break;
+    }
+    case DUSK_TYPE_IMAGE: {
+        const char *sampled_type_str =
+            duskTypeToString(allocator, type->image.sampled_type);
+        type->string = duskSprintf(
+            allocator,
+            "@image(%s, %u, %u, %u, %u)",
+            sampled_type_str,
+            type->image.depth,
+            type->image.arrayed,
+            type->image.multisampled,
+            type->image.sampled);
+        break;
+    }
+    case DUSK_TYPE_SAMPLED_IMAGE: {
+        const char *image_type_str =
+            duskTypeToString(allocator, type->sampled_image.image_type);
+        type->string = duskSprintf(allocator, "@sampled_image(%s)", image_type_str);
         break;
     }
     }
@@ -444,50 +505,53 @@ void duskTypeEmit(DuskType *type)
 
     switch (type->kind)
     {
-        case DUSK_TYPE_POINTER:
+    case DUSK_TYPE_POINTER: {
+        duskTypeEmit(type->pointer.sub);
+        break;
+    }
+    case DUSK_TYPE_VECTOR: {
+        duskTypeEmit(type->vector.sub);
+        break;
+    }
+    case DUSK_TYPE_RUNTIME_ARRAY:
+    case DUSK_TYPE_ARRAY: {
+        duskTypeEmit(type->array.sub);
+        break;
+    }
+    case DUSK_TYPE_MATRIX: {
+        duskTypeEmit(type->matrix.col_type);
+        break;
+    }
+    case DUSK_TYPE_STRUCT: {
+        for (size_t i = 0; i < duskArrayLength(type->struct_.field_types); ++i)
         {
-            duskTypeEmit(type->pointer.sub);
-            break;
+            duskTypeEmit(type->struct_.field_types[i]);
         }
-        case DUSK_TYPE_VECTOR:
+        break;
+    }
+    case DUSK_TYPE_FUNCTION: {
+        duskTypeEmit(type->function.return_type);
+        for (size_t i = 0; i < duskArrayLength(type->function.param_types); ++i)
         {
-            duskTypeEmit(type->vector.sub);
-            break;
+            duskTypeEmit(type->function.param_types[i]);
         }
-        case DUSK_TYPE_RUNTIME_ARRAY:
-        case DUSK_TYPE_ARRAY:
-        {
-            duskTypeEmit(type->array.sub);
-            break;
-        }
-        case DUSK_TYPE_MATRIX:
-        {
-            duskTypeEmit(type->matrix.col_type);
-            break;
-        }
-        case DUSK_TYPE_STRUCT:
-        {
-            for (size_t i = 0; i < duskArrayLength(type->struct_.field_types); ++i)
-            {
-                duskTypeEmit(type->struct_.field_types[i]);
-            }
-            break;
-        }
-        case DUSK_TYPE_FUNCTION:
-        {
-            duskTypeEmit(type->function.return_type);
-            for (size_t i = 0; i < duskArrayLength(type->function.param_types); ++i)
-            {
-                duskTypeEmit(type->function.param_types[i]);
-            }
-            break;
-        }
-        case DUSK_TYPE_TYPE:
-        case DUSK_TYPE_FLOAT:
-        case DUSK_TYPE_INT:
-        case DUSK_TYPE_UNTYPED_FLOAT:
-        case DUSK_TYPE_UNTYPED_INT:
-        case DUSK_TYPE_BOOL:
-        case DUSK_TYPE_VOID: break;
+        break;
+    }
+    case DUSK_TYPE_IMAGE: {
+        duskTypeEmit(type->image.sampled_type);
+        break;
+    }
+    case DUSK_TYPE_SAMPLED_IMAGE: {
+        duskTypeEmit(type->sampled_image.image_type);
+        break;
+    }
+    case DUSK_TYPE_SAMPLER:
+    case DUSK_TYPE_TYPE:
+    case DUSK_TYPE_FLOAT:
+    case DUSK_TYPE_INT:
+    case DUSK_TYPE_UNTYPED_FLOAT:
+    case DUSK_TYPE_UNTYPED_INT:
+    case DUSK_TYPE_BOOL:
+    case DUSK_TYPE_VOID: break;
     }
 }

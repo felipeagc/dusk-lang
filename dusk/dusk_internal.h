@@ -244,8 +244,10 @@ typedef enum DuskStorageClass {
     DUSK_STORAGE_CLASS_FUNCTION,
     DUSK_STORAGE_CLASS_PARAMETER,
     DUSK_STORAGE_CLASS_UNIFORM,
+    DUSK_STORAGE_CLASS_UNIFORM_CONSTANT,
     DUSK_STORAGE_CLASS_INPUT,
     DUSK_STORAGE_CLASS_OUTPUT,
+    DUSK_STORAGE_CLASS_PUSH_CONSTANT,
 } DuskStorageClass;
 // }}}
 
@@ -278,6 +280,13 @@ void duskScopeSet(DuskScope *scope, const char *name, DuskDecl *decl);
 // }}}
 
 // Type {{{
+typedef enum DuskImageDimension {
+    DUSK_IMAGE_DIMENSION_1D,
+    DUSK_IMAGE_DIMENSION_2D,
+    DUSK_IMAGE_DIMENSION_3D,
+    DUSK_IMAGE_DIMENSION_CUBE,
+} DuskImageDimension;
+
 typedef enum DuskTypeKind {
     DUSK_TYPE_VOID,
     DUSK_TYPE_TYPE,
@@ -293,6 +302,9 @@ typedef enum DuskTypeKind {
     DUSK_TYPE_STRUCT,
     DUSK_TYPE_FUNCTION,
     DUSK_TYPE_POINTER,
+    DUSK_TYPE_SAMPLER,
+    DUSK_TYPE_IMAGE,
+    DUSK_TYPE_SAMPLED_IMAGE,
 } DuskTypeKind;
 
 typedef struct DuskType DuskType;
@@ -349,6 +361,19 @@ struct DuskType
             DuskType *sub;
             DuskStorageClass storage_class;
         } pointer;
+        struct
+        {
+            DuskType *sampled_type;
+            DuskImageDimension dim;
+            uint32_t depth;
+            uint32_t arrayed;
+            uint32_t multisampled;
+            uint32_t sampled;
+        } image;
+        struct
+        {
+            DuskType *image_type;
+        } sampled_image;
     };
 };
 
@@ -379,6 +404,7 @@ typedef enum DuskIRValueKind {
     DUSK_IR_VALUE_CONSTANT,
     DUSK_IR_VALUE_FUNCTION,
     DUSK_IR_VALUE_BLOCK,
+    DUSK_IR_VALUE_VARIABLE,
     DUSK_IR_VALUE_RETURN,
 } DuskIRValueKind;
 
@@ -410,6 +436,10 @@ struct DuskIRValue
         } function;
         struct
         {
+            DuskStorageClass storage_class;
+        } var;
+        struct
+        {
             DuskArray(DuskIRValue *) insts;
         } block;
         struct
@@ -439,12 +469,16 @@ typedef struct DuskIRModule
     uint32_t glsl_ext_inst_id;
 
     DuskArray(DuskIRValue *) functions;
+    DuskArray(DuskIRValue *) globals;
+
     DuskArray(DuskIREntryPoint) entry_points;
 } DuskIRModule;
 
 DuskIRValue *duskIRBlockCreate(DuskIRModule *module);
 DuskIRValue *duskIRFunctionCreate(DuskIRModule *module, DuskType *type, const char *name);
 void duskIRFunctionAddBlock(DuskIRValue *function, DuskIRValue *block);
+DuskIRValue *duskIRVariableCreate(
+    DuskIRModule *module, DuskType *type, DuskStorageClass storage_class);
 void duskIRModuleAddEntryPoint(
     DuskIRModule *module, DuskIRValue *function, const char *name, DuskShaderStage stage);
 DuskIRModule *duskIRModuleCreate(DuskCompiler *compiler);
@@ -455,6 +489,7 @@ duskIRConstIntCreate(DuskIRModule *module, DuskType *type, uint64_t int_value);
 DuskIRValue *
 duskIRConstFloatCreate(DuskIRModule *module, DuskType *type, double double_value);
 
+DuskIRValue *duskIRCreateReturn(DuskIRModule *module, DuskIRValue *value);
 // }}}
 
 // AST {{{
@@ -514,6 +549,7 @@ typedef enum DuskStmtKind {
     DUSK_STMT_ASSIGN,
     DUSK_STMT_EXPR,
     DUSK_STMT_BLOCK,
+    DUSK_STMT_RETURN,
 } DuskStmtKind;
 
 struct DuskStmt
@@ -535,6 +571,10 @@ struct DuskStmt
             DuskArray(DuskStmt *) stmts;
             DuskScope *scope;
         } block;
+        struct
+        {
+            DuskExpr *expr;
+        } return_;
     };
 };
 

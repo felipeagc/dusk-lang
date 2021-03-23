@@ -1393,6 +1393,22 @@ static DuskStmt *parseStmt(DuskCompiler *compiler, TokenizerState *state)
         break;
     }
 
+    case TOKEN_RETURN: {
+        stmt->kind = DUSK_STMT_RETURN;
+        stmt->return_.expr = NULL;
+
+        consumeToken(compiler, state, TOKEN_RETURN);
+
+        tokenizerNextToken(allocator, *state, &next_token);
+        if (next_token.type != TOKEN_SEMICOLON)
+        {
+            stmt->return_.expr = parseExpr(compiler, state);
+        }
+
+        consumeToken(compiler, state, TOKEN_SEMICOLON);
+        break;
+    }
+
     default: {
         DuskExpr *expr = parseExpr(compiler, state);
 

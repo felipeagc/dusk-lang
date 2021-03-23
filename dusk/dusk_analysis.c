@@ -6,6 +6,7 @@ typedef struct DuskAnalyzerState
     DuskArray(DuskStmt *) break_stack;
     DuskArray(DuskStmt *) continue_stack;
     DuskArray(DuskDecl *) module_stack;
+    DuskArray(DuskDecl *) function_stack;
 } DuskAnalyzerState;
 
 static void
@@ -135,6 +136,8 @@ static bool duskIsExprAssignable(DuskAnalyzerState *state, DuskExpr *expr)
             case DUSK_STORAGE_CLASS_INPUT:
             case DUSK_STORAGE_CLASS_OUTPUT:
             case DUSK_STORAGE_CLASS_UNIFORM: return true;
+            case DUSK_STORAGE_CLASS_UNIFORM_CONSTANT:
+            case DUSK_STORAGE_CLASS_PUSH_CONSTANT:
             case DUSK_STORAGE_CLASS_PARAMETER: return false;
             }
         }
@@ -382,6 +385,31 @@ duskAnalyzeStmt(DuskCompiler *compiler, DuskAnalyzerState *state, DuskStmt *stmt
         duskAnalyzeExpr(compiler, state, stmt->expr, NULL, false);
         break;
     }
+    case DUSK_STMT_RETURN: {
+        DUSK_ASSERT(duskArrayLength(state->function_stack) > 0);
+        DuskDecl *func =
+            state->function_stack[duskArrayLength(state->function_stack) - 1];
+
+        DUSK_ASSERT(func->type);
+
+        DuskType *return_type = func->type->function.return_type;
+        if (stmt->return_.expr)
+        {
+            duskAnalyzeExpr(compiler, state, stmt->return_.expr, return_type, false);
+        }
+        else
+        {
+            if (return_type->kind != DUSK_TYPE_VOID)
+            {
+                duskAddError(
+                    compiler,
+                    stmt->location,
+                    "function return type is not void, expected expression for return "
+                    "statement");
+            }
+        }
+        break;
+    }
     case DUSK_STMT_ASSIGN: {
         duskAnalyzeExpr(compiler, state, stmt->assign.assigned_expr, NULL, true);
         DuskType *type = stmt->assign.assigned_expr->type;
@@ -551,6 +579,7 @@ duskAnalyzeDecl(DuskCompiler *compiler, DuskAnalyzerState *state, DuskDecl *decl
             compiler, state, decl->function.return_type_expr, type_type, false);
         return_type = decl->function.return_type_expr->as_type;
 
+        duskArrayPush(&state->function_stack, decl);
         duskArrayPush(&state->scope_stack, decl->function.scope);
 
         for (size_t i = 0; i < param_count; ++i)
@@ -565,14 +594,6 @@ duskAnalyzeDecl(DuskCompiler *compiler, DuskAnalyzerState *state, DuskDecl *decl
             }
         }
 
-        for (size_t i = 0; i < duskArrayLength(decl->function.stmts); ++i)
-        {
-            DuskStmt *stmt = decl->function.stmts[i];
-            duskAnalyzeStmt(compiler, state, stmt);
-        }
-
-        duskArrayPop(&state->scope_stack);
-
         if (!got_all_param_types || return_type == NULL)
         {
             DUSK_ASSERT(duskArrayLength(compiler->errors) > 0);
@@ -580,6 +601,33 @@ duskAnalyzeDecl(DuskCompiler *compiler, DuskAnalyzerState *state, DuskDecl *decl
         }
 
         decl->type = duskTypeNewFunction(compiler, return_type, param_types);
+
+        bool got_return_stmt = false;
+
+        for (size_t i = 0; i < duskArrayLength(decl->function.stmts); ++i)
+        {
+            DuskStmt *stmt = decl->function.stmts[i];
+            duskAnalyzeStmt(compiler, state, stmt);
+
+            if (stmt->kind == DUSK_STMT_RETURN)
+            {
+                got_return_stmt = true;
+            }
+        }
+
+        if ((decl->type->function.return_type->kind != DUSK_TYPE_VOID) &&
+            (!got_return_stmt))
+        {
+            duskAddError(
+                compiler,
+                decl->location,
+                "no return statement found for function '%s'",
+                decl->function.link_name);
+        }
+
+        duskArrayPop(&state->function_stack);
+        duskArrayPop(&state->scope_stack);
+
         break;
     }
     case DUSK_DECL_TYPE: {
@@ -639,6 +687,7 @@ void duskAnalyzeFile(DuskCompiler *compiler, DuskFile *file)
         .break_stack = duskArrayCreate(allocator, DuskStmt *),
         .continue_stack = duskArrayCreate(allocator, DuskStmt *),
         .module_stack = duskArrayCreate(allocator, DuskDecl *),
+        .function_stack = duskArrayCreate(allocator, DuskDecl *),
     };
 
     duskArrayPush(&state->scope_stack, file->scope);
