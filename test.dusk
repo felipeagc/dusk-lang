@@ -8,12 +8,17 @@
 
 // [binding(0)] let hello : Hello; 
 // [binding(1)] let image : @Image(float3);
-// [binding(2)] let sampler : @Sampler;
+// [binding(2)] let sampler : @Sampler();
 
 [input, location(0)] let in_pos : float3;
 [input, location(1)] let in_uv : float2;
 [output, builtin_gl_position] let out_position : float4;
 [output, location(0)] let out_uv : float2;
+
+fn test() int {
+    let a: int = 321;
+    return 123;
+}
 
 [entry_point("vertex")]
 fn vs_main() void {

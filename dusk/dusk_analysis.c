@@ -9,13 +9,16 @@ typedef struct DuskAnalyzerState
     DuskArray(DuskDecl *) function_stack;
 } DuskAnalyzerState;
 
-static void
-duskAnalyzeDecl(DuskCompiler *compiler, DuskAnalyzerState *state, DuskDecl *decl);
-static void
-duskTryRegisterDecl(DuskCompiler *compiler, DuskAnalyzerState *state, DuskDecl *decl);
+static void duskAnalyzeDecl(
+    DuskCompiler *compiler, DuskAnalyzerState *state, DuskDecl *decl);
+static void duskTryRegisterDecl(
+    DuskCompiler *compiler, DuskAnalyzerState *state, DuskDecl *decl);
 
 DuskScope *duskScopeCreate(
-    DuskAllocator *allocator, DuskScope *parent, DuskScopeOwnerType type, void *owner)
+    DuskAllocator *allocator,
+    DuskScope *parent,
+    DuskScopeOwnerType type,
+    void *owner)
 {
     DuskMap *map = duskMapCreate(allocator, 16);
 
@@ -77,8 +80,8 @@ static DuskScope *duskCurrentScope(DuskAnalyzerState *state)
     return state->scope_stack[duskArrayLength(state->scope_stack) - 1];
 }
 
-static bool
-duskExprResolveInteger(DuskAnalyzerState *state, DuskExpr *expr, int64_t *out_int)
+static bool duskExprResolveInteger(
+    DuskAnalyzerState *state, DuskExpr *expr, int64_t *out_int)
 {
     switch (expr->kind)
     {
@@ -203,11 +206,15 @@ static void duskAnalyzeExpr(
         break;
     }
     case DUSK_EXPR_IDENT: {
-        DuskDecl *ident_decl = duskScopeLookup(duskCurrentScope(state), expr->identifier.str);
+        DuskDecl *ident_decl =
+            duskScopeLookup(duskCurrentScope(state), expr->identifier.str);
         if (!ident_decl)
         {
             duskAddError(
-                compiler, expr->location, "cannot find symbol '%s'", expr->identifier.str);
+                compiler,
+                expr->location,
+                "cannot find symbol '%s'",
+                expr->identifier.str);
             break;
         }
 
@@ -235,17 +242,21 @@ static void duskAnalyzeExpr(
             duskTypeNewVector(compiler, scalar_type, expr->matrix_type.rows);
 
         expr->type = duskTypeNewBasic(compiler, DUSK_TYPE_TYPE);
-        expr->as_type = duskTypeNewMatrix(compiler, col_type, expr->matrix_type.cols);
+        expr->as_type =
+            duskTypeNewMatrix(compiler, col_type, expr->matrix_type.cols);
         break;
     }
     case DUSK_EXPR_ARRAY_TYPE: {
         DuskType *type_type = duskTypeNewBasic(compiler, DUSK_TYPE_TYPE);
 
-        duskAnalyzeExpr(compiler, state, expr->array_type.size_expr, NULL, false);
-        duskAnalyzeExpr(compiler, state, expr->array_type.sub_expr, type_type, false);
+        duskAnalyzeExpr(
+            compiler, state, expr->array_type.size_expr, NULL, false);
+        duskAnalyzeExpr(
+            compiler, state, expr->array_type.sub_expr, type_type, false);
 
         int64_t array_size = 0;
-        if (!duskExprResolveInteger(state, expr->array_type.size_expr, &array_size))
+        if (!duskExprResolveInteger(
+                state, expr->array_type.size_expr, &array_size))
         {
             duskAddError(
                 compiler,
@@ -270,13 +281,15 @@ static void duskAnalyzeExpr(
         }
 
         expr->type = type_type;
-        expr->as_type = duskTypeNewArray(compiler, sub_type, (size_t)array_size);
+        expr->as_type =
+            duskTypeNewArray(compiler, sub_type, (size_t)array_size);
         break;
     }
     case DUSK_EXPR_RUNTIME_ARRAY_TYPE: {
         DuskType *type_type = duskTypeNewBasic(compiler, DUSK_TYPE_TYPE);
 
-        duskAnalyzeExpr(compiler, state, expr->array_type.sub_expr, type_type, false);
+        duskAnalyzeExpr(
+            compiler, state, expr->array_type.sub_expr, type_type, false);
 
         DuskType *sub_type = expr->array_type.sub_expr->as_type;
         if (!sub_type)
@@ -289,7 +302,8 @@ static void duskAnalyzeExpr(
         break;
     }
     case DUSK_EXPR_STRUCT_TYPE: {
-        size_t field_count = duskArrayLength(expr->struct_type.field_type_exprs);
+        size_t field_count =
+            duskArrayLength(expr->struct_type.field_type_exprs);
 
         bool got_duplicate_field_names = false;
 
@@ -322,7 +336,8 @@ static void duskAnalyzeExpr(
 
         bool got_all_field_types = true;
 
-        DuskArray(DuskType *) field_types = duskArrayCreate(allocator, DuskType *);
+        DuskArray(DuskType *) field_types =
+            duskArrayCreate(allocator, DuskType *);
         duskArrayResize(&field_types, field_count);
 
         for (size_t i = 0; i < field_count; ++i)
@@ -345,7 +360,10 @@ static void duskAnalyzeExpr(
 
         expr->type = type_type;
         expr->as_type = duskTypeNewStruct(
-            compiler, expr->struct_type.name, expr->struct_type.field_names, field_types);
+            compiler,
+            expr->struct_type.name,
+            expr->struct_type.field_names,
+            field_types);
 
         break;
     }
@@ -371,12 +389,13 @@ static void duskAnalyzeExpr(
 
     if (must_be_assignable && !duskIsExprAssignable(state, expr))
     {
-        duskAddError(compiler, expr->location, "expected expression to be assignable");
+        duskAddError(
+            compiler, expr->location, "expected expression to be assignable");
     }
 }
 
-static void
-duskAnalyzeStmt(DuskCompiler *compiler, DuskAnalyzerState *state, DuskStmt *stmt)
+static void duskAnalyzeStmt(
+    DuskCompiler *compiler, DuskAnalyzerState *state, DuskStmt *stmt)
 {
     DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
 
@@ -401,7 +420,8 @@ duskAnalyzeStmt(DuskCompiler *compiler, DuskAnalyzerState *state, DuskStmt *stmt
         DuskType *return_type = func->type->function.return_type;
         if (stmt->return_.expr)
         {
-            duskAnalyzeExpr(compiler, state, stmt->return_.expr, return_type, false);
+            duskAnalyzeExpr(
+                compiler, state, stmt->return_.expr, return_type, false);
         }
         else
         {
@@ -410,14 +430,16 @@ duskAnalyzeStmt(DuskCompiler *compiler, DuskAnalyzerState *state, DuskStmt *stmt
                 duskAddError(
                     compiler,
                     stmt->location,
-                    "function return type is not void, expected expression for return "
+                    "function return type is not void, expected expression for "
+                    "return "
                     "statement");
             }
         }
         break;
     }
     case DUSK_STMT_ASSIGN: {
-        duskAnalyzeExpr(compiler, state, stmt->assign.assigned_expr, NULL, true);
+        duskAnalyzeExpr(
+            compiler, state, stmt->assign.assigned_expr, NULL, true);
         DuskType *type = stmt->assign.assigned_expr->type;
         if (!type)
         {
@@ -430,7 +452,10 @@ duskAnalyzeStmt(DuskCompiler *compiler, DuskAnalyzerState *state, DuskStmt *stmt
     }
     case DUSK_STMT_BLOCK: {
         stmt->block.scope = duskScopeCreate(
-            allocator, duskCurrentScope(state), DUSK_SCOPE_OWNER_TYPE_NONE, NULL);
+            allocator,
+            duskCurrentScope(state),
+            DUSK_SCOPE_OWNER_TYPE_NONE,
+            NULL);
 
         for (size_t i = 0; i < duskArrayLength(stmt->block.stmts); ++i)
         {
@@ -442,23 +467,27 @@ duskAnalyzeStmt(DuskCompiler *compiler, DuskAnalyzerState *state, DuskStmt *stmt
     }
 }
 
-static void
-duskTryRegisterDecl(DuskCompiler *compiler, DuskAnalyzerState *state, DuskDecl *decl)
+static void duskTryRegisterDecl(
+    DuskCompiler *compiler, DuskAnalyzerState *state, DuskDecl *decl)
 {
     DuskScope *scope = duskCurrentScope(state);
 
     DUSK_ASSERT(decl->name);
     if (duskScopeLookup(scope, decl->name) != NULL)
     {
-        duskAddError(compiler, decl->location, "duplicate declaration: '%s'", decl->name);
+        duskAddError(
+            compiler,
+            decl->location,
+            "duplicate declaration: '%s'",
+            decl->name);
         return;
     }
 
     duskScopeSet(scope, decl->name, decl);
 }
 
-static void
-duskAnalyzeDecl(DuskCompiler *compiler, DuskAnalyzerState *state, DuskDecl *decl)
+static void duskAnalyzeDecl(
+    DuskCompiler *compiler, DuskAnalyzerState *state, DuskDecl *decl)
 {
     DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
 
@@ -539,7 +568,10 @@ duskAnalyzeDecl(DuskCompiler *compiler, DuskAnalyzerState *state, DuskDecl *decl
         }
 
         decl->function.scope = duskScopeCreate(
-            allocator, duskCurrentScope(state), DUSK_SCOPE_OWNER_TYPE_FUNCTION, decl);
+            allocator,
+            duskCurrentScope(state),
+            DUSK_SCOPE_OWNER_TYPE_FUNCTION,
+            decl);
 
         DuskType *type_type = duskTypeNewBasic(compiler, DUSK_TYPE_TYPE);
 
@@ -547,7 +579,8 @@ duskAnalyzeDecl(DuskCompiler *compiler, DuskAnalyzerState *state, DuskDecl *decl
 
         bool got_all_param_types = true;
         DuskType *return_type = NULL;
-        DuskArray(DuskType *) param_types = duskArrayCreate(allocator, DuskType *);
+        DuskArray(DuskType *) param_types =
+            duskArrayCreate(allocator, DuskType *);
         duskArrayResize(&param_types, param_count);
 
         duskAnalyzeExpr(
@@ -607,7 +640,8 @@ duskAnalyzeDecl(DuskCompiler *compiler, DuskAnalyzerState *state, DuskDecl *decl
     }
     case DUSK_DECL_TYPE: {
         DuskType *type_type = duskTypeNewBasic(compiler, DUSK_TYPE_TYPE);
-        duskAnalyzeExpr(compiler, state, decl->typedef_.type_expr, type_type, false);
+        duskAnalyzeExpr(
+            compiler, state, decl->typedef_.type_expr, type_type, false);
         decl->type = type_type;
         break;
     }
@@ -617,14 +651,16 @@ duskAnalyzeDecl(DuskCompiler *compiler, DuskAnalyzerState *state, DuskDecl *decl
         DuskType *var_type = NULL;
         if (decl->var.type_expr)
         {
-            duskAnalyzeExpr(compiler, state, decl->var.type_expr, type_type, false);
+            duskAnalyzeExpr(
+                compiler, state, decl->var.type_expr, type_type, false);
             var_type = decl->var.type_expr->as_type;
             if (!var_type) break;
         }
 
         if (decl->var.value_expr)
         {
-            duskAnalyzeExpr(compiler, state, decl->var.value_expr, var_type, false);
+            duskAnalyzeExpr(
+                compiler, state, decl->var.value_expr, var_type, false);
             if (var_type == NULL)
             {
                 var_type = decl->var.value_expr->type;
@@ -684,6 +720,8 @@ void duskAnalyzeFile(DuskCompiler *compiler, DuskFile *file)
     if (duskArrayLength(file->entry_points) == 0)
     {
         duskAddError(
-            compiler, (DuskLocation){.file = file}, "no entrypoints found in file");
+            compiler,
+            (DuskLocation){.file = file},
+            "no entrypoints found in file");
     }
 }

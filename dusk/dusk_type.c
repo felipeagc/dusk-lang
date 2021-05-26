@@ -506,7 +506,7 @@ duskTypeNewPointer(DuskCompiler *compiler, DuskType *sub, DuskStorageClass stora
     return duskTypeGetCached(compiler, type);
 }
 
-void duskTypeEmit(DuskType *type)
+void duskTypeMarkNotDead(DuskType *type)
 {
     DUSK_ASSERT(type);
     type->emit = true;
@@ -514,43 +514,43 @@ void duskTypeEmit(DuskType *type)
     switch (type->kind)
     {
     case DUSK_TYPE_POINTER: {
-        duskTypeEmit(type->pointer.sub);
+        duskTypeMarkNotDead(type->pointer.sub);
         break;
     }
     case DUSK_TYPE_VECTOR: {
-        duskTypeEmit(type->vector.sub);
+        duskTypeMarkNotDead(type->vector.sub);
         break;
     }
     case DUSK_TYPE_RUNTIME_ARRAY:
     case DUSK_TYPE_ARRAY: {
-        duskTypeEmit(type->array.sub);
+        duskTypeMarkNotDead(type->array.sub);
         break;
     }
     case DUSK_TYPE_MATRIX: {
-        duskTypeEmit(type->matrix.col_type);
+        duskTypeMarkNotDead(type->matrix.col_type);
         break;
     }
     case DUSK_TYPE_STRUCT: {
         for (size_t i = 0; i < duskArrayLength(type->struct_.field_types); ++i)
         {
-            duskTypeEmit(type->struct_.field_types[i]);
+            duskTypeMarkNotDead(type->struct_.field_types[i]);
         }
         break;
     }
     case DUSK_TYPE_FUNCTION: {
-        duskTypeEmit(type->function.return_type);
+        duskTypeMarkNotDead(type->function.return_type);
         for (size_t i = 0; i < duskArrayLength(type->function.param_types); ++i)
         {
-            duskTypeEmit(type->function.param_types[i]);
+            duskTypeMarkNotDead(type->function.param_types[i]);
         }
         break;
     }
     case DUSK_TYPE_IMAGE: {
-        duskTypeEmit(type->image.sampled_type);
+        duskTypeMarkNotDead(type->image.sampled_type);
         break;
     }
     case DUSK_TYPE_SAMPLED_IMAGE: {
-        duskTypeEmit(type->sampled_image.image_type);
+        duskTypeMarkNotDead(type->sampled_image.image_type);
         break;
     }
     case DUSK_TYPE_SAMPLER:

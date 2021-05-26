@@ -14,7 +14,8 @@
 #if defined(_MSC_VER)
 #define DUSK_INLINE __forceinline
 #elif defined(__clang__) || defined(__GNUC__)
-#define DUSK_INLINE __attribute__((always_inline)) __attribute__((unused)) inline
+#define DUSK_INLINE                                                            \
+    __attribute__((always_inline)) __attribute__((unused)) inline
 #else
 #define DUSK_INLINE inline
 #endif
@@ -29,19 +30,19 @@
 
 #define DUSK_STR(a) #a
 
-#define DUSK_ASSERT(value)                                                               \
-    do                                                                                   \
-    {                                                                                    \
-        if (!(value))                                                                    \
-        {                                                                                \
-            fprintf(                                                                     \
-                stderr,                                                                  \
-                "Dusk assertion failed: '%s' at %s:%d\n",                                \
-                DUSK_STR(value),                                                         \
-                __FILE__,                                                                \
-                __LINE__);                                                               \
-            abort();                                                                     \
-        }                                                                                \
+#define DUSK_ASSERT(value)                                                     \
+    do                                                                         \
+    {                                                                          \
+        if (!(value))                                                          \
+        {                                                                      \
+            fprintf(                                                           \
+                stderr,                                                        \
+                "Dusk assertion failed: '%s' at %s:%d\n",                      \
+                DUSK_STR(value),                                               \
+                __FILE__,                                                      \
+                __LINE__);                                                     \
+            abort();                                                           \
+        }                                                                      \
     } while (0)
 
 #ifndef __cplusplus
@@ -68,22 +69,26 @@ void *duskAllocateZeroed(DuskAllocator *allocator, size_t size);
 void *duskReallocate(DuskAllocator *allocator, void *ptr, size_t size);
 void duskFree(DuskAllocator *allocator, void *ptr);
 
-#define DUSK_NEW(allocator, type) ((type *)duskAllocateZeroed(allocator, sizeof(type)))
-#define DUSK_NEW_ARRAY(allocator, type, count)                                           \
+#define DUSK_NEW(allocator, type)                                              \
+    ((type *)duskAllocateZeroed(allocator, sizeof(type)))
+#define DUSK_NEW_ARRAY(allocator, type, count)                                 \
     ((type *)duskAllocateZeroed(allocator, sizeof(type) * count))
 
 typedef struct DuskArena DuskArena;
 
-DuskArena *duskArenaCreate(DuskAllocator *parent_allocator, size_t default_size);
+DuskArena *
+duskArenaCreate(DuskAllocator *parent_allocator, size_t default_size);
 DuskAllocator *duskArenaGetAllocator(DuskArena *arena);
 void duskArenaDestroy(DuskArena *arena);
 
 const char *duskStrdup(DuskAllocator *allocator, const char *str);
-const char *duskNullTerminate(DuskAllocator *allocator, const char *str, size_t length);
+const char *
+duskNullTerminate(DuskAllocator *allocator, const char *str, size_t length);
 
 DUSK_PRINTF_FORMATTING(2, 3)
 const char *duskSprintf(DuskAllocator *allocator, const char *format, ...);
-const char *duskVsprintf(DuskAllocator *allocator, const char *format, va_list args);
+const char *
+duskVsprintf(DuskAllocator *allocator, const char *format, va_list args);
 // }}}
 
 // Array {{{
@@ -99,27 +104,31 @@ const char *duskVsprintf(DuskAllocator *allocator, const char *format, va_list a
 #define _duskArrayCapacity(arr) (*((uint64_t *)(arr)-3))
 #define _duskArrayAllocator(arr) (*((DuskAllocator **)(arr)-4))
 
-#define duskArrayCreate(allocator, type)                                                 \
+#define duskArrayCreate(allocator, type)                                       \
     ((type *)_duskArrayCreate(allocator, sizeof(type)))
-#define duskArrayPush(arr, value)                                                        \
-    (_duskArrayEnsure((void **)arr, duskArrayLength(*arr) + 1),                          \
+#define duskArrayPush(arr, value)                                              \
+    (_duskArrayEnsure((void **)arr, duskArrayLength(*arr) + 1),                \
      (*arr)[_duskArrayLength(*arr)++] = value)
-#define duskArrayPop(arr) ((duskArrayLength(*arr) > 0) ? (--_duskArrayLength(*arr)) : 0)
-#define duskArrayEnsure(arr, wanted_capacity)                                            \
+#define duskArrayPop(arr)                                                      \
+    ((duskArrayLength(*arr) > 0) ? (--_duskArrayLength(*arr)) : 0)
+#define duskArrayEnsure(arr, wanted_capacity)                                  \
     _duskArrayEnsure((void **)arr, wanted_capacity)
-#define duskArrayResize(arr, wanted_size)                                                \
-    (_duskArrayEnsure((void **)arr, wanted_size), _duskArrayLength(*arr) = wanted_size)
-#define duskArrayFree(arr)                                                               \
+#define duskArrayResize(arr, wanted_size)                                      \
+    (_duskArrayEnsure((void **)arr, wanted_size),                              \
+     _duskArrayLength(*arr) = wanted_size)
+#define duskArrayFree(arr)                                                     \
     ((*arr) != NULL ? (_duskArrayFree(*(arr)), (*(arr)) = NULL) : 0)
 
 #define DUSK_ARRAY_HEADER_SIZE (sizeof(uint64_t) * 4)
 #define DUSK_ARRAY_INITIAL_CAPACITY 8
 
-DUSK_INLINE static void *_duskArrayCreate(DuskAllocator *allocator, size_t item_size)
+DUSK_INLINE static void *
+_duskArrayCreate(DuskAllocator *allocator, size_t item_size)
 {
     void *ptr = ((uint64_t *)duskAllocate(
                     allocator,
-                    DUSK_ARRAY_HEADER_SIZE + (item_size * DUSK_ARRAY_INITIAL_CAPACITY))) +
+                    DUSK_ARRAY_HEADER_SIZE +
+                        (item_size * DUSK_ARRAY_INITIAL_CAPACITY))) +
                 4;
 
     _duskArrayItemSize(ptr) = item_size;
@@ -203,10 +212,13 @@ duskStringBuilderCreate(DuskAllocator *allocator, size_t initial_length);
 void duskStringBuilderDestroy(DuskStringBuilder *sb);
 
 void duskStringBuilderAppend(DuskStringBuilder *sb, const char *str);
-void duskStringBuilderAppendLen(DuskStringBuilder *sb, const char *str, size_t length);
+void duskStringBuilderAppendLen(
+    DuskStringBuilder *sb, const char *str, size_t length);
 DUSK_PRINTF_FORMATTING(2, 3)
-void duskStringBuilderAppendFormat(DuskStringBuilder *sb, const char *format, ...);
-const char *duskStringBuilderBuild(DuskStringBuilder *sb, DuskAllocator *allocator);
+void duskStringBuilderAppendFormat(
+    DuskStringBuilder *sb, const char *format, ...);
+const char *
+duskStringBuilderBuild(DuskStringBuilder *sb, DuskAllocator *allocator);
 // }}}
 
 // Typedefs {{{
@@ -274,7 +286,10 @@ typedef struct DuskScope
 } DuskScope;
 
 DuskScope *duskScopeCreate(
-    DuskAllocator *allocator, DuskScope *parent, DuskScopeOwnerType type, void *owner);
+    DuskAllocator *allocator,
+    DuskScope *parent,
+    DuskScopeOwnerType type,
+    void *owner);
 DuskDecl *duskScopeLookup(DuskScope *scope, const char *name);
 void duskScopeSet(DuskScope *scope, const char *name, DuskDecl *decl);
 // }}}
@@ -316,7 +331,8 @@ struct DuskType
     const char *string;
     const char *pretty_string;
     uint32_t id;
-    bool emit;
+    bool emit; // This flag is set before SPIRV emission in order to emit the
+               // type. Once the type is emitted, the flag is set to false.
 
     union
     {
@@ -382,8 +398,10 @@ bool duskTypeIsRuntime(DuskType *type);
 const char *duskTypeToPrettyString(DuskAllocator *allocator, DuskType *type);
 DuskType *duskTypeNewBasic(DuskCompiler *compiler, DuskTypeKind kind);
 DuskType *duskTypeNewScalar(DuskCompiler *compiler, DuskScalarType scalar_type);
-DuskType *duskTypeNewVector(DuskCompiler *compiler, DuskType *sub, uint32_t size);
-DuskType *duskTypeNewMatrix(DuskCompiler *compiler, DuskType *col_type, uint32_t cols);
+DuskType *
+duskTypeNewVector(DuskCompiler *compiler, DuskType *sub, uint32_t size);
+DuskType *
+duskTypeNewMatrix(DuskCompiler *compiler, DuskType *col_type, uint32_t cols);
 DuskType *duskTypeNewRuntimeArray(DuskCompiler *compiler, DuskType *sub);
 DuskType *duskTypeNewArray(DuskCompiler *compiler, DuskType *sub, size_t size);
 DuskType *duskTypeNewStruct(
@@ -392,11 +410,13 @@ DuskType *duskTypeNewStruct(
     DuskArray(const char *) field_names,
     DuskArray(DuskType *) field_types);
 DuskType *duskTypeNewFunction(
-    DuskCompiler *compiler, DuskType *return_type, DuskArray(DuskType *) param_types);
-DuskType *
-duskTypeNewPointer(DuskCompiler *compiler, DuskType *sub, DuskStorageClass storage_class);
+    DuskCompiler *compiler,
+    DuskType *return_type,
+    DuskArray(DuskType *) param_types);
+DuskType *duskTypeNewPointer(
+    DuskCompiler *compiler, DuskType *sub, DuskStorageClass storage_class);
 
-void duskTypeEmit(DuskType *type);
+void duskTypeMarkNotDead(DuskType *type);
 // }}}
 
 // IR {{{
@@ -433,6 +453,7 @@ struct DuskIRValue
         {
             const char *name;
             DuskArray(DuskIRValue *) params;
+            DuskArray(DuskIRValue *) variables;
             DuskArray(DuskIRValue *) blocks;
         } function;
         struct
@@ -476,19 +497,23 @@ typedef struct DuskIRModule
 } DuskIRModule;
 
 DuskIRValue *duskIRBlockCreate(DuskIRModule *module);
-DuskIRValue *duskIRFunctionCreate(DuskIRModule *module, DuskType *type, const char *name);
+DuskIRValue *
+duskIRFunctionCreate(DuskIRModule *module, DuskType *type, const char *name);
 void duskIRFunctionAddBlock(DuskIRValue *function, DuskIRValue *block);
 DuskIRValue *duskIRVariableCreate(
     DuskIRModule *module, DuskType *type, DuskStorageClass storage_class);
 void duskIRModuleAddEntryPoint(
-    DuskIRModule *module, DuskIRValue *function, const char *name, DuskShaderStage stage);
+    DuskIRModule *module,
+    DuskIRValue *function,
+    const char *name,
+    DuskShaderStage stage);
 DuskIRModule *duskIRModuleCreate(DuskCompiler *compiler);
 
 DuskIRValue *duskIRConstBoolCreate(DuskIRModule *module, bool bool_value);
 DuskIRValue *
 duskIRConstIntCreate(DuskIRModule *module, DuskType *type, uint64_t int_value);
-DuskIRValue *
-duskIRConstFloatCreate(DuskIRModule *module, DuskType *type, double double_value);
+DuskIRValue *duskIRConstFloatCreate(
+    DuskIRModule *module, DuskType *type, double double_value);
 
 DuskIRValue *duskIRCreateReturn(DuskIRModule *module, DuskIRValue *value);
 // }}}
@@ -673,10 +698,12 @@ typedef struct DuskCompiler
 
 void duskThrow(DuskCompiler *compiler);
 DUSK_PRINTF_FORMATTING(3, 4)
-void duskAddError(DuskCompiler *compiler, DuskLocation loc, const char *fmt, ...);
+void duskAddError(
+    DuskCompiler *compiler, DuskLocation loc, const char *fmt, ...);
 void duskParse(DuskCompiler *compiler, DuskFile *file);
 void duskAnalyzeFile(DuskCompiler *compiler, DuskFile *file);
 DuskIRModule *duskGenerateIRModule(DuskCompiler *compiler, DuskFile *file);
-DuskArray(uint32_t) duskIRModuleEmit(DuskCompiler *compiler, DuskIRModule *module);
+DuskArray(uint32_t)
+    duskIRModuleEmit(DuskCompiler *compiler, DuskIRModule *module);
 
 #endif
