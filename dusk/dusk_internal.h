@@ -423,6 +423,7 @@ DuskType *duskTypeNewImage(
     bool arrayed,
     bool multisampled,
     bool sampled);
+DuskType *duskTypeNewSampledImage(DuskCompiler *compiler, DuskType *image_type);
 
 void duskTypeMarkNotDead(DuskType *type);
 // }}}
@@ -557,6 +558,12 @@ typedef enum DuskBuiltinFunctionKind {
     DUSK_BUILTIN_FUNCTION_IMAGE_3D_TYPE,
     DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_TYPE,
     DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_TYPE,
+    DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_1D_TYPE,
+    DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_2D_TYPE,
+    DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_2D_ARRAY_TYPE,
+    DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_3D_TYPE,
+    DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_CUBE_TYPE,
+    DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_CUBE_ARRAY_TYPE,
     DUSK_BUILTIN_FUNCTION_MAX,
 } DuskBuiltinFunctionKind;
 

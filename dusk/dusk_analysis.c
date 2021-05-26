@@ -8,6 +8,12 @@ static size_t DUSK_BUILTIN_FUNCTION_PARAM_COUNTS[DUSK_BUILTIN_FUNCTION_MAX] = {
     [DUSK_BUILTIN_FUNCTION_IMAGE_3D_TYPE] = 1,
     [DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_TYPE] = 1,
     [DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_TYPE] = 1,
+    [DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_1D_TYPE] = 1,
+    [DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_2D_TYPE] = 1,
+    [DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_2D_ARRAY_TYPE] = 1,
+    [DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_3D_TYPE] = 1,
+    [DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_CUBE_TYPE] = 1,
+    [DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_CUBE_ARRAY_TYPE] = 1,
 };
 
 typedef struct DuskAnalyzerState
@@ -416,7 +422,13 @@ static void duskAnalyzeExpr(
         case DUSK_BUILTIN_FUNCTION_IMAGE_2D_ARRAY_TYPE:
         case DUSK_BUILTIN_FUNCTION_IMAGE_3D_TYPE:
         case DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_TYPE:
-        case DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_TYPE: {
+        case DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_TYPE:
+        case DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_1D_TYPE:
+        case DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_2D_TYPE:
+        case DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_2D_ARRAY_TYPE:
+        case DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_3D_TYPE:
+        case DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_CUBE_TYPE:
+        case DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_CUBE_ARRAY_TYPE: {
             DuskType *type_type = duskTypeNewBasic(compiler, DUSK_TYPE_TYPE);
             duskAnalyzeExpr(
                 compiler,
@@ -451,7 +463,8 @@ static void duskAnalyzeExpr(
 
             switch (expr->builtin_call.kind)
             {
-            case DUSK_BUILTIN_FUNCTION_IMAGE_1D_TYPE: {
+            case DUSK_BUILTIN_FUNCTION_IMAGE_1D_TYPE:
+            case DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_1D_TYPE: {
                 dim = DUSK_IMAGE_DIMENSION_1D;
                 depth = false;
                 arrayed = false;
@@ -459,7 +472,8 @@ static void duskAnalyzeExpr(
                 sampled = true;
                 break;
             }
-            case DUSK_BUILTIN_FUNCTION_IMAGE_2D_TYPE: {
+            case DUSK_BUILTIN_FUNCTION_IMAGE_2D_TYPE:
+            case DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_2D_TYPE: {
                 dim = DUSK_IMAGE_DIMENSION_2D;
                 depth = false;
                 arrayed = false;
@@ -467,7 +481,8 @@ static void duskAnalyzeExpr(
                 sampled = true;
                 break;
             }
-            case DUSK_BUILTIN_FUNCTION_IMAGE_2D_ARRAY_TYPE: {
+            case DUSK_BUILTIN_FUNCTION_IMAGE_2D_ARRAY_TYPE:
+            case DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_2D_ARRAY_TYPE: {
                 dim = DUSK_IMAGE_DIMENSION_2D;
                 depth = false;
                 arrayed = true;
@@ -475,7 +490,8 @@ static void duskAnalyzeExpr(
                 sampled = true;
                 break;
             }
-            case DUSK_BUILTIN_FUNCTION_IMAGE_3D_TYPE: {
+            case DUSK_BUILTIN_FUNCTION_IMAGE_3D_TYPE:
+            case DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_3D_TYPE: {
                 dim = DUSK_IMAGE_DIMENSION_3D;
                 depth = false;
                 arrayed = false;
@@ -483,7 +499,8 @@ static void duskAnalyzeExpr(
                 sampled = true;
                 break;
             }
-            case DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_TYPE: {
+            case DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_TYPE:
+            case DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_CUBE_TYPE: {
                 dim = DUSK_IMAGE_DIMENSION_CUBE;
                 depth = false;
                 arrayed = false;
@@ -491,7 +508,8 @@ static void duskAnalyzeExpr(
                 sampled = true;
                 break;
             }
-            case DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_TYPE: {
+            case DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_TYPE:
+            case DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_CUBE_ARRAY_TYPE: {
                 dim = DUSK_IMAGE_DIMENSION_CUBE;
                 depth = false;
                 arrayed = true;
@@ -511,6 +529,21 @@ static void duskAnalyzeExpr(
                 arrayed,
                 multisampled,
                 sampled);
+
+            switch (expr->builtin_call.kind)
+            {
+            case DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_1D_TYPE:
+            case DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_2D_TYPE:
+            case DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_2D_ARRAY_TYPE:
+            case DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_3D_TYPE:
+            case DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_CUBE_TYPE:
+            case DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_CUBE_ARRAY_TYPE: {
+                expr->as_type =
+                    duskTypeNewSampledImage(compiler, expr->as_type);
+                break;
+            }
+            default: break;
+            }
             break;
         }
         case DUSK_BUILTIN_FUNCTION_MAX: DUSK_ASSERT(0); break;

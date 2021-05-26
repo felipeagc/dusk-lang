@@ -1410,6 +1410,36 @@ static DuskExpr *parsePrimaryExpr(DuskCompiler *compiler, TokenizerState *state)
             expr->builtin_call.kind =
                 DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_TYPE;
         }
+        else if (strcmp(token.str, "SampledImage1D") == 0)
+        {
+            expr->builtin_call.kind =
+                DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_1D_TYPE;
+        }
+        else if (strcmp(token.str, "SampledImage2D") == 0)
+        {
+            expr->builtin_call.kind =
+                DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_2D_TYPE;
+        }
+        else if (strcmp(token.str, "SampledImage2DArray") == 0)
+        {
+            expr->builtin_call.kind =
+                DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_2D_ARRAY_TYPE;
+        }
+        else if (strcmp(token.str, "SampledImage3D") == 0)
+        {
+            expr->builtin_call.kind =
+                DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_3D_TYPE;
+        }
+        else if (strcmp(token.str, "SampledImageCube") == 0)
+        {
+            expr->builtin_call.kind =
+                DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_CUBE_TYPE;
+        }
+        else if (strcmp(token.str, "SampledImageCubeArray") == 0)
+        {
+            expr->builtin_call.kind =
+                DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_CUBE_ARRAY_TYPE;
+        }
         else
         {
             duskAddError(

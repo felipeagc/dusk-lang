@@ -569,6 +569,15 @@ DuskType *duskTypeNewImage(
     return duskTypeGetCached(compiler, type);
 }
 
+DuskType *duskTypeNewSampledImage(DuskCompiler *compiler, DuskType *image_type)
+{
+    DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
+    DuskType *type = DUSK_NEW(allocator, DuskType);
+    type->kind = DUSK_TYPE_SAMPLED_IMAGE;
+    type->sampled_image.image_type = image_type;
+    return duskTypeGetCached(compiler, type);
+}
+
 void duskTypeMarkNotDead(DuskType *type)
 {
     DUSK_ASSERT(type);
