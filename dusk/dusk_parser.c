@@ -8,7 +8,7 @@ typedef enum TokenType {
 
     TOKEN_IDENT,
     TOKEN_BUILTIN_IDENT,
-    TOKEN_STRING,
+    TOKEN_STRING_LITERAL,
     TOKEN_INT_LITERAL,
     TOKEN_FLOAT_LITERAL,
 
@@ -133,7 +133,7 @@ static const char *tokenTypeToString(TokenType token_type)
 
     case TOKEN_IDENT: return "identifier";
     case TOKEN_BUILTIN_IDENT: return "builtin identifier";
-    case TOKEN_STRING: return "string literal";
+    case TOKEN_STRING_LITERAL: return "string literal";
     case TOKEN_INT_LITERAL: return "integer literal";
     case TOKEN_FLOAT_LITERAL: return "float literal";
 
@@ -230,7 +230,7 @@ static const char *tokenToString(DuskAllocator *allocator, const Token *token)
 
     case TOKEN_IDENT: return duskSprintf(allocator, "identifier '%s'", token->str);
     case TOKEN_BUILTIN_IDENT: return duskSprintf(allocator, "@%s", token->str);
-    case TOKEN_STRING: return duskSprintf(allocator, "\"%s\"", token->str);
+    case TOKEN_STRING_LITERAL: return duskSprintf(allocator, "\"%s\"", token->str);
     case TOKEN_INT_LITERAL: return duskSprintf(allocator, "%ld", token->int_);
     case TOKEN_FLOAT_LITERAL: return duskSprintf(allocator, "%lf", token->float_);
 
@@ -401,6 +401,7 @@ static TokenizerState tokenizerCreate(DuskFile *file)
 static TokenizerState
 tokenizerNextToken(DuskAllocator *allocator, TokenizerState state, Token *token)
 {
+begin:
     (void)allocator;
     *token = (Token){0};
 
@@ -462,7 +463,7 @@ tokenizerNextToken(DuskAllocator *allocator, TokenizerState state, Token *token)
             break;
         }
 
-        token->type = TOKEN_STRING;
+        token->type = TOKEN_STRING_LITERAL;
         token->str = duskNullTerminate(allocator, string, content_length);
 
         break;
@@ -560,10 +561,25 @@ tokenizerNextToken(DuskAllocator *allocator, TokenizerState state, Token *token)
     case '/': {
         state.pos++;
         token->type = TOKEN_DIV;
-        if (tokenizerLengthLeft(state, 0) > 0 && state.file->text[state.pos] == '=')
+        if (tokenizerLengthLeft(state, 0) > 0)
         {
-            state.pos++;
-            token->type = TOKEN_DIV_ASSIGN;
+            switch (state.file->text[state.pos])
+            {
+            case '=':
+                state.pos++;
+                token->type = TOKEN_DIV_ASSIGN;
+                break;
+            case '/':
+                state.pos++;
+                while (tokenizerLengthLeft(state, 0) > 0 &&
+                       state.file->text[state.pos] != '\n')
+                {
+                    state.pos++;
+                }
+                goto begin;
+                break;
+            default: break;
+            }
         }
         break;
     }
@@ -1236,7 +1252,12 @@ static DuskExpr *parsePrimaryExpr(DuskCompiler *compiler, TokenizerState *state)
     }
     case TOKEN_IDENT: {
         expr->kind = DUSK_EXPR_IDENT;
-        expr->ident = token.str;
+        expr->identifier.str = token.str;
+        break;
+    }
+    case TOKEN_STRING_LITERAL: {
+        expr->kind = DUSK_EXPR_STRING_LITERAL;
+        expr->string.str = token.str;
         break;
     }
     case TOKEN_LPAREN: {

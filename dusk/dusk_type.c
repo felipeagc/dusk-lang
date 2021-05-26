@@ -18,6 +18,10 @@ const char *duskTypeToPrettyString(DuskAllocator *allocator, DuskType *type)
         type->pretty_string = "type";
         break;
     }
+    case DUSK_TYPE_STRING: {
+        type->pretty_string = "string";
+        break;
+    }
     case DUSK_TYPE_UNTYPED_INT: {
         type->pretty_string = "untyped int";
         break;
@@ -192,6 +196,10 @@ static const char *duskTypeToString(DuskAllocator *allocator, DuskType *type)
     }
     case DUSK_TYPE_TYPE: {
         type->string = "@type";
+        break;
+    }
+    case DUSK_TYPE_STRING: {
+        type->string = "@string";
         break;
     }
     case DUSK_TYPE_UNTYPED_INT: {
@@ -546,6 +554,7 @@ void duskTypeEmit(DuskType *type)
         break;
     }
     case DUSK_TYPE_SAMPLER:
+    case DUSK_TYPE_STRING:
     case DUSK_TYPE_TYPE:
     case DUSK_TYPE_FLOAT:
     case DUSK_TYPE_INT:

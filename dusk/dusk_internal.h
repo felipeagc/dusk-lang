@@ -305,6 +305,7 @@ typedef enum DuskTypeKind {
     DUSK_TYPE_SAMPLER,
     DUSK_TYPE_IMAGE,
     DUSK_TYPE_SAMPLED_IMAGE,
+    DUSK_TYPE_STRING,
 } DuskTypeKind;
 
 typedef struct DuskType DuskType;
@@ -578,6 +579,7 @@ typedef enum DuskExprKind {
     DUSK_EXPR_SCALAR_TYPE,
     DUSK_EXPR_VECTOR_TYPE,
     DUSK_EXPR_MATRIX_TYPE,
+    DUSK_EXPR_STRING_LITERAL,
     DUSK_EXPR_INT_LITERAL,
     DUSK_EXPR_FLOAT_LITERAL,
     DUSK_EXPR_IDENT,
@@ -610,7 +612,14 @@ struct DuskExpr
         } matrix_type;
         int64_t int_literal;
         double float_literal;
-        const char *ident;
+        struct
+        {
+            const char *str;
+        } identifier;
+        struct
+        {
+            const char *str;
+        } string;
         struct
         {
             const char *name;

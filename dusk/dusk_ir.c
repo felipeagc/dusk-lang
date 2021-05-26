@@ -303,6 +303,10 @@ static void duskEmitType(DuskIRModule *module, DuskType *type)
         duskEncodeInst(module, SpvOpTypeBool, &type->id, 1);
         break;
     }
+    case DUSK_TYPE_STRING: {
+        DUSK_ASSERT(0);
+        break;
+    }
     case DUSK_TYPE_INT: {
         uint32_t params[3] = {type->id, type->int_.bits, (uint32_t)type->int_.is_signed};
         duskEncodeInst(module, SpvOpTypeInt, params, DUSK_CARRAY_LENGTH(params));

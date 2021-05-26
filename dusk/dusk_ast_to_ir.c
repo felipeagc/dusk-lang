@@ -18,6 +18,7 @@ static void duskGenerateExpr(DuskIRModule *module, DuskExpr *expr)
         break;
     }
 
+    case DUSK_EXPR_STRING_LITERAL:
     case DUSK_EXPR_BOOL_TYPE:
     case DUSK_EXPR_ARRAY_TYPE:
     case DUSK_EXPR_MATRIX_TYPE:

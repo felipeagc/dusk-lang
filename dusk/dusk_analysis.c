@@ -87,7 +87,8 @@ duskExprResolveInteger(DuskAnalyzerState *state, DuskExpr *expr, int64_t *out_in
         return true;
     }
     case DUSK_EXPR_IDENT: {
-        DuskDecl *ident_decl = duskScopeLookup(duskCurrentScope(state), expr->ident);
+        DuskDecl *ident_decl =
+            duskScopeLookup(duskCurrentScope(state), expr->identifier.str);
         if (!ident_decl)
         {
             return false;
@@ -102,6 +103,7 @@ duskExprResolveInteger(DuskAnalyzerState *state, DuskExpr *expr, int64_t *out_in
         return false;
     }
 
+    case DUSK_EXPR_STRING_LITERAL:
     case DUSK_EXPR_FLOAT_LITERAL:
     case DUSK_EXPR_ARRAY_TYPE:
     case DUSK_EXPR_MATRIX_TYPE:
@@ -125,7 +127,7 @@ static bool duskIsExprAssignable(DuskAnalyzerState *state, DuskExpr *expr)
     case DUSK_EXPR_IDENT: {
         DuskScope *scope = duskCurrentScope(state);
 
-        DuskDecl *decl = duskScopeLookup(scope, expr->ident);
+        DuskDecl *decl = duskScopeLookup(scope, expr->identifier.str);
         if (!decl) return false;
 
         if (decl->kind == DUSK_DECL_VAR)
@@ -173,6 +175,10 @@ static void duskAnalyzeExpr(
         expr->as_type = duskTypeNewBasic(compiler, DUSK_TYPE_BOOL);
         break;
     }
+    case DUSK_EXPR_STRING_LITERAL: {
+        expr->type = duskTypeNewBasic(compiler, DUSK_TYPE_STRING);
+        break;
+    }
     case DUSK_EXPR_FLOAT_LITERAL: {
         if (expected_type && expected_type->kind == DUSK_TYPE_FLOAT)
         {
@@ -197,11 +203,11 @@ static void duskAnalyzeExpr(
         break;
     }
     case DUSK_EXPR_IDENT: {
-        DuskDecl *ident_decl = duskScopeLookup(duskCurrentScope(state), expr->ident);
+        DuskDecl *ident_decl = duskScopeLookup(duskCurrentScope(state), expr->identifier.str);
         if (!ident_decl)
         {
             duskAddError(
-                compiler, expr->location, "cannot find symbol '%s'", expr->ident);
+                compiler, expr->location, "cannot find symbol '%s'", expr->identifier.str);
             break;
         }
 
@@ -490,7 +496,7 @@ duskAnalyzeDecl(DuskCompiler *compiler, DuskAnalyzerState *state, DuskDecl *decl
                     continue;
                 }
 
-                if (attrib->value_exprs[0]->kind != DUSK_EXPR_IDENT)
+                if (attrib->value_exprs[0]->kind != DUSK_EXPR_STRING_LITERAL)
                 {
                     duskAddError(
                         compiler,
@@ -505,7 +511,7 @@ duskAnalyzeDecl(DuskCompiler *compiler, DuskAnalyzerState *state, DuskDecl *decl
                     .name = decl->function.link_name,
                 };
 
-                const char *stage_str = attrib->value_exprs[0]->ident;
+                const char *stage_str = attrib->value_exprs[0]->identifier.str;
                 if (strcmp(stage_str, "fragment") == 0)
                 {
                     entry_point.stage = DUSK_SHADER_STAGE_FRAGMENT;
