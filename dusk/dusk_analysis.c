@@ -1,5 +1,9 @@
 #include "dusk_internal.h"
 
+static size_t DUSK_BUILTIN_FUNCTION_PARAM_COUNTS[DUSK_BUILTIN_FUNCTION_MAX] = {
+    [DUSK_BUILTIN_FUNCTION_SAMPLER_TYPE] = 0,
+};
+
 typedef struct DuskAnalyzerState
 {
     DuskArray(DuskScope *) scope_stack;
@@ -380,7 +384,29 @@ static void duskAnalyzeExpr(
         break;
     }
     case DUSK_EXPR_BUILTIN_FUNCTION_CALL: {
-        DUSK_ASSERT(!"unimplemented");
+        size_t required_param_count =
+            DUSK_BUILTIN_FUNCTION_PARAM_COUNTS[expr->builtin_call.kind];
+        if (required_param_count != duskArrayLength(expr->builtin_call.params))
+        {
+            duskAddError(
+                compiler,
+                expr->location,
+                "invalid parameter count for builtin call: expected %zu, "
+                "instead got %zu",
+                required_param_count,
+                duskArrayLength(expr->builtin_call.params));
+            break;
+        }
+
+        switch (expr->builtin_call.kind)
+        {
+        case DUSK_BUILTIN_FUNCTION_SAMPLER_TYPE: {
+            expr->type = duskTypeNewBasic(compiler, DUSK_TYPE_TYPE);
+            expr->as_type = duskTypeNewBasic(compiler, DUSK_TYPE_SAMPLER);
+            break;
+        }
+        case DUSK_BUILTIN_FUNCTION_MAX: DUSK_ASSERT(0); break;
+        }
         break;
     }
     }

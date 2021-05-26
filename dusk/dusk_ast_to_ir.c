@@ -36,7 +36,14 @@ static void duskGenerateExpr(DuskIRModule *module, DuskExpr *expr)
     }
 
     case DUSK_EXPR_BUILTIN_FUNCTION_CALL: {
-        DUSK_ASSERT(!"unimplemented");
+        switch (expr->builtin_call.kind)
+        {
+        case DUSK_BUILTIN_FUNCTION_SAMPLER_TYPE: {
+            DUSK_ASSERT(!"not a runtime value");
+            break;
+        }
+        case DUSK_BUILTIN_FUNCTION_MAX: DUSK_ASSERT(0); break;
+        }
         break;
     }
 

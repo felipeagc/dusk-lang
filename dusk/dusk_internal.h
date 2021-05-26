@@ -543,6 +543,7 @@ duskIRLoadLvalue(DuskIRModule *module, DuskIRValue *block, DuskIRValue *value);
 // AST {{{
 typedef enum DuskBuiltinFunctionKind {
     DUSK_BUILTIN_FUNCTION_SAMPLER_TYPE,
+    DUSK_BUILTIN_FUNCTION_MAX,
 } DuskBuiltinFunctionKind;
 
 typedef struct DuskAttribute
