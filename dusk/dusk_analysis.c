@@ -226,6 +226,10 @@ static void duskAnalyzeExpr(
         expr->identifier.decl = ident_decl;
 
         expr->type = ident_decl->type;
+        if (ident_decl->kind == DUSK_DECL_TYPE)
+        {
+            expr->as_type = ident_decl->typedef_.type_expr->as_type;
+        }
         break;
     }
     case DUSK_EXPR_SCALAR_TYPE: {

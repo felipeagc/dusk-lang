@@ -1,6 +1,7 @@
-// type Hello struct {
-
-// };
+type Hello struct {
+    a: int,
+    b: float,
+};
 
 // [push_constant] let pc : struct {
 	
@@ -20,6 +21,7 @@ fn test() int {
     let b: int = 123;
     let c: int = a;
     let hey: bool = false;
+    let hello: Hello;
     a = 456;
     a = b;
     return 123;
