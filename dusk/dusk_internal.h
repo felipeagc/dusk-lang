@@ -629,6 +629,7 @@ typedef enum DuskExprKind {
     DUSK_EXPR_STRING_LITERAL,
     DUSK_EXPR_INT_LITERAL,
     DUSK_EXPR_FLOAT_LITERAL,
+    DUSK_EXPR_BOOL_LITERAL,
     DUSK_EXPR_IDENT,
     DUSK_EXPR_STRUCT_TYPE,
     DUSK_EXPR_ARRAY_TYPE,
@@ -659,6 +660,7 @@ struct DuskExpr
         } matrix_type;
         int64_t int_literal;
         double float_literal;
+        bool bool_literal;
         struct
         {
             const char *str;

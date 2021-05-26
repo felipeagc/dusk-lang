@@ -106,6 +106,7 @@ static bool duskExprResolveInteger(
         return false;
     }
 
+    case DUSK_EXPR_BOOL_LITERAL:
     case DUSK_EXPR_STRING_LITERAL:
     case DUSK_EXPR_FLOAT_LITERAL:
     case DUSK_EXPR_ARRAY_TYPE:
@@ -203,6 +204,10 @@ static void duskAnalyzeExpr(
         {
             expr->type = duskTypeNewBasic(compiler, DUSK_TYPE_UNTYPED_INT);
         }
+        break;
+    }
+    case DUSK_EXPR_BOOL_LITERAL: {
+        expr->type = duskTypeNewBasic(compiler, DUSK_TYPE_BOOL);
         break;
     }
     case DUSK_EXPR_IDENT: {

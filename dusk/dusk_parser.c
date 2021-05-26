@@ -25,6 +25,8 @@ typedef enum TokenType {
     TOKEN_IF,
     TOKEN_ELSE,
     TOKEN_SWITCH,
+    TOKEN_TRUE,
+    TOKEN_FALSE,
 
     TOKEN_VOID,
     TOKEN_BOOL,
@@ -150,6 +152,8 @@ static const char *tokenTypeToString(TokenType token_type)
     case TOKEN_IF: return "if";
     case TOKEN_ELSE: return "else";
     case TOKEN_SWITCH: return "switch";
+    case TOKEN_TRUE: return "true";
+    case TOKEN_FALSE: return "false";
 
     case TOKEN_VOID: return "void";
     case TOKEN_BOOL: return "bool";
@@ -250,6 +254,8 @@ static const char *tokenToString(DuskAllocator *allocator, const Token *token)
     case TOKEN_IF: return "if";
     case TOKEN_ELSE: return "else";
     case TOKEN_SWITCH: return "switch";
+    case TOKEN_TRUE: return "true";
+    case TOKEN_FALSE: return "false";
 
     case TOKEN_VOID: return "void";
     case TOKEN_BOOL: return "bool";
@@ -777,12 +783,17 @@ begin:
                 {
                     token->type = TOKEN_FN;
                 }
-                else if (
-                    ident_length == 5 &&
-                    strncmp(ident_start, "float", ident_length) == 0)
+                else if (ident_length == 5)
                 {
-                    token->type = TOKEN_SCALAR_TYPE;
-                    token->scalar_type = DUSK_SCALAR_TYPE_FLOAT;
+                    if (strncmp(ident_start, "float", ident_length) == 0)
+                    {
+                        token->type = TOKEN_SCALAR_TYPE;
+                        token->scalar_type = DUSK_SCALAR_TYPE_FLOAT;
+                    }
+                    else if (strncmp(ident_start, "false", ident_length) == 0)
+                    {
+                        token->type = TOKEN_FALSE;
+                    }
                 }
                 else if (ident_length == 6)
                 {
@@ -974,6 +985,12 @@ begin:
                     strncmp(ident_start, "type", ident_length) == 0)
                 {
                     token->type = TOKEN_TYPE;
+                }
+                else if (
+                    ident_length == 4 &&
+                    strncmp(ident_start, "true", ident_length) == 0)
+                {
+                    token->type = TOKEN_TRUE;
                 }
                 break;
             }
@@ -1286,6 +1303,16 @@ static DuskExpr *parsePrimaryExpr(DuskCompiler *compiler, TokenizerState *state)
     case TOKEN_FLOAT_LITERAL: {
         expr->kind = DUSK_EXPR_FLOAT_LITERAL;
         expr->int_literal = token.float_;
+        break;
+    }
+    case TOKEN_TRUE: {
+        expr->kind = DUSK_EXPR_BOOL_LITERAL;
+        expr->bool_literal = true;
+        break;
+    }
+    case TOKEN_FALSE: {
+        expr->kind = DUSK_EXPR_BOOL_LITERAL;
+        expr->bool_literal = false;
         break;
     }
     case TOKEN_IDENT: {
