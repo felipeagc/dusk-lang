@@ -427,6 +427,8 @@ typedef enum DuskIRValueKind {
     DUSK_IR_VALUE_BLOCK,
     DUSK_IR_VALUE_VARIABLE,
     DUSK_IR_VALUE_RETURN,
+    DUSK_IR_VALUE_STORE,
+    DUSK_IR_VALUE_LOAD,
 } DuskIRValueKind;
 
 struct DuskIRValue
@@ -468,6 +470,15 @@ struct DuskIRValue
         {
             DuskIRValue *value;
         } return_;
+        struct
+        {
+            DuskIRValue *pointer;
+            DuskIRValue *value;
+        } store;
+        struct
+        {
+            DuskIRValue *pointer;
+        } load;
     };
 };
 
@@ -516,6 +527,9 @@ DuskIRValue *duskIRConstFloatCreate(
     DuskIRModule *module, DuskType *type, double double_value);
 
 DuskIRValue *duskIRCreateReturn(DuskIRModule *module, DuskIRValue *value);
+DuskIRValue *duskIRCreateStore(
+    DuskIRModule *module, DuskIRValue *pointer, DuskIRValue *value);
+DuskIRValue *duskIRCreateLoad(DuskIRModule *module, DuskIRValue *pointer);
 // }}}
 
 // AST {{{

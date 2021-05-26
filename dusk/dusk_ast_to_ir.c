@@ -75,9 +75,9 @@ duskGenerateStmt(DuskIRModule *module, DuskIRValue *function, DuskStmt *stmt)
 static void duskGenerateLocalDecl(
     DuskIRModule *module, DuskIRValue *function, DuskDecl *decl)
 {
-    /* DuskIRValue *block = */
-    /*     function->function */
-    /*         .blocks[duskArrayLength(function->function.blocks) - 1]; */
+    DuskIRValue *block =
+        function->function
+            .blocks[duskArrayLength(function->function.blocks) - 1];
 
     DUSK_ASSERT(decl->type);
     if (decl->type)
@@ -95,7 +95,15 @@ static void duskGenerateLocalDecl(
             module, decl->type, DUSK_STORAGE_CLASS_FUNCTION);
         duskArrayPush(&function->function.variables, decl->ir_value);
 
-        // TODO: assign
+        if (decl->var.value_expr)
+        {
+            duskGenerateExpr(module, decl->var.value_expr);
+
+            DuskIRValue *store = duskIRCreateStore(
+                module, decl->ir_value, decl->var.value_expr->ir_value);
+            duskArrayPush(&block->block.insts, store);
+        }
+
         break;
     }
     case DUSK_DECL_FUNCTION:

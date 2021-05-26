@@ -323,6 +323,28 @@ DuskIRValue *duskIRCreateReturn(DuskIRModule *module, DuskIRValue *value)
     return inst;
 }
 
+DuskIRValue *duskIRCreateStore(
+    DuskIRModule *module, DuskIRValue *pointer, DuskIRValue *value)
+{
+    DuskIRValue *inst = DUSK_NEW(module->allocator, DuskIRValue);
+    inst->type = duskTypeNewBasic(module->compiler, DUSK_TYPE_VOID);
+    inst->kind = DUSK_IR_VALUE_STORE;
+    inst->store.pointer = pointer;
+    inst->store.value = value;
+    return inst;
+}
+
+DuskIRValue *duskIRCreateLoad(DuskIRModule *module, DuskIRValue *pointer)
+{
+    DUSK_ASSERT(pointer->type->kind == DUSK_TYPE_POINTER);
+
+    DuskIRValue *inst = DUSK_NEW(module->allocator, DuskIRValue);
+    inst->type = pointer->type->pointer.sub;
+    inst->kind = DUSK_IR_VALUE_LOAD;
+    inst->load.pointer = pointer;
+    return inst;
+}
+
 static void duskEmitType(DuskIRModule *module, DuskType *type)
 {
     if (!type->emit) return;
@@ -670,6 +692,25 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
             DuskIRValue *inst = value->block.insts[i];
             duskEmitValue(module, inst);
         }
+        break;
+    }
+    case DUSK_IR_VALUE_STORE: {
+        uint32_t params[2] = {
+            value->store.pointer->id,
+            value->store.value->id,
+        };
+
+        duskEncodeInst(module, SpvOpStore, params, DUSK_CARRAY_LENGTH(params));
+        break;
+    }
+    case DUSK_IR_VALUE_LOAD: {
+        uint32_t params[3] = {
+            value->type->id,
+            value->id,
+            value->load.pointer->id,
+        };
+
+        duskEncodeInst(module, SpvOpLoad, params, DUSK_CARRAY_LENGTH(params));
         break;
     }
     }
