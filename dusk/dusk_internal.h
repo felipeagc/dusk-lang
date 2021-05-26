@@ -500,7 +500,6 @@ typedef struct DuskAttribute
 } DuskAttribute;
 
 typedef enum DuskDeclKind {
-    DUSK_DECL_MODULE,
     DUSK_DECL_FUNCTION,
     DUSK_DECL_VAR,
     DUSK_DECL_TYPE,
@@ -517,11 +516,6 @@ struct DuskDecl
 
     union
     {
-        struct
-        {
-            DuskScope *scope;
-            DuskArray(DuskDecl *) decls;
-        } module;
         struct
         {
             const char *link_name;

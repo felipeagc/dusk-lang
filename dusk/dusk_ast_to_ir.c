@@ -8,9 +8,13 @@ static void duskGenerateExpr(DuskIRModule *module, DuskExpr *expr)
         break;
     }
     case DUSK_EXPR_INT_LITERAL: {
+        DUSK_ASSERT(expr->type->kind != DUSK_TYPE_UNTYPED_INT && expr->type->kind != DUSK_TYPE_UNTYPED_FLOAT);
+        expr->ir_value = duskIRConstIntCreate(module, expr->type, (uint64_t)expr->int_literal);
         break;
     }
     case DUSK_EXPR_FLOAT_LITERAL: {
+        DUSK_ASSERT(expr->type->kind != DUSK_TYPE_UNTYPED_INT && expr->type->kind != DUSK_TYPE_UNTYPED_FLOAT);
+        expr->ir_value = duskIRConstFloatCreate(module, expr->type, (double)expr->float_literal);
         break;
     }
 
@@ -38,6 +42,7 @@ static void duskGenerateStmt(DuskIRModule *module, DuskIRValue *function, DuskSt
         {
             duskGenerateExpr(module, stmt->return_.expr);
             returned_value = stmt->return_.expr->ir_value;
+            DUSK_ASSERT(returned_value);
         }
 
         DuskIRValue *return_ = duskIRCreateReturn(module, returned_value);
@@ -105,14 +110,6 @@ static void duskGenerateDecl(DuskIRModule *module, DuskDecl *decl)
 
         decl->ir_value = duskIRVariableCreate(module, decl->type, storage_class);
         duskArrayPush(&module->globals, decl->ir_value);
-        break;
-    }
-    case DUSK_DECL_MODULE: {
-        for (size_t i = 0; i < duskArrayLength(decl->module.decls); ++i)
-        {
-            DuskDecl *sub_decl = decl->module.decls[i];
-            duskGenerateDecl(module, sub_decl);
-        }
         break;
     }
     case DUSK_DECL_TYPE: break;

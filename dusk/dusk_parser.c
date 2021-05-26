@@ -18,7 +18,6 @@ typedef enum TokenType {
     TOKEN_STRUCT,
     TOKEN_TYPE,
     TOKEN_IMPORT,
-    TOKEN_MODULE,
     TOKEN_BREAK,
     TOKEN_CONTINUE,
     TOKEN_RETURN,
@@ -144,7 +143,6 @@ static const char *tokenTypeToString(TokenType token_type)
     case TOKEN_STRUCT: return "struct";
     case TOKEN_TYPE: return "type";
     case TOKEN_IMPORT: return "import";
-    case TOKEN_MODULE: return "module";
     case TOKEN_BREAK: return "break";
     case TOKEN_CONTINUE: return "continue";
     case TOKEN_RETURN: return "return";
@@ -242,7 +240,6 @@ static const char *tokenToString(DuskAllocator *allocator, const Token *token)
     case TOKEN_STRUCT: return "struct";
     case TOKEN_TYPE: return "type";
     case TOKEN_IMPORT: return "import";
-    case TOKEN_MODULE: return "module";
     case TOKEN_BREAK: return "break";
     case TOKEN_CONTINUE: return "continue";
     case TOKEN_RETURN: return "return";
@@ -911,14 +908,6 @@ tokenizerNextToken(DuskAllocator *allocator, TokenizerState state, Token *token)
                 }
                 break;
             }
-            case 'm': {
-                if (ident_length == 6 &&
-                    strncmp(ident_start, "module", ident_length) == 0)
-                {
-                    token->type = TOKEN_MODULE;
-                }
-                break;
-            }
             case 's': {
                 if (ident_length == 6 &&
                     strncmp(ident_start, "struct", ident_length) == 0)
@@ -1506,28 +1495,6 @@ static DuskDecl *parseTopLevelDecl(DuskCompiler *compiler, TokenizerState *state
 
     switch (next_token.type)
     {
-    case TOKEN_MODULE: {
-        consumeToken(compiler, state, TOKEN_MODULE);
-        Token name_token = consumeToken(compiler, state, TOKEN_IDENT);
-        consumeToken(compiler, state, TOKEN_LCURLY);
-
-        decl->kind = DUSK_DECL_MODULE;
-        decl->name = name_token.str;
-        decl->module.decls = duskArrayCreate(allocator, DuskDecl *);
-
-        tokenizerNextToken(allocator, *state, &next_token);
-        while (next_token.type != TOKEN_RCURLY)
-        {
-            DuskDecl *sub_decl = parseTopLevelDecl(compiler, state);
-            duskArrayPush(&decl->module.decls, sub_decl);
-
-            tokenizerNextToken(allocator, *state, &next_token);
-        }
-
-        consumeToken(compiler, state, TOKEN_RCURLY);
-
-        break;
-    }
     case TOKEN_FN: {
         consumeToken(compiler, state, TOKEN_FN);
 

@@ -29,15 +29,11 @@ int main(int argc, char *argv[])
     (void)argc;
     (void)argv;
 
-    struct optparse_long longopts[] = {
-        {"shader-stage", 'T', OPTPARSE_REQUIRED},
-        {"entry-point", 'E', OPTPARSE_REQUIRED},
-        {"output", 'o', OPTPARSE_REQUIRED},
-        {0}};
+    struct optparse_long longopts[] = {{"output", 'o', OPTPARSE_REQUIRED}, {0}};
 
-    char *path = NULL;
+    char *out_path = NULL;
+    char *in_path = NULL;
 
-    char *arg;
     int option;
     struct optparse options;
 
@@ -46,36 +42,42 @@ int main(int argc, char *argv[])
     {
         switch (option)
         {
-        case 'T': break;
-        case 'E': break;
-        case 'o': break;
+        case 'o': {
+            if (!options.optarg) {
+                printf("wtf\n");
+            }
+            printf("%s\n", options.optarg);
+            size_t out_path_len = strlen(options.optarg);
+            out_path = malloc(out_path_len + 1);
+            memcpy(out_path, options.optarg, out_path_len + 1);
+            break;
+        }
         case '?':
             fprintf(stderr, "%s: %s\n", argv[0], options.errmsg);
             exit(EXIT_FAILURE);
+            break;
         }
     }
 
+    char *arg;
     while ((arg = optparse_arg(&options)))
     {
-        path = arg;
+        in_path = arg;
     }
 
-    if (!path)
+    if (!in_path)
     {
-        fprintf(
-            stderr,
-            "Usage: %s [--shader-stage <stage>] [--entry-point <entry point>] [-o "
-            "<output path>] <filename>\n", argv[0]);
+        fprintf(stderr, "Usage: %s [-o <output path>] <filename>\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
     DuskCompiler *compiler = duskCompilerCreate();
 
     size_t text_size = 0;
-    const char *text = loadFile(path, &text_size);
+    const char *text = loadFile(in_path, &text_size);
 
     size_t spirv_size = 0;
-    uint8_t *spirv = duskCompile(compiler, path, text, text_size, &spirv_size);
+    uint8_t *spirv = duskCompile(compiler, in_path, text, text_size, &spirv_size);
 
     if (!spirv)
     {
@@ -83,7 +85,7 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    FILE *f = fopen("a.spv", "wb");
+    FILE *f = fopen(out_path ? out_path : "a.spv", "wb");
     if (!f)
     {
         fprintf(stderr, "Failed to open output file\n");
@@ -95,6 +97,10 @@ int main(int argc, char *argv[])
     fclose(f);
 
     duskCompilerDestroy(compiler);
+    if (out_path)
+    {
+        free(out_path);
+    }
 
     return 0;
 }

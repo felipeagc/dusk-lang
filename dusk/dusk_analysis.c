@@ -458,37 +458,6 @@ duskAnalyzeDecl(DuskCompiler *compiler, DuskAnalyzerState *state, DuskDecl *decl
 
     switch (decl->kind)
     {
-    case DUSK_DECL_MODULE: {
-        DUSK_ASSERT(decl->module.scope == NULL);
-
-        decl->module.scope = duskScopeCreate(
-            allocator, duskCurrentScope(state), DUSK_SCOPE_OWNER_TYPE_MODULE, decl);
-
-        if (duskArrayLength(state->module_stack) > 0)
-        {
-            duskAddError(compiler, decl->location, "nested modules are not supported");
-        }
-
-        duskArrayPush(&state->scope_stack, decl->module.scope);
-        duskArrayPush(&state->module_stack, decl);
-
-        for (size_t i = 0; i < duskArrayLength(decl->module.decls); ++i)
-        {
-            DuskDecl *sub_decl = decl->module.decls[i];
-            duskTryRegisterDecl(compiler, state, sub_decl);
-        }
-
-        for (size_t i = 0; i < duskArrayLength(decl->module.decls); ++i)
-        {
-            DuskDecl *sub_decl = decl->module.decls[i];
-            duskAnalyzeDecl(compiler, state, sub_decl);
-        }
-
-        duskArrayPop(&state->module_stack);
-        duskArrayPop(&state->scope_stack);
-
-        break;
-    }
     case DUSK_DECL_FUNCTION: {
         DUSK_ASSERT(decl->function.scope == NULL);
 

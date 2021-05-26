@@ -7,30 +7,26 @@ type Hello struct {
 };
 
 [binding(0)] let hello : Hello; 
-[binding(1)] let image : @Image(float3);
+// [binding(1)] let image : @Image(float3);
 [binding(2)] let sampler : @Sampler;
 
-module Vertex {
-	[input, location(0)] let in_pos : float3;
-	[input, location(1)] let in_uv : float2;
+[input, location(0)] let in_pos : float3;
+[input, location(1)] let in_uv : float2;
+[output, builtin_gl_position] let out_position : float4;
+[output, location(0)] let out_uv : float2;
 
-	[output, builtin_gl_position] let out_position : float4;
-	[output, location(0)] let out_uv : float2;
-
-	fn main() void {
-		out_uv = in_uv;
-		out_position = float4(in_pos, 1);
-	}
+[entry_point("vertex")]
+fn vs_main() void {
+    out_uv = in_uv;
+    out_position = float4(in_pos, 1);
 }
 
-module Fragment {
-	[input, location(0)] let uv : float2;
+[input, location(0)] let uv : float2;
+[output, location(0)] let out_color : float4;
 
-	[output, location(0)] let out_color : float4;
+[entry_point("fragment")]
+fn fs_main() void {
+    let color: float4 = @sample(sampler, image, uv);
 
-	fn main() void {
-		let color: float4 = @sample(sampler, image, uv);
-
-		out_color = float4(color, 1.0);
-	}
+    out_color = float4(color, 1.0);
 }
