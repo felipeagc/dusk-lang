@@ -38,6 +38,12 @@ static void duskGenerateExpr(DuskIRModule *module, DuskExpr *expr)
     case DUSK_EXPR_BUILTIN_FUNCTION_CALL: {
         switch (expr->builtin_call.kind)
         {
+        case DUSK_BUILTIN_FUNCTION_IMAGE_1D_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_2D_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_2D_ARRAY_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_3D_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_TYPE:
         case DUSK_BUILTIN_FUNCTION_SAMPLER_TYPE: {
             DUSK_ASSERT(!"not a runtime value");
             break;

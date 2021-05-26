@@ -415,6 +415,14 @@ DuskType *duskTypeNewFunction(
     DuskArray(DuskType *) param_types);
 DuskType *duskTypeNewPointer(
     DuskCompiler *compiler, DuskType *sub, DuskStorageClass storage_class);
+DuskType *duskTypeNewImage(
+    DuskCompiler *compiler,
+    DuskType *sampled_type,
+    DuskImageDimension dim,
+    bool depth,
+    bool arrayed,
+    bool multisampled,
+    bool sampled);
 
 void duskTypeMarkNotDead(DuskType *type);
 // }}}
@@ -543,6 +551,12 @@ duskIRLoadLvalue(DuskIRModule *module, DuskIRValue *block, DuskIRValue *value);
 // AST {{{
 typedef enum DuskBuiltinFunctionKind {
     DUSK_BUILTIN_FUNCTION_SAMPLER_TYPE,
+    DUSK_BUILTIN_FUNCTION_IMAGE_1D_TYPE,
+    DUSK_BUILTIN_FUNCTION_IMAGE_2D_TYPE,
+    DUSK_BUILTIN_FUNCTION_IMAGE_2D_ARRAY_TYPE,
+    DUSK_BUILTIN_FUNCTION_IMAGE_3D_TYPE,
+    DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_TYPE,
+    DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_TYPE,
     DUSK_BUILTIN_FUNCTION_MAX,
 } DuskBuiltinFunctionKind;
 

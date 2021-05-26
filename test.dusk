@@ -8,7 +8,8 @@ type Hello struct {
 // };
 
 [binding(0)] let hello : Hello; 
-// [binding(1)] let image : @Image(float3);
+[binding(1)] let image : @Image2D(float);
+[binding(1)] let image2 : @Image3D(float);
 [binding(2)] let sampler : @Sampler();
 
 [input, location(0)] let in_pos : float3;

@@ -2,6 +2,12 @@
 
 static size_t DUSK_BUILTIN_FUNCTION_PARAM_COUNTS[DUSK_BUILTIN_FUNCTION_MAX] = {
     [DUSK_BUILTIN_FUNCTION_SAMPLER_TYPE] = 0,
+    [DUSK_BUILTIN_FUNCTION_IMAGE_1D_TYPE] = 1,
+    [DUSK_BUILTIN_FUNCTION_IMAGE_2D_TYPE] = 1,
+    [DUSK_BUILTIN_FUNCTION_IMAGE_2D_ARRAY_TYPE] = 1,
+    [DUSK_BUILTIN_FUNCTION_IMAGE_3D_TYPE] = 1,
+    [DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_TYPE] = 1,
+    [DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_TYPE] = 1,
 };
 
 typedef struct DuskAnalyzerState
@@ -403,6 +409,108 @@ static void duskAnalyzeExpr(
         case DUSK_BUILTIN_FUNCTION_SAMPLER_TYPE: {
             expr->type = duskTypeNewBasic(compiler, DUSK_TYPE_TYPE);
             expr->as_type = duskTypeNewBasic(compiler, DUSK_TYPE_SAMPLER);
+            break;
+        }
+        case DUSK_BUILTIN_FUNCTION_IMAGE_1D_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_2D_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_2D_ARRAY_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_3D_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_TYPE: {
+            DuskType *type_type = duskTypeNewBasic(compiler, DUSK_TYPE_TYPE);
+            duskAnalyzeExpr(
+                compiler,
+                state,
+                expr->builtin_call.params[0],
+                type_type,
+                false);
+            DuskType *sampled_type = expr->builtin_call.params[0]->as_type;
+
+            if (!sampled_type)
+            {
+                DUSK_ASSERT(duskArrayLength(compiler->errors) > 0);
+            }
+
+            if (sampled_type->kind != DUSK_TYPE_VOID &&
+                sampled_type->kind != DUSK_TYPE_FLOAT &&
+                sampled_type->kind != DUSK_TYPE_INT)
+            {
+                duskAddError(
+                    compiler,
+                    expr->builtin_call.params[0]->location,
+                    "expected a scalar type or void, instead got '%s'",
+                    duskTypeToPrettyString(allocator, sampled_type));
+                break;
+            }
+
+            DuskImageDimension dim = DUSK_IMAGE_DIMENSION_2D;
+            bool depth = false;
+            bool arrayed = false;
+            bool multisampled = false;
+            bool sampled = false;
+
+            switch (expr->builtin_call.kind)
+            {
+            case DUSK_BUILTIN_FUNCTION_IMAGE_1D_TYPE: {
+                dim = DUSK_IMAGE_DIMENSION_1D;
+                depth = false;
+                arrayed = false;
+                multisampled = false;
+                sampled = true;
+                break;
+            }
+            case DUSK_BUILTIN_FUNCTION_IMAGE_2D_TYPE: {
+                dim = DUSK_IMAGE_DIMENSION_2D;
+                depth = false;
+                arrayed = false;
+                multisampled = false;
+                sampled = true;
+                break;
+            }
+            case DUSK_BUILTIN_FUNCTION_IMAGE_2D_ARRAY_TYPE: {
+                dim = DUSK_IMAGE_DIMENSION_2D;
+                depth = false;
+                arrayed = true;
+                multisampled = false;
+                sampled = true;
+                break;
+            }
+            case DUSK_BUILTIN_FUNCTION_IMAGE_3D_TYPE: {
+                dim = DUSK_IMAGE_DIMENSION_3D;
+                depth = false;
+                arrayed = false;
+                multisampled = false;
+                sampled = true;
+                break;
+            }
+            case DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_TYPE: {
+                dim = DUSK_IMAGE_DIMENSION_CUBE;
+                depth = false;
+                arrayed = false;
+                multisampled = false;
+                sampled = true;
+                break;
+            }
+            case DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_TYPE: {
+                dim = DUSK_IMAGE_DIMENSION_CUBE;
+                depth = false;
+                arrayed = true;
+                multisampled = false;
+                sampled = true;
+                break;
+            }
+            default: DUSK_ASSERT(0); break;
+            }
+
+            expr->type = duskTypeNewBasic(compiler, DUSK_TYPE_TYPE);
+            expr->as_type = duskTypeNewImage(
+                compiler,
+                sampled_type,
+                dim,
+                depth,
+                arrayed,
+                multisampled,
+                sampled);
             break;
         }
         case DUSK_BUILTIN_FUNCTION_MAX: DUSK_ASSERT(0); break;

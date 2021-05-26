@@ -59,25 +59,34 @@ const char *duskTypeToPrettyString(DuskAllocator *allocator, DuskType *type)
         break;
     }
     case DUSK_TYPE_VECTOR: {
-        const char *sub_str = duskTypeToPrettyString(allocator, type->vector.sub);
-        type->pretty_string = duskSprintf(allocator, "%s%u", sub_str, type->vector.size);
+        const char *sub_str =
+            duskTypeToPrettyString(allocator, type->vector.sub);
+        type->pretty_string =
+            duskSprintf(allocator, "%s%u", sub_str, type->vector.size);
         break;
     }
     case DUSK_TYPE_MATRIX: {
         DuskType *col_type = type->matrix.col_type;
         DUSK_ASSERT(col_type->kind == DUSK_TYPE_VECTOR);
-        const char *sub_str = duskTypeToPrettyString(allocator, col_type->vector.sub);
+        const char *sub_str =
+            duskTypeToPrettyString(allocator, col_type->vector.sub);
         type->pretty_string = duskSprintf(
-            allocator, "%s%ux%u", sub_str, type->matrix.cols, col_type->vector.size);
+            allocator,
+            "%s%ux%u",
+            sub_str,
+            type->matrix.cols,
+            col_type->vector.size);
         break;
     }
     case DUSK_TYPE_RUNTIME_ARRAY: {
-        const char *sub_str = duskTypeToPrettyString(allocator, type->array.sub);
+        const char *sub_str =
+            duskTypeToPrettyString(allocator, type->array.sub);
         type->pretty_string = duskSprintf(allocator, "[]%s", sub_str);
         break;
     }
     case DUSK_TYPE_ARRAY: {
-        const char *sub_str = duskTypeToPrettyString(allocator, type->array.sub);
+        const char *sub_str =
+            duskTypeToPrettyString(allocator, type->array.sub);
         type->pretty_string =
             duskSprintf(allocator, "[%zu]%s", type->array.size, sub_str);
         break;
@@ -93,12 +102,14 @@ const char *duskTypeToPrettyString(DuskAllocator *allocator, DuskType *type)
 
             duskStringBuilderAppend(sb, "struct{");
 
-            for (size_t i = 0; i < duskArrayLength(type->struct_.field_types); ++i)
+            for (size_t i = 0; i < duskArrayLength(type->struct_.field_types);
+                 ++i)
             {
                 if (i > 0) duskStringBuilderAppend(sb, ", ");
 
                 DuskType *field_type = type->struct_.field_types[i];
-                const char *field_string = duskTypeToPrettyString(allocator, field_type);
+                const char *field_string =
+                    duskTypeToPrettyString(allocator, field_type);
                 duskStringBuilderAppend(sb, field_string);
             }
 
@@ -119,7 +130,8 @@ const char *duskTypeToPrettyString(DuskAllocator *allocator, DuskType *type)
             if (i > 0) duskStringBuilderAppend(sb, ", ");
 
             DuskType *field_type = type->function.param_types[i];
-            const char *field_string = duskTypeToPrettyString(allocator, field_type);
+            const char *field_string =
+                duskTypeToPrettyString(allocator, field_type);
             duskStringBuilderAppend(sb, field_string);
         }
 
@@ -133,7 +145,8 @@ const char *duskTypeToPrettyString(DuskAllocator *allocator, DuskType *type)
         break;
     }
     case DUSK_TYPE_POINTER: {
-        const char *sub_str = duskTypeToPrettyString(allocator, type->pointer.sub);
+        const char *sub_str =
+            duskTypeToPrettyString(allocator, type->pointer.sub);
         type->pretty_string = duskSprintf(allocator, "*%s", sub_str);
         break;
     }
@@ -162,9 +175,21 @@ const char *duskTypeToPrettyString(DuskAllocator *allocator, DuskType *type)
         switch (type->image.dim)
         {
         case DUSK_IMAGE_DIMENSION_1D: image_str = "@Image1D"; break;
-        case DUSK_IMAGE_DIMENSION_2D: image_str = "@Image2D"; break;
+        case DUSK_IMAGE_DIMENSION_2D: {
+            if (type->image.arrayed)
+                image_str = "@Image2DArray";
+            else
+                image_str = "@Image2D";
+            break;
+        }
         case DUSK_IMAGE_DIMENSION_3D: image_str = "@Image3D"; break;
-        case DUSK_IMAGE_DIMENSION_CUBE: image_str = "@ImageCube"; break;
+        case DUSK_IMAGE_DIMENSION_CUBE: {
+            if (type->image.arrayed)
+                image_str = "@ImageCubeArray";
+            else
+                image_str = "@ImageCube";
+            break;
+        }
         }
 
         const char *sampled_type_str =
@@ -227,14 +252,15 @@ static const char *duskTypeToString(DuskAllocator *allocator, DuskType *type)
     }
     case DUSK_TYPE_VECTOR: {
         const char *sub_str = duskTypeToString(allocator, type->vector.sub);
-        type->string =
-            duskSprintf(allocator, "@vector(%s,%u)", sub_str, type->vector.size);
+        type->string = duskSprintf(
+            allocator, "@vector(%s,%u)", sub_str, type->vector.size);
         break;
     }
     case DUSK_TYPE_MATRIX: {
-        const char *sub_str = duskTypeToString(allocator, type->matrix.col_type);
-        type->string =
-            duskSprintf(allocator, "@matrix(%u,%s)", type->matrix.cols, sub_str);
+        const char *sub_str =
+            duskTypeToString(allocator, type->matrix.col_type);
+        type->string = duskSprintf(
+            allocator, "@matrix(%u,%s)", type->matrix.cols, sub_str);
         break;
     }
     case DUSK_TYPE_RUNTIME_ARRAY: {
@@ -260,12 +286,14 @@ static const char *duskTypeToString(DuskAllocator *allocator, DuskType *type)
 
             duskStringBuilderAppend(sb, "@struct(");
 
-            for (size_t i = 0; i < duskArrayLength(type->struct_.field_types); ++i)
+            for (size_t i = 0; i < duskArrayLength(type->struct_.field_types);
+                 ++i)
             {
                 if (i > 0) duskStringBuilderAppend(sb, ",");
 
                 DuskType *field_type = type->struct_.field_types[i];
-                const char *field_string = duskTypeToString(allocator, field_type);
+                const char *field_string =
+                    duskTypeToString(allocator, field_type);
                 duskStringBuilderAppend(sb, field_string);
             }
 
@@ -309,14 +337,19 @@ static const char *duskTypeToString(DuskAllocator *allocator, DuskType *type)
         switch (type->pointer.storage_class)
         {
         case DUSK_STORAGE_CLASS_UNIFORM: storage_class = "uniform"; break;
-        case DUSK_STORAGE_CLASS_UNIFORM_CONSTANT: storage_class = "uniform_constant"; break;
+        case DUSK_STORAGE_CLASS_UNIFORM_CONSTANT:
+            storage_class = "uniform_constant";
+            break;
         case DUSK_STORAGE_CLASS_PARAMETER: storage_class = "parameter"; break;
         case DUSK_STORAGE_CLASS_FUNCTION: storage_class = "function"; break;
         case DUSK_STORAGE_CLASS_INPUT: storage_class = "input"; break;
         case DUSK_STORAGE_CLASS_OUTPUT: storage_class = "output"; break;
-        case DUSK_STORAGE_CLASS_PUSH_CONSTANT: storage_class = "push_constant"; break;
+        case DUSK_STORAGE_CLASS_PUSH_CONSTANT:
+            storage_class = "push_constant";
+            break;
         }
-        type->string = duskSprintf(allocator, "@ptr(%s, %s)", sub_str, storage_class);
+        type->string =
+            duskSprintf(allocator, "@ptr(%s, %s)", sub_str, storage_class);
         break;
     }
     case DUSK_TYPE_SAMPLER: {
@@ -328,8 +361,9 @@ static const char *duskTypeToString(DuskAllocator *allocator, DuskType *type)
             duskTypeToString(allocator, type->image.sampled_type);
         type->string = duskSprintf(
             allocator,
-            "@image(%s, %u, %u, %u, %u)",
+            "@image(%s, %u, %u, %u, %u, %u)",
             sampled_type_str,
+            (uint32_t)type->image.dim,
             type->image.depth,
             type->image.arrayed,
             type->image.multisampled,
@@ -339,7 +373,8 @@ static const char *duskTypeToString(DuskAllocator *allocator, DuskType *type)
     case DUSK_TYPE_SAMPLED_IMAGE: {
         const char *image_type_str =
             duskTypeToString(allocator, type->sampled_image.image_type);
-        type->string = duskSprintf(allocator, "@sampled_image(%s)", image_type_str);
+        type->string =
+            duskSprintf(allocator, "@sampled_image(%s)", image_type_str);
         break;
     }
     }
@@ -424,7 +459,8 @@ DuskType *duskTypeNewScalar(DuskCompiler *compiler, DuskScalarType scalar_type)
     return duskTypeGetCached(compiler, type);
 }
 
-DuskType *duskTypeNewVector(DuskCompiler *compiler, DuskType *sub, uint32_t size)
+DuskType *
+duskTypeNewVector(DuskCompiler *compiler, DuskType *sub, uint32_t size)
 {
     DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
     DuskType *type = DUSK_NEW(allocator, DuskType);
@@ -434,7 +470,8 @@ DuskType *duskTypeNewVector(DuskCompiler *compiler, DuskType *sub, uint32_t size
     return duskTypeGetCached(compiler, type);
 }
 
-DuskType *duskTypeNewMatrix(DuskCompiler *compiler, DuskType *col_type, uint32_t cols)
+DuskType *
+duskTypeNewMatrix(DuskCompiler *compiler, DuskType *col_type, uint32_t cols)
 {
     DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
     DuskType *type = DUSK_NEW(allocator, DuskType);
@@ -488,7 +525,9 @@ DuskType *duskTypeNewStruct(
 }
 
 DuskType *duskTypeNewFunction(
-    DuskCompiler *compiler, DuskType *return_type, DuskArray(DuskType *) param_types)
+    DuskCompiler *compiler,
+    DuskType *return_type,
+    DuskArray(DuskType *) param_types)
 {
     DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
     DuskType *type = DUSK_NEW(allocator, DuskType);
@@ -498,14 +537,35 @@ DuskType *duskTypeNewFunction(
     return duskTypeGetCached(compiler, type);
 }
 
-DuskType *
-duskTypeNewPointer(DuskCompiler *compiler, DuskType *sub, DuskStorageClass storage_class)
+DuskType *duskTypeNewPointer(
+    DuskCompiler *compiler, DuskType *sub, DuskStorageClass storage_class)
 {
     DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
     DuskType *type = DUSK_NEW(allocator, DuskType);
     type->kind = DUSK_TYPE_POINTER;
     type->pointer.sub = sub;
     type->pointer.storage_class = storage_class;
+    return duskTypeGetCached(compiler, type);
+}
+
+DuskType *duskTypeNewImage(
+    DuskCompiler *compiler,
+    DuskType *sampled_type,
+    DuskImageDimension dim,
+    bool depth,
+    bool arrayed,
+    bool multisampled,
+    bool sampled)
+{
+    DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
+    DuskType *type = DUSK_NEW(allocator, DuskType);
+    type->kind = DUSK_TYPE_IMAGE;
+    type->image.sampled_type = sampled_type;
+    type->image.dim = (uint32_t)dim;
+    type->image.depth = (uint32_t)depth;
+    type->image.arrayed = (uint32_t)arrayed;
+    type->image.multisampled = (uint32_t)multisampled;
+    type->image.sampled = (uint32_t)sampled;
     return duskTypeGetCached(compiler, type);
 }
 
