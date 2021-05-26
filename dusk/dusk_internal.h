@@ -541,6 +541,10 @@ duskIRLoadLvalue(DuskIRModule *module, DuskIRValue *block, DuskIRValue *value);
 // }}}
 
 // AST {{{
+typedef enum DuskBuiltinFunctionKind {
+    DUSK_BUILTIN_FUNCTION_SAMPLER_TYPE,
+} DuskBuiltinFunctionKind;
+
 typedef struct DuskAttribute
 {
     const char *name;
@@ -634,6 +638,7 @@ typedef enum DuskExprKind {
     DUSK_EXPR_STRUCT_TYPE,
     DUSK_EXPR_ARRAY_TYPE,
     DUSK_EXPR_RUNTIME_ARRAY_TYPE,
+    DUSK_EXPR_BUILTIN_FUNCTION_CALL,
 } DuskExprKind;
 
 struct DuskExpr
@@ -681,6 +686,11 @@ struct DuskExpr
             DuskExpr *sub_expr;
             DuskExpr *size_expr;
         } array_type;
+        struct
+        {
+            DuskBuiltinFunctionKind kind;
+            DuskArray(DuskExpr *) params;
+        } builtin_call;
     };
 };
 // }}}

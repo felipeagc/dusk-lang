@@ -1377,6 +1377,44 @@ static DuskExpr *parsePrimaryExpr(DuskCompiler *compiler, TokenizerState *state)
         consumeToken(compiler, state, TOKEN_RCURLY);
         break;
     }
+    case TOKEN_BUILTIN_IDENT: {
+        expr->kind = DUSK_EXPR_BUILTIN_FUNCTION_CALL;
+        expr->builtin_call.params = duskArrayCreate(allocator, DuskExpr *);
+
+        if (strcmp(token.str, "Sampler") == 0)
+        {
+            expr->builtin_call.kind = DUSK_BUILTIN_FUNCTION_SAMPLER_TYPE;
+        }
+        else
+        {
+            duskAddError(
+                compiler,
+                token.location,
+                "invalid builtin identifier: %s does not exist",
+                tokenToString(allocator, &token));
+            duskThrow(compiler);
+        }
+
+        consumeToken(compiler, state, TOKEN_LPAREN);
+
+        Token next_token = {0};
+        tokenizerNextToken(allocator, *state, &next_token);
+        while (next_token.type != TOKEN_RPAREN)
+        {
+            DuskExpr *param_expr = parseExpr(compiler, state);
+            duskArrayPush(&expr->builtin_call.params, param_expr);
+
+            tokenizerNextToken(allocator, *state, &next_token);
+            if (next_token.type != TOKEN_RPAREN)
+            {
+                consumeToken(compiler, state, TOKEN_COMMA);
+                tokenizerNextToken(allocator, *state, &next_token);
+            }
+        }
+
+        consumeToken(compiler, state, TOKEN_RPAREN);
+        break;
+    }
     default: {
         duskAddError(
             compiler,

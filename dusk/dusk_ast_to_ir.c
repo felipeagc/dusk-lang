@@ -35,6 +35,11 @@ static void duskGenerateExpr(DuskIRModule *module, DuskExpr *expr)
         break;
     }
 
+    case DUSK_EXPR_BUILTIN_FUNCTION_CALL: {
+        DUSK_ASSERT(!"unimplemented");
+        break;
+    }
+
     case DUSK_EXPR_STRING_LITERAL:
     case DUSK_EXPR_BOOL_TYPE:
     case DUSK_EXPR_ARRAY_TYPE:

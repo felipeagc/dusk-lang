@@ -106,6 +106,7 @@ static bool duskExprResolveInteger(
         return false;
     }
 
+    case DUSK_EXPR_BUILTIN_FUNCTION_CALL:
     case DUSK_EXPR_BOOL_LITERAL:
     case DUSK_EXPR_STRING_LITERAL:
     case DUSK_EXPR_FLOAT_LITERAL:
@@ -376,6 +377,10 @@ static void duskAnalyzeExpr(
             expr->struct_type.field_names,
             field_types);
 
+        break;
+    }
+    case DUSK_EXPR_BUILTIN_FUNCTION_CALL: {
+        DUSK_ASSERT(!"unimplemented");
         break;
     }
     }

@@ -7,9 +7,9 @@ type Hello struct {
 	
 // };
 
-// [binding(0)] let hello : Hello; 
+[binding(0)] let hello : Hello; 
 // [binding(1)] let image : @Image(float3);
-// [binding(2)] let sampler : @Sampler();
+[binding(2)] let sampler : @Sampler();
 
 [input, location(0)] let in_pos : float3;
 [input, location(1)] let in_uv : float2;
@@ -21,7 +21,6 @@ fn test() int {
     let b: int = 123;
     let c: int = a;
     let hey: bool = false;
-    let hello: Hello;
     a = 456;
     a = b;
     return 123;
