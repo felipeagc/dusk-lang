@@ -228,11 +228,14 @@ static const char *tokenToString(DuskAllocator *allocator, const Token *token)
     {
     case TOKEN_ERROR: return "<error>";
 
-    case TOKEN_IDENT: return duskSprintf(allocator, "identifier '%s'", token->str);
+    case TOKEN_IDENT:
+        return duskSprintf(allocator, "identifier '%s'", token->str);
     case TOKEN_BUILTIN_IDENT: return duskSprintf(allocator, "@%s", token->str);
-    case TOKEN_STRING_LITERAL: return duskSprintf(allocator, "\"%s\"", token->str);
+    case TOKEN_STRING_LITERAL:
+        return duskSprintf(allocator, "\"%s\"", token->str);
     case TOKEN_INT_LITERAL: return duskSprintf(allocator, "%ld", token->int_);
-    case TOKEN_FLOAT_LITERAL: return duskSprintf(allocator, "%lf", token->float_);
+    case TOKEN_FLOAT_LITERAL:
+        return duskSprintf(allocator, "%lf", token->float_);
 
     case TOKEN_LET: return "let";
     case TOKEN_FN: return "fn";
@@ -272,7 +275,8 @@ static const char *tokenToString(DuskAllocator *allocator, const Token *token)
         case DUSK_SCALAR_TYPE_UINT: scalar_type = "uint"; break;
         }
 
-        return duskSprintf(allocator, "%s%u", scalar_type, token->vector_type.length);
+        return duskSprintf(
+            allocator, "%s%u", scalar_type, token->vector_type.length);
     }
 
     case TOKEN_MATRIX_TYPE: {
@@ -357,7 +361,8 @@ static const char *tokenToString(DuskAllocator *allocator, const Token *token)
     return "<unknown>";
 }
 
-DUSK_INLINE static int64_t tokenizerLengthLeft(TokenizerState state, size_t offset)
+DUSK_INLINE static int64_t
+tokenizerLengthLeft(TokenizerState state, size_t offset)
 {
     return ((int64_t)state.file->text_length) - (int64_t)(state.pos + offset);
 }
@@ -380,7 +385,8 @@ DUSK_INLINE static bool isAlphaNum(char c)
 
 DUSK_INLINE static bool isHex(char c)
 {
-    return (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F') || (c >= '0' && c <= '9');
+    return (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F') ||
+           (c >= '0' && c <= '9');
 }
 
 DUSK_INLINE static bool isNum(char c)
@@ -452,7 +458,8 @@ begin:
 
         state.pos += content_length;
 
-        if (tokenizerLengthLeft(state, 0) > 0 && state.file->text[state.pos] == '\"')
+        if (tokenizerLengthLeft(state, 0) > 0 &&
+            state.file->text[state.pos] == '\"')
         {
             state.pos++;
         }
@@ -497,7 +504,8 @@ begin:
     case '=': {
         state.pos++;
         token->type = TOKEN_ASSIGN;
-        if (tokenizerLengthLeft(state, 0) > 0 && state.file->text[state.pos] == '=')
+        if (tokenizerLengthLeft(state, 0) > 0 &&
+            state.file->text[state.pos] == '=')
         {
             state.pos++;
             token->type = TOKEN_EQ;
@@ -550,7 +558,8 @@ begin:
     case '*': {
         state.pos++;
         token->type = TOKEN_MUL;
-        if (tokenizerLengthLeft(state, 0) > 0 && state.file->text[state.pos] == '=')
+        if (tokenizerLengthLeft(state, 0) > 0 &&
+            state.file->text[state.pos] == '=')
         {
             state.pos++;
             token->type = TOKEN_MUL_ASSIGN;
@@ -587,7 +596,8 @@ begin:
     case '%': {
         state.pos++;
         token->type = TOKEN_MOD;
-        if (tokenizerLengthLeft(state, 0) > 0 && state.file->text[state.pos] == '=')
+        if (tokenizerLengthLeft(state, 0) > 0 &&
+            state.file->text[state.pos] == '=')
         {
             state.pos++;
             token->type = TOKEN_MOD_ASSIGN;
@@ -640,7 +650,8 @@ begin:
     case '^': {
         state.pos++;
         token->type = TOKEN_BITXOR;
-        if (tokenizerLengthLeft(state, 0) > 0 && state.file->text[state.pos] == '=')
+        if (tokenizerLengthLeft(state, 0) > 0 &&
+            state.file->text[state.pos] == '=')
         {
             state.pos++;
             token->type = TOKEN_BITXOR_ASSIGN;
@@ -651,7 +662,8 @@ begin:
     case '~': {
         state.pos++;
         token->type = TOKEN_BITNOT;
-        if (tokenizerLengthLeft(state, 0) > 0 && state.file->text[state.pos] == '=')
+        if (tokenizerLengthLeft(state, 0) > 0 &&
+            state.file->text[state.pos] == '=')
         {
             state.pos++;
             token->type = TOKEN_BITNOT_ASSIGN;
@@ -662,7 +674,8 @@ begin:
     case '!': {
         state.pos++;
         token->type = TOKEN_NOT;
-        if (tokenizerLengthLeft(state, 0) > 0 && state.file->text[state.pos] == '=')
+        if (tokenizerLengthLeft(state, 0) > 0 &&
+            state.file->text[state.pos] == '=')
         {
             state.pos++;
             token->type = TOKEN_NOTEQ;
@@ -759,12 +772,14 @@ begin:
             switch (ident_start[0])
             {
             case 'f': {
-                if (ident_length == 2 && strncmp(ident_start, "fn", ident_length) == 0)
+                if (ident_length == 2 &&
+                    strncmp(ident_start, "fn", ident_length) == 0)
                 {
                     token->type = TOKEN_FN;
                 }
                 else if (
-                    ident_length == 5 && strncmp(ident_start, "float", ident_length) == 0)
+                    ident_length == 5 &&
+                    strncmp(ident_start, "float", ident_length) == 0)
                 {
                     token->type = TOKEN_SCALAR_TYPE;
                     token->scalar_type = DUSK_SCALAR_TYPE_FLOAT;
@@ -799,14 +814,16 @@ begin:
                         token->matrix_type.cols = 2;
                         token->matrix_type.rows = 2;
                     }
-                    else if (strncmp(ident_start, "float3x3", ident_length) == 0)
+                    else if (
+                        strncmp(ident_start, "float3x3", ident_length) == 0)
                     {
                         token->type = TOKEN_MATRIX_TYPE;
                         token->matrix_type.scalar_type = DUSK_SCALAR_TYPE_FLOAT;
                         token->matrix_type.cols = 3;
                         token->matrix_type.rows = 3;
                     }
-                    else if (strncmp(ident_start, "float4x4", ident_length) == 0)
+                    else if (
+                        strncmp(ident_start, "float4x4", ident_length) == 0)
                     {
                         token->type = TOKEN_MATRIX_TYPE;
                         token->matrix_type.scalar_type = DUSK_SCALAR_TYPE_FLOAT;
@@ -828,19 +845,22 @@ begin:
                     if (strncmp(ident_start, "double2", ident_length) == 0)
                     {
                         token->type = TOKEN_VECTOR_TYPE;
-                        token->vector_type.scalar_type = DUSK_SCALAR_TYPE_DOUBLE;
+                        token->vector_type.scalar_type =
+                            DUSK_SCALAR_TYPE_DOUBLE;
                         token->vector_type.length = 2;
                     }
                     else if (strncmp(ident_start, "double3", ident_length) == 0)
                     {
                         token->type = TOKEN_VECTOR_TYPE;
-                        token->vector_type.scalar_type = DUSK_SCALAR_TYPE_DOUBLE;
+                        token->vector_type.scalar_type =
+                            DUSK_SCALAR_TYPE_DOUBLE;
                         token->vector_type.length = 3;
                     }
                     else if (strncmp(ident_start, "double4", ident_length) == 0)
                     {
                         token->type = TOKEN_VECTOR_TYPE;
-                        token->vector_type.scalar_type = DUSK_SCALAR_TYPE_DOUBLE;
+                        token->vector_type.scalar_type =
+                            DUSK_SCALAR_TYPE_DOUBLE;
                         token->vector_type.length = 4;
                     }
                 }
@@ -849,21 +869,26 @@ begin:
                     if (strncmp(ident_start, "double2x2", ident_length) == 0)
                     {
                         token->type = TOKEN_MATRIX_TYPE;
-                        token->matrix_type.scalar_type = DUSK_SCALAR_TYPE_DOUBLE;
+                        token->matrix_type.scalar_type =
+                            DUSK_SCALAR_TYPE_DOUBLE;
                         token->matrix_type.cols = 2;
                         token->matrix_type.rows = 2;
                     }
-                    else if (strncmp(ident_start, "double3x3", ident_length) == 0)
+                    else if (
+                        strncmp(ident_start, "double3x3", ident_length) == 0)
                     {
                         token->type = TOKEN_MATRIX_TYPE;
-                        token->matrix_type.scalar_type = DUSK_SCALAR_TYPE_DOUBLE;
+                        token->matrix_type.scalar_type =
+                            DUSK_SCALAR_TYPE_DOUBLE;
                         token->matrix_type.cols = 3;
                         token->matrix_type.rows = 3;
                     }
-                    else if (strncmp(ident_start, "double4x4", ident_length) == 0)
+                    else if (
+                        strncmp(ident_start, "double4x4", ident_length) == 0)
                     {
                         token->type = TOKEN_MATRIX_TYPE;
-                        token->matrix_type.scalar_type = DUSK_SCALAR_TYPE_DOUBLE;
+                        token->matrix_type.scalar_type =
+                            DUSK_SCALAR_TYPE_DOUBLE;
                         token->matrix_type.cols = 4;
                         token->matrix_type.rows = 4;
                     }
@@ -871,14 +896,16 @@ begin:
                 break;
             }
             case 'l': {
-                if (ident_length == 3 && strncmp(ident_start, "let", ident_length) == 0)
+                if (ident_length == 3 &&
+                    strncmp(ident_start, "let", ident_length) == 0)
                 {
                     token->type = TOKEN_LET;
                 }
                 break;
             }
             case 'c': {
-                if (ident_length == 5 && strncmp(ident_start, "const", ident_length) == 0)
+                if (ident_length == 5 &&
+                    strncmp(ident_start, "const", ident_length) == 0)
                 {
                     token->type = TOKEN_CONST;
                 }
@@ -891,12 +918,14 @@ begin:
                 break;
             }
             case 'b': {
-                if (ident_length == 5 && strncmp(ident_start, "break", ident_length) == 0)
+                if (ident_length == 5 &&
+                    strncmp(ident_start, "break", ident_length) == 0)
                 {
                     token->type = TOKEN_BREAK;
                 }
                 else if (
-                    ident_length == 4 && strncmp(ident_start, "bool", ident_length) == 0)
+                    ident_length == 4 &&
+                    strncmp(ident_start, "bool", ident_length) == 0)
                 {
                     token->type = TOKEN_BOOL;
                 }
@@ -911,14 +940,16 @@ begin:
                 break;
             }
             case 'w': {
-                if (ident_length == 5 && strncmp(ident_start, "while", ident_length) == 0)
+                if (ident_length == 5 &&
+                    strncmp(ident_start, "while", ident_length) == 0)
                 {
                     token->type = TOKEN_WHILE;
                 }
                 break;
             }
             case 'e': {
-                if (ident_length == 4 && strncmp(ident_start, "else", ident_length) == 0)
+                if (ident_length == 4 &&
+                    strncmp(ident_start, "else", ident_length) == 0)
                 {
                     token->type = TOKEN_ELSE;
                 }
@@ -939,21 +970,24 @@ begin:
                 break;
             }
             case 't': {
-                if (ident_length == 4 && strncmp(ident_start, "type", ident_length) == 0)
+                if (ident_length == 4 &&
+                    strncmp(ident_start, "type", ident_length) == 0)
                 {
                     token->type = TOKEN_TYPE;
                 }
                 break;
             }
             case 'v': {
-                if (ident_length == 4 && strncmp(ident_start, "void", ident_length) == 0)
+                if (ident_length == 4 &&
+                    strncmp(ident_start, "void", ident_length) == 0)
                 {
                     token->type = TOKEN_VOID;
                 }
                 break;
             }
             case 'i': {
-                if (ident_length == 2 && strncmp(ident_start, "if", ident_length) == 0)
+                if (ident_length == 2 &&
+                    strncmp(ident_start, "if", ident_length) == 0)
                 {
                     token->type = TOKEN_IF;
                 }
@@ -964,7 +998,8 @@ begin:
                     token->type = TOKEN_IMPORT;
                 }
                 else if (
-                    ident_length == 3 && strncmp(ident_start, "int", ident_length) == 0)
+                    ident_length == 3 &&
+                    strncmp(ident_start, "int", ident_length) == 0)
                 {
                     token->type = TOKEN_SCALAR_TYPE;
                     token->scalar_type = DUSK_SCALAR_TYPE_INT;
@@ -1017,7 +1052,8 @@ begin:
                 break;
             }
             case 'u': {
-                if (ident_length == 4 && strncmp(ident_start, "uint", ident_length) == 0)
+                if (ident_length == 4 &&
+                    strncmp(ident_start, "uint", ident_length) == 0)
                 {
                     token->type = TOKEN_SCALAR_TYPE;
                     token->scalar_type = DUSK_SCALAR_TYPE_UINT;
@@ -1074,7 +1110,8 @@ begin:
             if (token->type == 0)
             {
                 token->type = TOKEN_IDENT;
-                token->str = duskNullTerminate(allocator, ident_start, ident_length);
+                token->str =
+                    duskNullTerminate(allocator, ident_start, ident_length);
             }
 
             state.pos += ident_length;
@@ -1093,7 +1130,8 @@ begin:
             const char *ident_start = &state.file->text[state.pos];
 
             token->type = TOKEN_BUILTIN_IDENT;
-            token->str = duskNullTerminate(allocator, ident_start, ident_length);
+            token->str =
+                duskNullTerminate(allocator, ident_start, ident_length);
             state.pos += ident_length;
         }
         else if (isNum(c))
@@ -1180,8 +1218,8 @@ begin:
     return state;
 }
 
-static Token
-consumeToken(DuskCompiler *compiler, TokenizerState *state, TokenType token_type)
+static Token consumeToken(
+    DuskCompiler *compiler, TokenizerState *state, TokenType token_type)
 {
     DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
 
@@ -1282,8 +1320,10 @@ static DuskExpr *parsePrimaryExpr(DuskCompiler *compiler, TokenizerState *state)
     }
     case TOKEN_STRUCT: {
         expr->kind = DUSK_EXPR_STRUCT_TYPE;
-        expr->struct_type.field_type_exprs = duskArrayCreate(allocator, DuskExpr *);
-        expr->struct_type.field_names = duskArrayCreate(allocator, const char *);
+        expr->struct_type.field_type_exprs =
+            duskArrayCreate(allocator, DuskExpr *);
+        expr->struct_type.field_names =
+            duskArrayCreate(allocator, const char *);
 
         consumeToken(compiler, state, TOKEN_LCURLY);
 
@@ -1348,23 +1388,13 @@ static DuskStmt *parseStmt(DuskCompiler *compiler, TokenizerState *state)
 
         Token name_token = consumeToken(compiler, state, TOKEN_IDENT);
 
-        DuskExpr *type_expr = NULL;
         DuskExpr *value_expr = NULL;
 
-        tokenizerNextToken(allocator, *state, &next_token);
-        if (next_token.type == TOKEN_COLON)
-        {
-            consumeToken(compiler, state, TOKEN_COLON);
-            type_expr = parseExpr(compiler, state);
+        consumeToken(compiler, state, TOKEN_COLON);
+        DuskExpr *type_expr = parseExpr(compiler, state);
 
-            tokenizerNextToken(allocator, *state, &next_token);
-            if (next_token.type == TOKEN_ASSIGN)
-            {
-                consumeToken(compiler, state, TOKEN_ASSIGN);
-                value_expr = parseExpr(compiler, state);
-            }
-        }
-        else
+        tokenizerNextToken(allocator, *state, &next_token);
+        if (next_token.type == TOKEN_ASSIGN)
         {
             consumeToken(compiler, state, TOKEN_ASSIGN);
             value_expr = parseExpr(compiler, state);
@@ -1451,7 +1481,8 @@ static DuskStmt *parseStmt(DuskCompiler *compiler, TokenizerState *state)
     return stmt;
 }
 
-static DuskDecl *parseTopLevelDecl(DuskCompiler *compiler, TokenizerState *state)
+static DuskDecl *
+parseTopLevelDecl(DuskCompiler *compiler, TokenizerState *state)
 {
     DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
 
@@ -1471,7 +1502,8 @@ static DuskDecl *parseTopLevelDecl(DuskCompiler *compiler, TokenizerState *state
         tokenizerNextToken(allocator, *state, &next_token);
         while (next_token.type != TOKEN_RBRACKET)
         {
-            Token attrib_name_token = consumeToken(compiler, state, TOKEN_IDENT);
+            Token attrib_name_token =
+                consumeToken(compiler, state, TOKEN_IDENT);
 
             DuskAttribute attrib = {0};
             attrib.name = attrib_name_token.str;
@@ -1630,7 +1662,8 @@ void duskParse(DuskCompiler *compiler, DuskFile *file)
         tokenizerNextToken(allocator, state, &token);
         if (token.type == TOKEN_ERROR)
         {
-            duskAddError(compiler, token.location, "unexpected token: %s", token.str);
+            duskAddError(
+                compiler, token.location, "unexpected token: %s", token.str);
             duskThrow(compiler);
         }
 

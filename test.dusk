@@ -18,6 +18,7 @@
 fn test() int {
     let a: int = 321;
     let b: int = 123;
+    let c: int = a;
     a = 456;
     a = b;
     return 123;

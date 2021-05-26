@@ -110,9 +110,10 @@ static void duskGenerateLocalDecl(
         if (decl->var.value_expr)
         {
             duskGenerateExpr(module, decl->var.value_expr);
+            DuskIRValue *assigned_value = decl->var.value_expr->ir_value;
+            assigned_value = duskIRLoadLvalue(module, block, assigned_value);
 
-            duskIRCreateStore(
-                module, block, decl->ir_value, decl->var.value_expr->ir_value);
+            duskIRCreateStore(module, block, decl->ir_value, assigned_value);
         }
 
         break;
