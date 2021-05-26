@@ -218,6 +218,8 @@ static void duskAnalyzeExpr(
             break;
         }
 
+        expr->identifier.decl = ident_decl;
+
         expr->type = ident_decl->type;
         break;
     }

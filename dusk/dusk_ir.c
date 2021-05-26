@@ -314,27 +314,32 @@ DuskIRValue *duskIRConstFloatCreate(
     return duskIRGetCachedConst(module, value);
 }
 
-DuskIRValue *duskIRCreateReturn(DuskIRModule *module, DuskIRValue *value)
+void duskIRCreateReturn(
+    DuskIRModule *module, DuskIRValue *block, DuskIRValue *value)
 {
     DuskIRValue *inst = DUSK_NEW(module->allocator, DuskIRValue);
     inst->type = duskTypeNewBasic(module->compiler, DUSK_TYPE_VOID);
     inst->kind = DUSK_IR_VALUE_RETURN;
     inst->return_.value = value;
-    return inst;
+    duskArrayPush(&block->block.insts, inst);
 }
 
-DuskIRValue *duskIRCreateStore(
-    DuskIRModule *module, DuskIRValue *pointer, DuskIRValue *value)
+void duskIRCreateStore(
+    DuskIRModule *module,
+    DuskIRValue *block,
+    DuskIRValue *pointer,
+    DuskIRValue *value)
 {
     DuskIRValue *inst = DUSK_NEW(module->allocator, DuskIRValue);
     inst->type = duskTypeNewBasic(module->compiler, DUSK_TYPE_VOID);
     inst->kind = DUSK_IR_VALUE_STORE;
     inst->store.pointer = pointer;
     inst->store.value = value;
-    return inst;
+    duskArrayPush(&block->block.insts, inst);
 }
 
-DuskIRValue *duskIRCreateLoad(DuskIRModule *module, DuskIRValue *pointer)
+DuskIRValue *
+duskIRCreateLoad(DuskIRModule *module, DuskIRValue *block, DuskIRValue *pointer)
 {
     DUSK_ASSERT(pointer->type->kind == DUSK_TYPE_POINTER);
 
@@ -342,7 +347,19 @@ DuskIRValue *duskIRCreateLoad(DuskIRModule *module, DuskIRValue *pointer)
     inst->type = pointer->type->pointer.sub;
     inst->kind = DUSK_IR_VALUE_LOAD;
     inst->load.pointer = pointer;
+    duskArrayPush(&block->block.insts, inst);
     return inst;
+}
+
+DuskIRValue *
+duskIRLoadLvalue(DuskIRModule *module, DuskIRValue *block, DuskIRValue *value)
+{
+    if (value->kind == DUSK_IR_VALUE_VARIABLE)
+    {
+        return duskIRCreateLoad(module, block, value);
+    }
+
+    return value;
 }
 
 static void duskEmitType(DuskIRModule *module, DuskType *type)

@@ -8,6 +8,9 @@ static void duskGenerateExpr(DuskIRModule *module, DuskExpr *expr)
     switch (expr->kind)
     {
     case DUSK_EXPR_IDENT: {
+        DUSK_ASSERT(expr->identifier.decl);
+        DUSK_ASSERT(expr->type);
+        expr->ir_value = expr->identifier.decl->ir_value;
         break;
     }
     case DUSK_EXPR_INT_LITERAL: {
@@ -58,15 +61,24 @@ duskGenerateStmt(DuskIRModule *module, DuskIRValue *function, DuskStmt *stmt)
             DUSK_ASSERT(returned_value);
         }
 
-        DuskIRValue *return_ = duskIRCreateReturn(module, returned_value);
-        duskArrayPush(&block->block.insts, return_);
+        duskIRCreateReturn(module, block, returned_value);
         break;
     }
     case DUSK_STMT_DECL: {
         duskGenerateLocalDecl(module, function, stmt->decl);
         break;
     }
-    case DUSK_STMT_ASSIGN:
+    case DUSK_STMT_ASSIGN: {
+        duskGenerateExpr(module, stmt->assign.assigned_expr);
+        duskGenerateExpr(module, stmt->assign.value_expr);
+
+        DuskIRValue *pointer = stmt->assign.assigned_expr->ir_value;
+        DuskIRValue *value = stmt->assign.value_expr->ir_value;
+        value = duskIRLoadLvalue(module, block, value);
+
+        duskIRCreateStore(module, block, pointer, value);
+        break;
+    }
     case DUSK_STMT_EXPR:
     case DUSK_STMT_BLOCK: DUSK_ASSERT(0 && "unimplemented"); break;
     }
@@ -99,9 +111,8 @@ static void duskGenerateLocalDecl(
         {
             duskGenerateExpr(module, decl->var.value_expr);
 
-            DuskIRValue *store = duskIRCreateStore(
-                module, decl->ir_value, decl->var.value_expr->ir_value);
-            duskArrayPush(&block->block.insts, store);
+            duskIRCreateStore(
+                module, block, decl->ir_value, decl->var.value_expr->ir_value);
         }
 
         break;
@@ -138,11 +149,10 @@ static void duskGenerateGlobalDecl(DuskIRModule *module, DuskDecl *decl)
             if (stmt_count == 0 ||
                 decl->function.stmts[stmt_count - 1]->kind != DUSK_STMT_RETURN)
             {
-                DuskIRValue *return_ = duskIRCreateReturn(module, NULL);
                 DuskIRValue *last_block =
                     decl->ir_value->function.blocks
                         [duskArrayLength(decl->ir_value->function.blocks) - 1];
-                duskArrayPush(&last_block->block.insts, return_);
+                duskIRCreateReturn(module, last_block, NULL);
             }
         }
 

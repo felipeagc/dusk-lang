@@ -526,10 +526,18 @@ duskIRConstIntCreate(DuskIRModule *module, DuskType *type, uint64_t int_value);
 DuskIRValue *duskIRConstFloatCreate(
     DuskIRModule *module, DuskType *type, double double_value);
 
-DuskIRValue *duskIRCreateReturn(DuskIRModule *module, DuskIRValue *value);
-DuskIRValue *duskIRCreateStore(
-    DuskIRModule *module, DuskIRValue *pointer, DuskIRValue *value);
-DuskIRValue *duskIRCreateLoad(DuskIRModule *module, DuskIRValue *pointer);
+void duskIRCreateReturn(
+    DuskIRModule *module, DuskIRValue *block, DuskIRValue *value);
+void duskIRCreateStore(
+    DuskIRModule *module,
+    DuskIRValue *block,
+    DuskIRValue *pointer,
+    DuskIRValue *value);
+DuskIRValue *duskIRCreateLoad(
+    DuskIRModule *module, DuskIRValue *block, DuskIRValue *pointer);
+
+DuskIRValue *
+duskIRLoadLvalue(DuskIRModule *module, DuskIRValue *block, DuskIRValue *value);
 // }}}
 
 // AST {{{
@@ -654,6 +662,7 @@ struct DuskExpr
         struct
         {
             const char *str;
+            DuskDecl *decl;
         } identifier;
         struct
         {

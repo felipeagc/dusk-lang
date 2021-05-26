@@ -17,6 +17,9 @@
 
 fn test() int {
     let a: int = 321;
+    let b: int = 123;
+    a = 456;
+    a = b;
     return 123;
 }
 
