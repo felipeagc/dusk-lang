@@ -42,4 +42,5 @@ fn fs_main() void {
     // let color: float4 = @sample(sampler, image, uv);
 
     // out_color = float4(color, 1.0);
+    let a: int = 123;
 }

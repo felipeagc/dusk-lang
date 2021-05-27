@@ -436,6 +436,7 @@ typedef enum DuskIRValueKind {
     DUSK_IR_VALUE_BLOCK,
     DUSK_IR_VALUE_VARIABLE,
     DUSK_IR_VALUE_RETURN,
+    DUSK_IR_VALUE_DISCARD,
     DUSK_IR_VALUE_STORE,
     DUSK_IR_VALUE_LOAD,
 } DuskIRValueKind;
@@ -516,6 +517,8 @@ typedef struct DuskIRModule
     DuskArray(DuskIREntryPoint) entry_points;
 } DuskIRModule;
 
+bool duskIRBlockIsTerminated(DuskIRValue *block);
+
 DuskIRValue *duskIRBlockCreate(DuskIRModule *module);
 DuskIRValue *
 duskIRFunctionCreate(DuskIRModule *module, DuskType *type, const char *name);
@@ -537,6 +540,8 @@ DuskIRValue *duskIRConstFloatCreate(
 
 void duskIRCreateReturn(
     DuskIRModule *module, DuskIRValue *block, DuskIRValue *value);
+void duskIRCreateDiscard(
+    DuskIRModule *module, DuskIRValue *block);
 void duskIRCreateStore(
     DuskIRModule *module,
     DuskIRValue *block,
@@ -618,6 +623,7 @@ typedef enum DuskStmtKind {
     DUSK_STMT_EXPR,
     DUSK_STMT_BLOCK,
     DUSK_STMT_RETURN,
+    DUSK_STMT_DISCARD,
 } DuskStmtKind;
 
 struct DuskStmt

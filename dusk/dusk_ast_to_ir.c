@@ -93,6 +93,10 @@ duskGenerateStmt(DuskIRModule *module, DuskIRValue *function, DuskStmt *stmt)
         duskIRCreateReturn(module, block, returned_value);
         break;
     }
+    case DUSK_STMT_DISCARD: {
+        duskIRCreateDiscard(module, block);
+        break;
+    }
     case DUSK_STMT_DECL: {
         duskGenerateLocalDecl(module, function, stmt->decl);
         break;
@@ -197,15 +201,21 @@ static void duskGenerateGlobalDecl(DuskIRModule *module, DuskDecl *decl)
             duskGenerateStmt(module, decl->ir_value, stmt);
         }
 
-        if (decl->type->function.return_type->kind == DUSK_TYPE_VOID)
+        for (size_t i = 0;
+             i < duskArrayLength(decl->ir_value->function.blocks);
+             ++i)
         {
-            if (stmt_count == 0 ||
-                decl->function.stmts[stmt_count - 1]->kind != DUSK_STMT_RETURN)
+            DuskIRValue *block = decl->ir_value->function.blocks[i];
+            if (!duskIRBlockIsTerminated(block))
             {
-                DuskIRValue *last_block =
-                    decl->ir_value->function.blocks
-                        [duskArrayLength(decl->ir_value->function.blocks) - 1];
-                duskIRCreateReturn(module, last_block, NULL);
+                if (decl->type->function.return_type->kind == DUSK_TYPE_VOID)
+                {
+                    duskIRCreateReturn(module, block, NULL);
+                }
+                else
+                {
+                    DUSK_ASSERT(0); // Missing terminator instruction
+                }
             }
         }
 

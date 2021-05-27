@@ -146,6 +146,25 @@ static void duskEncodeInst(
     }
 }
 
+bool duskIRBlockIsTerminated(DuskIRValue *block)
+{
+    DUSK_ASSERT(block->kind == DUSK_IR_VALUE_BLOCK);
+
+    size_t inst_count = duskArrayLength(block->block.insts);
+    if (inst_count == 0) return false;
+
+    DuskIRValue *inst = block->block.insts[inst_count - 1];
+    switch (inst->kind)
+    {
+    case DUSK_IR_VALUE_RETURN:
+    case DUSK_IR_VALUE_DISCARD: {
+        return true;
+    }
+    default: break;
+    }
+    return false;
+}
+
 DuskIRModule *duskIRModuleCreate(DuskCompiler *compiler)
 {
     DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
@@ -314,6 +333,14 @@ DuskIRValue *duskIRConstFloatCreate(
     return duskIRGetCachedConst(module, value);
 }
 
+static void duskIRBlockAppendInst(DuskIRValue *block, DuskIRValue *inst)
+{
+    if (!duskIRBlockIsTerminated(block))
+    {
+        duskArrayPush(&block->block.insts, inst);
+    }
+}
+
 void duskIRCreateReturn(
     DuskIRModule *module, DuskIRValue *block, DuskIRValue *value)
 {
@@ -321,7 +348,15 @@ void duskIRCreateReturn(
     inst->type = duskTypeNewBasic(module->compiler, DUSK_TYPE_VOID);
     inst->kind = DUSK_IR_VALUE_RETURN;
     inst->return_.value = value;
-    duskArrayPush(&block->block.insts, inst);
+    duskIRBlockAppendInst(block, inst);
+}
+
+void duskIRCreateDiscard(DuskIRModule *module, DuskIRValue *block)
+{
+    DuskIRValue *inst = DUSK_NEW(module->allocator, DuskIRValue);
+    inst->type = duskTypeNewBasic(module->compiler, DUSK_TYPE_VOID);
+    inst->kind = DUSK_IR_VALUE_DISCARD;
+    duskIRBlockAppendInst(block, inst);
 }
 
 void duskIRCreateStore(
@@ -335,7 +370,7 @@ void duskIRCreateStore(
     inst->kind = DUSK_IR_VALUE_STORE;
     inst->store.pointer = pointer;
     inst->store.value = value;
-    duskArrayPush(&block->block.insts, inst);
+    duskIRBlockAppendInst(block, inst);
 }
 
 DuskIRValue *
@@ -347,7 +382,7 @@ duskIRCreateLoad(DuskIRModule *module, DuskIRValue *block, DuskIRValue *pointer)
     inst->type = pointer->type->pointer.sub;
     inst->kind = DUSK_IR_VALUE_LOAD;
     inst->load.pointer = pointer;
-    duskArrayPush(&block->block.insts, inst);
+    duskIRBlockAppendInst(block, inst);
     return inst;
 }
 
@@ -619,6 +654,10 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
         {
             duskEncodeInst(module, SpvOpReturn, NULL, 0);
         }
+        break;
+    }
+    case DUSK_IR_VALUE_DISCARD: {
+        duskEncodeInst(module, SpvOpKill, NULL, 0);
         break;
     }
     case DUSK_IR_VALUE_CONSTANT: {

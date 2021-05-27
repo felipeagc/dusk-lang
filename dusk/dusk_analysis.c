@@ -620,6 +620,14 @@ static void duskAnalyzeStmt(
         }
         break;
     }
+    case DUSK_STMT_DISCARD: {
+        DUSK_ASSERT(duskArrayLength(state->function_stack) > 0);
+        DuskDecl *func =
+            state->function_stack[duskArrayLength(state->function_stack) - 1];
+
+        DUSK_ASSERT(func->type);
+        break;
+    }
     case DUSK_STMT_ASSIGN: {
         duskAnalyzeExpr(
             compiler, state, stmt->assign.assigned_expr, NULL, true);

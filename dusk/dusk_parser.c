@@ -21,6 +21,7 @@ typedef enum TokenType {
     TOKEN_BREAK,
     TOKEN_CONTINUE,
     TOKEN_RETURN,
+    TOKEN_DISCARD,
     TOKEN_WHILE,
     TOKEN_IF,
     TOKEN_ELSE,
@@ -148,6 +149,7 @@ static const char *tokenTypeToString(TokenType token_type)
     case TOKEN_BREAK: return "break";
     case TOKEN_CONTINUE: return "continue";
     case TOKEN_RETURN: return "return";
+    case TOKEN_DISCARD: return "discard";
     case TOKEN_WHILE: return "while";
     case TOKEN_IF: return "if";
     case TOKEN_ELSE: return "else";
@@ -250,6 +252,7 @@ static const char *tokenToString(DuskAllocator *allocator, const Token *token)
     case TOKEN_BREAK: return "break";
     case TOKEN_CONTINUE: return "continue";
     case TOKEN_RETURN: return "return";
+    case TOKEN_DISCARD: return "discard";
     case TOKEN_WHILE: return "while";
     case TOKEN_IF: return "if";
     case TOKEN_ELSE: return "else";
@@ -873,6 +876,10 @@ begin:
                         token->vector_type.scalar_type =
                             DUSK_SCALAR_TYPE_DOUBLE;
                         token->vector_type.length = 4;
+                    }
+                    else if (strncmp(ident_start, "discard", ident_length) == 0)
+                    {
+                        token->type = TOKEN_DISCARD;
                     }
                 }
                 else if (ident_length == 9)
@@ -1565,6 +1572,13 @@ static DuskStmt *parseStmt(DuskCompiler *compiler, TokenizerState *state)
             stmt->return_.expr = parseExpr(compiler, state);
         }
 
+        consumeToken(compiler, state, TOKEN_SEMICOLON);
+        break;
+    }
+
+    case TOKEN_DISCARD: {
+        stmt->kind = DUSK_STMT_DISCARD;
+        consumeToken(compiler, state, TOKEN_DISCARD);
         consumeToken(compiler, state, TOKEN_SEMICOLON);
         break;
     }
