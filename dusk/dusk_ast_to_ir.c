@@ -271,7 +271,13 @@ duskGenerateStmt(DuskIRModule *module, DuskIRValue *function, DuskStmt *stmt)
         duskGenerateExpr(module, function, stmt->expr);
         break;
     }
-    case DUSK_STMT_BLOCK: DUSK_ASSERT(0 && "unimplemented"); break;
+    case DUSK_STMT_BLOCK: {
+        for (size_t i = 0; i < duskArrayLength(stmt->block.stmts); ++i)
+        {
+            duskGenerateStmt(module, function, stmt->block.stmts[i]);
+        }
+        break;
+    }
     }
 }
 

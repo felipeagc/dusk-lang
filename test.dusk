@@ -39,7 +39,9 @@ fn vs_main() void {
         b: float3,
     };
 
-    let member: float3 = str.b;
+    {
+        let member: float3 = str.b;
+    }
 
     // out_uv = in_uv;
     // out_position = float4(in_pos, 1);
