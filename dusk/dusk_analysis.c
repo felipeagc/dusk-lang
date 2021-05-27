@@ -708,7 +708,7 @@ static void duskAnalyzeDecl(
                     continue;
                 }
 
-                if (attrib->value_exprs[0]->kind != DUSK_EXPR_STRING_LITERAL)
+                if (attrib->value_exprs[0]->kind != DUSK_EXPR_IDENT)
                 {
                     duskAddError(
                         compiler,

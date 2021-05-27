@@ -27,7 +27,7 @@ fn test() int {
     return 123;
 }
 
-[entry_point("vertex")]
+[entry_point(vertex)]
 fn vs_main() void {
     let my_image: @Image2D(float) = image;
     // out_uv = in_uv;
@@ -37,7 +37,7 @@ fn vs_main() void {
 [input, location(0)] let uv : float2;
 [output, location(0)] let out_color : float4;
 
-[entry_point("fragment")]
+[entry_point(fragment)]
 fn fs_main() void {
     // let color: float4 = @sample(sampler, image, uv);
 
