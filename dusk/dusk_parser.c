@@ -1491,12 +1491,50 @@ static DuskExpr *parsePrimaryExpr(DuskCompiler *compiler, TokenizerState *state)
     return expr;
 }
 
-static DuskExpr *
-parseFunctionCall(DuskCompiler *compiler, TokenizerState *state)
+static DuskExpr *parseAccessExpr(DuskCompiler *compiler, TokenizerState *state)
 {
     DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
 
     DuskExpr *expr = parsePrimaryExpr(compiler, state);
+    DUSK_ASSERT(expr);
+
+    Token next_token = {0};
+    tokenizerNextToken(allocator, *state, &next_token);
+
+    if (next_token.type == TOKEN_DOT)
+    {
+        DuskExpr *base_expr = expr;
+        expr = DUSK_NEW(allocator, DuskExpr);
+        expr->location = base_expr->location;
+        expr->kind = DUSK_EXPR_ACCESS;
+        expr->access.base_expr = base_expr;
+        expr->access.chain = duskArrayCreate(allocator, DuskExpr*);
+
+        while (next_token.type == TOKEN_DOT)
+        {
+            consumeToken(compiler, state, TOKEN_DOT);
+            Token ident_token = consumeToken(compiler, state, TOKEN_IDENT);
+
+            DuskExpr *ident_expr = DUSK_NEW(allocator, DuskExpr);
+            ident_expr->location = ident_token.location;
+            ident_expr->kind = DUSK_EXPR_IDENT;
+            ident_expr->identifier.str = ident_token.str;
+
+            duskArrayPush(&expr->access.chain, ident_expr);
+
+            tokenizerNextToken(allocator, *state, &next_token);
+        }
+    }
+
+    return expr;
+}
+
+static DuskExpr *
+parseFunctionCallExpr(DuskCompiler *compiler, TokenizerState *state)
+{
+    DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
+
+    DuskExpr *expr = parseAccessExpr(compiler, state);
     DUSK_ASSERT(expr);
 
     Token next_token = {0};
@@ -1535,7 +1573,7 @@ parseFunctionCall(DuskCompiler *compiler, TokenizerState *state)
 
 static DuskExpr *parseExpr(DuskCompiler *compiler, TokenizerState *state)
 {
-    return parseFunctionCall(compiler, state);
+    return parseFunctionCallExpr(compiler, state);
 }
 
 static DuskStmt *parseStmt(DuskCompiler *compiler, TokenizerState *state)

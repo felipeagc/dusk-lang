@@ -122,6 +122,7 @@ static bool duskExprResolveInteger(
         return false;
     }
 
+    case DUSK_EXPR_ACCESS:
     case DUSK_EXPR_FUNCTION_CALL:
     case DUSK_EXPR_BUILTIN_FUNCTION_CALL:
     case DUSK_EXPR_BOOL_LITERAL:
@@ -595,6 +596,129 @@ static void duskAnalyzeExpr(
         }
         case DUSK_BUILTIN_FUNCTION_MAX: DUSK_ASSERT(0); break;
         }
+        break;
+    }
+
+    case DUSK_EXPR_ACCESS: {
+        duskAnalyzeExpr(compiler, state, expr->access.base_expr, NULL, false);
+        DuskExpr *left_expr = expr->access.base_expr;
+        if (!left_expr)
+        {
+            DUSK_ASSERT(duskArrayLength(compiler->errors) > 0);
+            break;
+        }
+
+        for (size_t i = 0; i < duskArrayLength(expr->access.chain); ++i)
+        {
+            DuskExpr *right_expr = expr->access.chain[i];
+            DUSK_ASSERT(right_expr->kind == DUSK_EXPR_IDENT);
+            const char *accessed_field_name = right_expr->identifier.str;
+
+            if (!left_expr->type)
+            {
+                DUSK_ASSERT(duskArrayLength(compiler->errors) > 0);
+                break;
+            }
+
+            switch (left_expr->type->kind)
+            {
+            case DUSK_TYPE_VECTOR: {
+                size_t new_vec_dim = strlen(accessed_field_name);
+                if (new_vec_dim > 4)
+                {
+                    duskAddError(
+                        compiler,
+                        right_expr->location,
+                        "invalid vector shuffle: '%s'",
+                        accessed_field_name);
+                    break;
+                }
+
+                DuskArray(uint32_t) shuffle_indices =
+                    duskArrayCreate(allocator, uint32_t);
+                duskArrayResize(&shuffle_indices, new_vec_dim);
+
+                bool valid = true;
+                for (size_t j = 0; j < new_vec_dim; j++)
+                {
+                    char c = accessed_field_name[j];
+                    switch (c)
+                    {
+                    case 'x':
+                    case 'r': shuffle_indices[j] = 0; break;
+                    case 'y':
+                    case 'g': shuffle_indices[j] = 1; break;
+                    case 'z':
+                    case 'b': shuffle_indices[j] = 2; break;
+                    case 'w':
+                    case 'a': shuffle_indices[j] = 3; break;
+
+                    default: {
+                        duskAddError(
+                            compiler,
+                            right_expr->location,
+                            "invalid vector element in shuffle: '%c'",
+                            c);
+                        valid = false;
+                        break;
+                    }
+                    }
+
+                    if (shuffle_indices[j] >= left_expr->type->vector.size)
+                    {
+                        duskAddError(
+                            compiler,
+                            right_expr->location,
+                            "invalid vector shuffle: '%s'",
+                            accessed_field_name);
+                        break;
+                    }
+
+                    if (!valid)
+                    {
+                        DUSK_ASSERT(duskArrayLength(compiler->errors) > 0);
+                        break;
+                    }
+                }
+
+                if (!valid)
+                {
+                    DUSK_ASSERT(duskArrayLength(compiler->errors) > 0);
+                    break;
+                }
+
+                right_expr->identifier.shuffle_indices = shuffle_indices;
+
+                if (new_vec_dim == 1)
+                {
+                    right_expr->type = left_expr->type->vector.sub;
+                }
+                else
+                {
+                    right_expr->type = duskTypeNewVector(
+                        compiler, left_expr->type->vector.sub, new_vec_dim);
+                }
+
+                break;
+            }
+            case DUSK_TYPE_STRUCT: {
+                break;
+            }
+            default: {
+                duskAddError(
+                    compiler,
+                    left_expr->location,
+                    "expression of type '%s' cannot be accessed",
+                    duskTypeToPrettyString(allocator, left_expr->type));
+                break;
+            }
+            }
+
+            left_expr = right_expr;
+        }
+
+        expr->type = left_expr->type;
+
         break;
     }
     }

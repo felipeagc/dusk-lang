@@ -30,6 +30,7 @@ fn test(param: int) int {
 [entry_point(vertex)]
 fn vs_main() void {
     let my_image: @Image2D(float) = image;
+    let b: float3 = in_pos.xyz;
 
     let a: int = test(1);
     // out_uv = in_uv;

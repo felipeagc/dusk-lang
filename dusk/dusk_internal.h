@@ -679,6 +679,7 @@ typedef enum DuskExprKind {
     DUSK_EXPR_RUNTIME_ARRAY_TYPE,
     DUSK_EXPR_FUNCTION_CALL,
     DUSK_EXPR_BUILTIN_FUNCTION_CALL,
+    DUSK_EXPR_ACCESS,
 } DuskExprKind;
 
 struct DuskExpr
@@ -710,6 +711,7 @@ struct DuskExpr
         {
             const char *str;
             DuskDecl *decl;
+            DuskArray(uint32_t) shuffle_indices;
         } identifier;
         struct
         {
@@ -736,6 +738,11 @@ struct DuskExpr
             DuskBuiltinFunctionKind kind;
             DuskArray(DuskExpr *) params;
         } builtin_call;
+        struct
+        {
+            DuskExpr *base_expr;
+            DuskArray(DuskExpr *) chain;
+        } access;
     };
 };
 // }}}
