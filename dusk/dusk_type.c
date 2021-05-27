@@ -516,7 +516,7 @@ DuskType *duskTypeNewStruct(
 
     size_t field_count = duskArrayLength(field_names);
     type->struct_.index_map = duskMapCreate(allocator, field_count);
-    for (size_t i = 0; i < field_count; ++i)
+    for (uintptr_t i = 0; i < field_count; ++i)
     {
         duskMapSet(type->struct_.index_map, field_names[i], (void *)i);
     }

@@ -702,7 +702,24 @@ static void duskAnalyzeExpr(
                 break;
             }
             case DUSK_TYPE_STRUCT: {
-                DUSK_ASSERT(!"unimplemented");
+                uintptr_t field_index = 0;
+                if (!duskMapGet(
+                        left_expr->type->struct_.index_map,
+                        accessed_field_name,
+                        (void *)&field_index))
+                {
+                    duskAddError(
+                        compiler,
+                        right_expr->location,
+                        "no struct field named '%s' in type '%s'",
+                        accessed_field_name,
+                        duskTypeToPrettyString(allocator, left_expr->type));
+                    break;
+                }
+
+                right_expr->type =
+                    left_expr->type->struct_.field_types[field_index];
+
                 break;
             }
             default: {

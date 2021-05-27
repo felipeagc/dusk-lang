@@ -162,7 +162,40 @@ duskGenerateExpr(DuskIRModule *module, DuskIRValue *function, DuskExpr *expr)
                 break;
             }
             case DUSK_TYPE_STRUCT: {
-                DUSK_ASSERT(!"unimplemented");
+                uintptr_t field_index = 0;
+                if (!duskMapGet(
+                        left_expr->type->struct_.index_map,
+                        right_expr->identifier.str,
+                        (void *)&field_index))
+                {
+                    DUSK_ASSERT(0);
+                }
+
+                if (duskIRIsLvalue(left_expr->ir_value))
+                {
+                    DuskIRValue *index_value = duskIRConstIntCreate(
+                        module,
+                        duskTypeNewScalar(
+                            module->compiler, DUSK_SCALAR_TYPE_UINT),
+                        field_index);
+
+                    right_expr->ir_value = duskIRCreateAccessChain(
+                        module,
+                        block,
+                        right_expr->type,
+                        left_expr->ir_value,
+                        1,
+                        &index_value);
+                }
+                else
+                {
+                    uint32_t index = (uint32_t)field_index;
+                    DuskIRValue *struct_value =
+                        duskIRLoadLvalue(module, block, left_expr->ir_value);
+                    right_expr->ir_value = duskIRCreateCompositeExtract(
+                        module, block, struct_value, 1, &index);
+                }
+
                 break;
             }
             default: {

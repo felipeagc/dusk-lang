@@ -32,8 +32,15 @@ fn vs_main() void {
     let my_image: @Image2D(float) = image;
     let a: float3;
     let b: float = a.xyz.z;
-
     let c: int = test(1);
+
+    let str: struct {
+        a: int,
+        b: float3,
+    };
+
+    let member: float3 = str.b;
+
     // out_uv = in_uv;
     // out_position = float4(in_pos, 1);
 }
