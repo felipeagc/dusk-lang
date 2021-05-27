@@ -94,7 +94,90 @@ duskGenerateExpr(DuskIRModule *module, DuskIRValue *function, DuskExpr *expr)
     }
 
     case DUSK_EXPR_ACCESS: {
-        DUSK_ASSERT(!"unimplemented");
+        DUSK_ASSERT(duskArrayLength(function->function.blocks) > 0);
+        DuskIRValue *block =
+            function->function
+                .blocks[duskArrayLength(function->function.blocks) - 1];
+
+        DuskExpr *left_expr = expr->access.base_expr;
+        duskGenerateExpr(module, function, left_expr);
+
+        for (size_t i = 0; i < duskArrayLength(expr->access.chain); ++i)
+        {
+            DUSK_ASSERT(left_expr->ir_value);
+
+            DuskExpr *right_expr = expr->access.chain[i];
+
+            switch (left_expr->type->kind)
+            {
+            case DUSK_TYPE_VECTOR: {
+                DUSK_ASSERT(right_expr->kind == DUSK_EXPR_IDENT);
+                DUSK_ASSERT(right_expr->identifier.shuffle_indices);
+
+                DuskArray(uint32_t) indices =
+                    right_expr->identifier.shuffle_indices;
+                size_t index_count = duskArrayLength(indices);
+
+                if (index_count > 1)
+                {
+                    DuskIRValue *vec_value =
+                        duskIRLoadLvalue(module, block, left_expr->ir_value);
+                    right_expr->ir_value = duskIRCreateVectorShuffle(
+                        module,
+                        block,
+                        vec_value,
+                        vec_value,
+                        index_count,
+                        indices);
+                }
+                else
+                {
+                    DUSK_ASSERT(index_count == 1);
+
+                    if (duskIRIsLvalue(left_expr->ir_value))
+                    {
+                        DuskIRValue *index_value = duskIRConstIntCreate(
+                            module,
+                            duskTypeNewScalar(
+                                module->compiler, DUSK_SCALAR_TYPE_UINT),
+                            indices[0]);
+
+                        right_expr->ir_value = duskIRCreateAccessChain(
+                            module,
+                            block,
+                            right_expr->type,
+                            left_expr->ir_value,
+                            1,
+                            &index_value);
+                    }
+                    else
+                    {
+                        DuskIRValue *vec_value = duskIRLoadLvalue(
+                            module, block, left_expr->ir_value);
+                        right_expr->ir_value = duskIRCreateCompositeExtract(
+                            module, block, vec_value, index_count, indices);
+                    }
+                }
+
+                break;
+            }
+            case DUSK_TYPE_STRUCT: {
+                DUSK_ASSERT(!"unimplemented");
+                break;
+            }
+            default: {
+                DUSK_ASSERT(0);
+                break;
+            }
+            }
+
+            DUSK_ASSERT(right_expr->ir_value);
+
+            left_expr = right_expr;
+        }
+
+        expr->ir_value = left_expr->ir_value;
+
         break;
     }
 

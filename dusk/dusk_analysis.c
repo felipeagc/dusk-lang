@@ -702,6 +702,7 @@ static void duskAnalyzeExpr(
                 break;
             }
             case DUSK_TYPE_STRUCT: {
+                DUSK_ASSERT(!"unimplemented");
                 break;
             }
             default: {

@@ -410,10 +410,110 @@ DuskIRValue *duskIRCreateFunctionCall(
     return inst;
 }
 
+DuskIRValue *duskIRCreateAccessChain(
+    DuskIRModule *module,
+    DuskIRValue *block,
+    DuskType *accessed_type,
+    DuskIRValue *base,
+    size_t index_count,
+    DuskIRValue **indices)
+{
+    DuskIRValue *inst = DUSK_NEW(module->allocator, DuskIRValue);
+    inst->kind = DUSK_IR_VALUE_ACCESS_CHAIN;
+    inst->access_chain.base = base;
+    inst->access_chain.indices =
+        duskArrayCreate(module->allocator, DuskIRValue *);
+    duskArrayResize(&inst->access_chain.indices, index_count);
+    memcpy(
+        inst->access_chain.indices,
+        indices,
+        index_count * sizeof(DuskIRValue *));
+
+    for (size_t i = 0; i < index_count; ++i)
+    {
+        duskTypeMarkNotDead(indices[i]->type);
+    }
+
+    inst->type = duskTypeNewPointer(
+        module->compiler, accessed_type, DUSK_STORAGE_CLASS_FUNCTION);
+    duskTypeMarkNotDead(inst->type);
+
+    duskIRBlockAppendInst(block, inst);
+    return inst;
+}
+
+DuskIRValue *duskIRCreateCompositeExtract(
+    DuskIRModule *module,
+    DuskIRValue *block,
+    DuskIRValue *composite,
+    size_t index_count,
+    uint32_t *indices)
+{
+    DuskIRValue *inst = DUSK_NEW(module->allocator, DuskIRValue);
+    inst->kind = DUSK_IR_VALUE_COMPOSITE_EXTRACT;
+    inst->composite_extract.composite = composite;
+    inst->composite_extract.indices =
+        duskArrayCreate(module->allocator, uint32_t);
+    duskArrayResize(&inst->composite_extract.indices, index_count);
+    memcpy(
+        inst->composite_extract.indices,
+        indices,
+        index_count * sizeof(uint32_t));
+
+    switch (composite->type->kind)
+    {
+    case DUSK_TYPE_VECTOR: {
+        inst->type = composite->type->vector.sub;
+        break;
+    }
+    default: DUSK_ASSERT(0); break;
+    }
+
+    duskTypeMarkNotDead(inst->type);
+
+    duskIRBlockAppendInst(block, inst);
+    return inst;
+}
+
+DuskIRValue *duskIRCreateVectorShuffle(
+    DuskIRModule *module,
+    DuskIRValue *block,
+    DuskIRValue *vec1,
+    DuskIRValue *vec2,
+    size_t index_count,
+    uint32_t *indices)
+{
+    DuskIRValue *inst = DUSK_NEW(module->allocator, DuskIRValue);
+    inst->kind = DUSK_IR_VALUE_VECTOR_SHUFFLE;
+    inst->vector_shuffle.vec1 = vec1;
+    inst->vector_shuffle.vec2 = vec2;
+    inst->vector_shuffle.indices = duskArrayCreate(module->allocator, uint32_t);
+    duskArrayResize(&inst->vector_shuffle.indices, index_count);
+    memcpy(
+        inst->vector_shuffle.indices, indices, index_count * sizeof(uint32_t));
+
+    DUSK_ASSERT(vec1->type->kind == DUSK_TYPE_VECTOR);
+    DUSK_ASSERT(vec2->type->kind == DUSK_TYPE_VECTOR);
+    DUSK_ASSERT(vec1->type->vector.sub == vec2->type->vector.sub);
+
+    inst->type = duskTypeNewVector(
+        module->compiler, vec1->type->vector.sub, index_count);
+    duskTypeMarkNotDead(inst->type);
+
+    duskIRBlockAppendInst(block, inst);
+    return inst;
+}
+
+bool duskIRIsLvalue(DuskIRValue *value)
+{
+    return value->kind == DUSK_IR_VALUE_VARIABLE ||
+           value->kind == DUSK_IR_VALUE_ACCESS_CHAIN;
+}
+
 DuskIRValue *
 duskIRLoadLvalue(DuskIRModule *module, DuskIRValue *block, DuskIRValue *value)
 {
-    if (value->kind == DUSK_IR_VALUE_VARIABLE)
+    if (duskIRIsLvalue(value))
     {
         return duskIRCreateLoad(module, block, value);
     }
@@ -807,6 +907,70 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
         }
 
         duskEncodeInst(module, SpvOpFunctionCall, params, param_count);
+        break;
+    }
+    case DUSK_IR_VALUE_ACCESS_CHAIN: {
+        DUSK_ASSERT(value->type->id > 0);
+        DUSK_ASSERT(value->id > 0);
+        DUSK_ASSERT(value->access_chain.base->id > 0);
+
+        size_t literal_count = duskArrayLength(value->access_chain.indices);
+        size_t param_count = 3 + literal_count;
+        uint32_t *params =
+            duskAllocate(allocator, sizeof(uint32_t) * param_count);
+        params[0] = value->type->id;
+        params[1] = value->id;
+        params[2] = value->access_chain.base->id;
+        for (size_t i = 0; i < literal_count; ++i)
+        {
+            DUSK_ASSERT(value->access_chain.indices[i]->id > 0);
+            params[3 + i] = value->access_chain.indices[i]->id;
+        }
+
+        duskEncodeInst(module, SpvOpAccessChain, params, param_count);
+        break;
+    }
+    case DUSK_IR_VALUE_COMPOSITE_EXTRACT: {
+        DUSK_ASSERT(value->type->id > 0);
+        DUSK_ASSERT(value->id > 0);
+        DUSK_ASSERT(value->composite_extract.composite->id > 0);
+
+        size_t literal_count =
+            duskArrayLength(value->composite_extract.indices);
+        size_t param_count = 3 + literal_count;
+        uint32_t *params =
+            duskAllocate(allocator, sizeof(uint32_t) * param_count);
+        params[0] = value->type->id;
+        params[1] = value->id;
+        params[2] = value->composite_extract.composite->id;
+        for (size_t i = 0; i < literal_count; ++i)
+        {
+            params[3 + i] = value->composite_extract.indices[i];
+        }
+
+        duskEncodeInst(module, SpvOpCompositeExtract, params, param_count);
+        break;
+    }
+    case DUSK_IR_VALUE_VECTOR_SHUFFLE: {
+        DUSK_ASSERT(value->type->id > 0);
+        DUSK_ASSERT(value->id > 0);
+        DUSK_ASSERT(value->vector_shuffle.vec1->id > 0);
+        DUSK_ASSERT(value->vector_shuffle.vec2->id > 0);
+
+        size_t literal_count = duskArrayLength(value->vector_shuffle.indices);
+        size_t param_count = 4 + literal_count;
+        uint32_t *params =
+            duskAllocate(allocator, sizeof(uint32_t) * param_count);
+        params[0] = value->type->id;
+        params[1] = value->id;
+        params[2] = value->vector_shuffle.vec1->id;
+        params[3] = value->vector_shuffle.vec2->id;
+        for (size_t i = 0; i < literal_count; ++i)
+        {
+            params[4 + i] = value->vector_shuffle.indices[i];
+        }
+
+        duskEncodeInst(module, SpvOpVectorShuffle, params, param_count);
         break;
     }
     }

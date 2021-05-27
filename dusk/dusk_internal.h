@@ -440,6 +440,9 @@ typedef enum DuskIRValueKind {
     DUSK_IR_VALUE_STORE,
     DUSK_IR_VALUE_LOAD,
     DUSK_IR_VALUE_FUNCTION_CALL,
+    DUSK_IR_VALUE_ACCESS_CHAIN,
+    DUSK_IR_VALUE_COMPOSITE_EXTRACT,
+    DUSK_IR_VALUE_VECTOR_SHUFFLE,
 } DuskIRValueKind;
 
 struct DuskIRValue
@@ -495,6 +498,22 @@ struct DuskIRValue
             DuskIRValue *function;
             DuskArray(DuskIRValue *) params;
         } function_call;
+        struct
+        {
+            DuskIRValue *base;
+            DuskArray(DuskIRValue *) indices;
+        } access_chain;
+        struct
+        {
+            DuskIRValue *composite;
+            DuskArray(uint32_t) indices;
+        } composite_extract;
+        struct
+        {
+            DuskIRValue *vec1;
+            DuskIRValue *vec2;
+            DuskArray(uint32_t) indices;
+        } vector_shuffle;
     };
 };
 
@@ -560,7 +579,28 @@ DuskIRValue *duskIRCreateFunctionCall(
     DuskIRValue *function,
     size_t param_count,
     DuskIRValue **params);
+DuskIRValue *duskIRCreateAccessChain(
+    DuskIRModule *module,
+    DuskIRValue *block,
+    DuskType *accessed_type,
+    DuskIRValue *base,
+    size_t index_count,
+    DuskIRValue **indices);
+DuskIRValue *duskIRCreateCompositeExtract(
+    DuskIRModule *module,
+    DuskIRValue *block,
+    DuskIRValue *composite,
+    size_t index_count,
+    uint32_t *indices);
+DuskIRValue *duskIRCreateVectorShuffle(
+    DuskIRModule *module,
+    DuskIRValue *block,
+    DuskIRValue *vec1,
+    DuskIRValue *vec2,
+    size_t index_count,
+    uint32_t *indices);
 
+bool duskIRIsLvalue(DuskIRValue *value);
 DuskIRValue *
 duskIRLoadLvalue(DuskIRModule *module, DuskIRValue *block, DuskIRValue *value);
 // }}}
