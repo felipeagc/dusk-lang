@@ -9,7 +9,7 @@ type Hello struct {
 
 [binding(0)] let hello : Hello; 
 [binding(1)] let image : @Image2D(float);
-[binding(1)] let image2 : @SampledImage3D(float);
+[binding(1)] let image2 : @Image3DSampler(float);
 [binding(2)] let sampler : @Sampler();
 
 [input, location(0)] let in_pos : float3;
@@ -29,6 +29,7 @@ fn test() int {
 
 [entry_point("vertex")]
 fn vs_main() void {
+    let my_image: @Image2D(float) = image;
     // out_uv = in_uv;
     // out_position = float4(in_pos, 1);
 }

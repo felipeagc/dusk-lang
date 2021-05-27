@@ -1410,35 +1410,35 @@ static DuskExpr *parsePrimaryExpr(DuskCompiler *compiler, TokenizerState *state)
             expr->builtin_call.kind =
                 DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_TYPE;
         }
-        else if (strcmp(token.str, "SampledImage1D") == 0)
+        else if (strcmp(token.str, "Image1DSampler") == 0)
         {
             expr->builtin_call.kind =
-                DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_1D_TYPE;
+                DUSK_BUILTIN_FUNCTION_IMAGE_1D_SAMPLER_TYPE;
         }
-        else if (strcmp(token.str, "SampledImage2D") == 0)
+        else if (strcmp(token.str, "Image2DSampler") == 0)
         {
             expr->builtin_call.kind =
-                DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_2D_TYPE;
+                DUSK_BUILTIN_FUNCTION_IMAGE_2D_SAMPLER_TYPE;
         }
-        else if (strcmp(token.str, "SampledImage2DArray") == 0)
+        else if (strcmp(token.str, "Image2DArraySampler") == 0)
         {
             expr->builtin_call.kind =
-                DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_2D_ARRAY_TYPE;
+                DUSK_BUILTIN_FUNCTION_IMAGE_2D_ARRAY_SAMPLER_TYPE;
         }
-        else if (strcmp(token.str, "SampledImage3D") == 0)
+        else if (strcmp(token.str, "Image3DSampler") == 0)
         {
             expr->builtin_call.kind =
-                DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_3D_TYPE;
+                DUSK_BUILTIN_FUNCTION_IMAGE_3D_SAMPLER_TYPE;
         }
-        else if (strcmp(token.str, "SampledImageCube") == 0)
+        else if (strcmp(token.str, "ImageCubeSampler") == 0)
         {
             expr->builtin_call.kind =
-                DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_CUBE_TYPE;
+                DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_SAMPLER_TYPE;
         }
-        else if (strcmp(token.str, "SampledImageCubeArray") == 0)
+        else if (strcmp(token.str, "ImageCubeArraySampler") == 0)
         {
             expr->builtin_call.kind =
-                DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_CUBE_ARRAY_TYPE;
+                DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_SAMPLER_TYPE;
         }
         else
         {

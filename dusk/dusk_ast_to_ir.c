@@ -44,12 +44,12 @@ static void duskGenerateExpr(DuskIRModule *module, DuskExpr *expr)
         case DUSK_BUILTIN_FUNCTION_IMAGE_3D_TYPE:
         case DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_TYPE:
         case DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_TYPE:
-        case DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_1D_TYPE:
-        case DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_2D_TYPE:
-        case DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_2D_ARRAY_TYPE:
-        case DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_3D_TYPE:
-        case DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_CUBE_TYPE:
-        case DUSK_BUILTIN_FUNCTION_SAMPLED_IMAGE_CUBE_ARRAY_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_1D_SAMPLER_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_2D_SAMPLER_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_2D_ARRAY_SAMPLER_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_3D_SAMPLER_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_SAMPLER_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_SAMPLER_TYPE:
         case DUSK_BUILTIN_FUNCTION_SAMPLER_TYPE: {
             DUSK_ASSERT(!"not a runtime value");
             break;
@@ -132,18 +132,41 @@ static void duskGenerateLocalDecl(
     case DUSK_DECL_VAR: {
         DUSK_ASSERT(decl->type);
 
-        decl->ir_value = duskIRVariableCreate(
-            module, decl->type, DUSK_STORAGE_CLASS_FUNCTION);
-        duskArrayPush(&function->function.variables, decl->ir_value);
+        bool should_create_var = true;
+        switch (decl->type->kind)
+        {
+        case DUSK_TYPE_IMAGE:
+        case DUSK_TYPE_SAMPLED_IMAGE:
+        case DUSK_TYPE_SAMPLER: should_create_var = false; break;
+        default: break;
+        }
+
+        if (should_create_var)
+        {
+            decl->ir_value = duskIRVariableCreate(
+                module, decl->type, DUSK_STORAGE_CLASS_FUNCTION);
+            duskArrayPush(&function->function.variables, decl->ir_value);
+        }
 
         if (decl->var.value_expr)
         {
             duskGenerateExpr(module, decl->var.value_expr);
             DuskIRValue *assigned_value = decl->var.value_expr->ir_value;
-            assigned_value = duskIRLoadLvalue(module, block, assigned_value);
 
-            duskIRCreateStore(module, block, decl->ir_value, assigned_value);
+            if (should_create_var)
+            {
+                assigned_value =
+                    duskIRLoadLvalue(module, block, assigned_value);
+                duskIRCreateStore(
+                    module, block, decl->ir_value, assigned_value);
+            }
+            else
+            {
+                decl->ir_value = assigned_value;
+            }
         }
+
+        DUSK_ASSERT(decl->ir_value);
 
         break;
     }
