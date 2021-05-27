@@ -439,6 +439,7 @@ typedef enum DuskIRValueKind {
     DUSK_IR_VALUE_DISCARD,
     DUSK_IR_VALUE_STORE,
     DUSK_IR_VALUE_LOAD,
+    DUSK_IR_VALUE_FUNCTION_CALL,
 } DuskIRValueKind;
 
 struct DuskIRValue
@@ -489,6 +490,11 @@ struct DuskIRValue
         {
             DuskIRValue *pointer;
         } load;
+        struct
+        {
+            DuskIRValue *function;
+            DuskArray(DuskIRValue *) params;
+        } function_call;
     };
 };
 
@@ -540,8 +546,7 @@ DuskIRValue *duskIRConstFloatCreate(
 
 void duskIRCreateReturn(
     DuskIRModule *module, DuskIRValue *block, DuskIRValue *value);
-void duskIRCreateDiscard(
-    DuskIRModule *module, DuskIRValue *block);
+void duskIRCreateDiscard(DuskIRModule *module, DuskIRValue *block);
 void duskIRCreateStore(
     DuskIRModule *module,
     DuskIRValue *block,
@@ -549,6 +554,12 @@ void duskIRCreateStore(
     DuskIRValue *value);
 DuskIRValue *duskIRCreateLoad(
     DuskIRModule *module, DuskIRValue *block, DuskIRValue *pointer);
+DuskIRValue *duskIRCreateFunctionCall(
+    DuskIRModule *module,
+    DuskIRValue *block,
+    DuskIRValue *function,
+    size_t param_count,
+    DuskIRValue **params);
 
 DuskIRValue *
 duskIRLoadLvalue(DuskIRModule *module, DuskIRValue *block, DuskIRValue *value);
@@ -666,6 +677,7 @@ typedef enum DuskExprKind {
     DUSK_EXPR_STRUCT_TYPE,
     DUSK_EXPR_ARRAY_TYPE,
     DUSK_EXPR_RUNTIME_ARRAY_TYPE,
+    DUSK_EXPR_FUNCTION_CALL,
     DUSK_EXPR_BUILTIN_FUNCTION_CALL,
 } DuskExprKind;
 
@@ -714,6 +726,11 @@ struct DuskExpr
             DuskExpr *sub_expr;
             DuskExpr *size_expr;
         } array_type;
+        struct
+        {
+            DuskExpr *func_expr;
+            DuskArray(DuskExpr *) params;
+        } function_call;
         struct
         {
             DuskBuiltinFunctionKind kind;

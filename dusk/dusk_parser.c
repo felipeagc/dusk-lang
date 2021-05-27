@@ -1491,9 +1491,51 @@ static DuskExpr *parsePrimaryExpr(DuskCompiler *compiler, TokenizerState *state)
     return expr;
 }
 
+static DuskExpr *
+parseFunctionCall(DuskCompiler *compiler, TokenizerState *state)
+{
+    DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
+
+    DuskExpr *expr = parsePrimaryExpr(compiler, state);
+    DUSK_ASSERT(expr);
+
+    Token next_token = {0};
+    tokenizerNextToken(allocator, *state, &next_token);
+
+    if (next_token.type == TOKEN_LPAREN)
+    {
+        DuskExpr *func_expr = expr;
+        expr = DUSK_NEW(allocator, DuskExpr);
+        expr->location = func_expr->location;
+        expr->kind = DUSK_EXPR_FUNCTION_CALL;
+        expr->function_call.func_expr = func_expr;
+        expr->function_call.params = duskArrayCreate(allocator, DuskExpr *);
+
+        consumeToken(compiler, state, TOKEN_LPAREN);
+
+        tokenizerNextToken(allocator, *state, &next_token);
+        while (next_token.type != TOKEN_RPAREN)
+        {
+            DuskExpr *param_expr = parseExpr(compiler, state);
+            duskArrayPush(&expr->function_call.params, param_expr);
+
+            tokenizerNextToken(allocator, *state, &next_token);
+            if (next_token.type != TOKEN_RPAREN)
+            {
+                consumeToken(compiler, state, TOKEN_COMMA);
+                tokenizerNextToken(allocator, *state, &next_token);
+            }
+        }
+
+        consumeToken(compiler, state, TOKEN_RPAREN);
+    }
+
+    return expr;
+}
+
 static DuskExpr *parseExpr(DuskCompiler *compiler, TokenizerState *state)
 {
-    return parsePrimaryExpr(compiler, state);
+    return parseFunctionCall(compiler, state);
 }
 
 static DuskStmt *parseStmt(DuskCompiler *compiler, TokenizerState *state)

@@ -386,6 +386,30 @@ duskIRCreateLoad(DuskIRModule *module, DuskIRValue *block, DuskIRValue *pointer)
     return inst;
 }
 
+DuskIRValue *duskIRCreateFunctionCall(
+    DuskIRModule *module,
+    DuskIRValue *block,
+    DuskIRValue *function,
+    size_t param_count,
+    DuskIRValue **params)
+{
+    DuskIRValue *inst = DUSK_NEW(module->allocator, DuskIRValue);
+    inst->type = function->type->function.return_type;
+    inst->kind = DUSK_IR_VALUE_FUNCTION_CALL;
+    inst->function_call.function = function;
+    inst->function_call.params =
+        duskArrayCreate(module->allocator, DuskIRValue *);
+    duskArrayResize(&inst->function_call.params, param_count);
+
+    for (size_t i = 0; i < param_count; ++i)
+    {
+        inst->function_call.params[i] = params[i];
+    }
+
+    duskIRBlockAppendInst(block, inst);
+    return inst;
+}
+
 DuskIRValue *
 duskIRLoadLvalue(DuskIRModule *module, DuskIRValue *block, DuskIRValue *value)
 {
@@ -767,6 +791,22 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
         };
 
         duskEncodeInst(module, SpvOpLoad, params, DUSK_CARRAY_LENGTH(params));
+        break;
+    }
+    case DUSK_IR_VALUE_FUNCTION_CALL: {
+        size_t func_param_count = duskArrayLength(value->function_call.params);
+        size_t param_count = 3 + func_param_count;
+        uint32_t *params =
+            duskAllocate(allocator, sizeof(uint32_t) * param_count);
+        params[0] = value->type->id;
+        params[1] = value->id;
+        params[2] = value->function_call.function->id;
+        for (size_t i = 0; i < func_param_count; ++i)
+        {
+            params[3 + i] = value->function_call.params[i]->id;
+        }
+
+        duskEncodeInst(module, SpvOpFunctionCall, params, param_count);
         break;
     }
     }

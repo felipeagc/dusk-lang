@@ -122,6 +122,7 @@ static bool duskExprResolveInteger(
         return false;
     }
 
+    case DUSK_EXPR_FUNCTION_CALL:
     case DUSK_EXPR_BUILTIN_FUNCTION_CALL:
     case DUSK_EXPR_BOOL_LITERAL:
     case DUSK_EXPR_STRING_LITERAL:
@@ -392,6 +393,52 @@ static void duskAnalyzeExpr(
             expr->struct_type.name,
             expr->struct_type.field_names,
             field_types);
+
+        break;
+    }
+    case DUSK_EXPR_FUNCTION_CALL: {
+        duskAnalyzeExpr(
+            compiler, state, expr->function_call.func_expr, NULL, false);
+        if (!expr->function_call.func_expr->type)
+        {
+            DUSK_ASSERT(duskArrayLength(compiler->errors) > 0);
+            break;
+        }
+
+        DuskType *func_type = expr->function_call.func_expr->type;
+        if (func_type->kind != DUSK_TYPE_FUNCTION)
+        {
+            duskAddError(
+                compiler,
+                expr->location,
+                "called expression is not of type function, instead got type: "
+                "'%s'",
+                duskTypeToPrettyString(allocator, func_type));
+            break;
+        }
+
+        expr->type = func_type->function.return_type;
+        DUSK_ASSERT(expr->type);
+
+        if (duskArrayLength(expr->function_call.params) !=
+            duskArrayLength(func_type->function.param_types))
+        {
+            duskAddError(
+                compiler,
+                expr->location,
+                "wrong number of function parameters, exptected %zu, instead "
+                "got %zu",
+                duskArrayLength(func_type->function.param_types),
+                duskArrayLength(expr->function_call.params));
+            break;
+        }
+
+        for (size_t i = 0; i < duskArrayLength(expr->function_call.params); ++i)
+        {
+            DuskExpr *param = expr->function_call.params[i];
+            DuskType *expected_param_type = func_type->function.param_types[i];
+            duskAnalyzeExpr(compiler, state, param, expected_param_type, false);
+        }
 
         break;
     }
