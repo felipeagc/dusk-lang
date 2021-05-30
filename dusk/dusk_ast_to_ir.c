@@ -44,27 +44,90 @@ duskGenerateExpr(DuskIRModule *module, DuskIRValue *function, DuskExpr *expr)
             function->function
                 .blocks[duskArrayLength(function->function.blocks) - 1];
 
-        duskGenerateExpr(module, function, expr->function_call.func_expr);
-
-        DuskArray(DuskIRValue *) param_values =
-            duskArrayCreate(module->allocator, DuskIRValue *);
-        duskArrayResize(
-            &param_values, duskArrayLength(expr->function_call.params));
-
-        for (size_t i = 0; i < duskArrayLength(expr->function_call.params); ++i)
+        DuskType *func_type = expr->function_call.func_expr->type;
+        switch (func_type->kind)
         {
-            DuskExpr *param_expr = expr->function_call.params[i];
-            duskGenerateExpr(module, function, param_expr);
-            DUSK_ASSERT(param_expr->ir_value);
-            param_values[i] = param_expr->ir_value;
+        case DUSK_TYPE_FUNCTION: {
+            duskGenerateExpr(module, function, expr->function_call.func_expr);
+
+            DuskArray(DuskIRValue *) param_values =
+                duskArrayCreate(module->allocator, DuskIRValue *);
+            duskArrayResize(
+                &param_values, duskArrayLength(expr->function_call.params));
+
+            for (size_t i = 0; i < duskArrayLength(expr->function_call.params);
+                 ++i)
+            {
+                DuskExpr *param_expr = expr->function_call.params[i];
+                duskGenerateExpr(module, function, param_expr);
+                DUSK_ASSERT(param_expr->ir_value);
+                param_values[i] = param_expr->ir_value;
+            }
+
+            expr->ir_value = duskIRCreateFunctionCall(
+                module,
+                block,
+                expr->function_call.func_expr->ir_value,
+                duskArrayLength(param_values),
+                param_values);
+            break;
         }
 
-        expr->ir_value = duskIRCreateFunctionCall(
-            module,
-            block,
-            expr->function_call.func_expr->ir_value,
-            duskArrayLength(param_values),
-            param_values);
+        case DUSK_TYPE_TYPE: {
+            DuskType *constructed_type = expr->function_call.func_expr->as_type;
+            size_t param_count = duskArrayLength(expr->function_call.params);
+
+            switch (constructed_type->kind)
+            {
+            case DUSK_TYPE_VECTOR: {
+                size_t value_count = constructed_type->vector.size;
+                DuskIRValue **values = duskAllocateZeroed(
+                    module->allocator, sizeof(DuskIRValue *) * value_count);
+
+                if (param_count == value_count)
+                {
+                    for (size_t i = 0; i < value_count; ++i)
+                    {
+                        DuskExpr *param = expr->function_call.params[i];
+                        duskGenerateExpr(module, function, param);
+                        values[i] =
+                            duskIRLoadLvalue(module, block, param->ir_value);
+                    }
+                }
+                else if (param_count == 1)
+                {
+                    DuskExpr *param = expr->function_call.params[0];
+                    duskGenerateExpr(module, function, param);
+                    DuskIRValue *param_value =
+                        duskIRLoadLvalue(module, block, param->ir_value);
+                    for (size_t i = 0; i < value_count; ++i)
+                    {
+                        values[i] = param_value;
+                    }
+                }
+                else
+                {
+                    DUSK_ASSERT(0);
+                }
+
+                expr->ir_value = duskIRCreateCompositeConstruct(
+                    module,
+                    block,
+                    constructed_type,
+                    constructed_type->vector.size,
+                    values);
+
+                break;
+            }
+
+            default: DUSK_ASSERT(0);
+            }
+
+            break;
+        }
+
+        default: DUSK_ASSERT(0); break;
+        }
 
         break;
     }

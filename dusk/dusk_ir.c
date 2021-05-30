@@ -504,6 +504,30 @@ DuskIRValue *duskIRCreateVectorShuffle(
     return inst;
 }
 
+DuskIRValue *duskIRCreateCompositeConstruct(
+    DuskIRModule *module,
+    DuskIRValue *block,
+    DuskType *composite_type,
+    size_t value_count,
+    DuskIRValue **values)
+{
+    DuskIRValue *inst = DUSK_NEW(module->allocator, DuskIRValue);
+    inst->kind = DUSK_IR_VALUE_COMPOSITE_CONSTRUCT;
+    inst->composite_construct.values =
+        duskArrayCreate(module->allocator, DuskIRValue *);
+    duskArrayResize(&inst->composite_construct.values, value_count);
+    memcpy(
+        inst->composite_construct.values,
+        values,
+        value_count * sizeof(DuskIRValue *));
+
+    inst->type = composite_type;
+    duskTypeMarkNotDead(inst->type);
+
+    duskIRBlockAppendInst(block, inst);
+    return inst;
+}
+
 bool duskIRIsLvalue(DuskIRValue *value)
 {
     return value->kind == DUSK_IR_VALUE_VARIABLE ||
@@ -971,6 +995,26 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
         }
 
         duskEncodeInst(module, SpvOpVectorShuffle, params, param_count);
+        break;
+    }
+    case DUSK_IR_VALUE_COMPOSITE_CONSTRUCT: {
+        DUSK_ASSERT(value->type->id > 0);
+        DUSK_ASSERT(value->id > 0);
+
+        size_t literal_count =
+            duskArrayLength(value->composite_construct.values);
+        size_t param_count = 2 + literal_count;
+        uint32_t *params =
+            duskAllocate(allocator, sizeof(uint32_t) * param_count);
+        params[0] = value->type->id;
+        params[1] = value->id;
+        for (size_t i = 0; i < literal_count; ++i)
+        {
+            params[2 + i] = value->composite_construct.values[i]->id;
+            DUSK_ASSERT(params[2 + i] > 0);
+        }
+
+        duskEncodeInst(module, SpvOpCompositeConstruct, params, param_count);
         break;
     }
     }

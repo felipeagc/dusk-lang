@@ -407,8 +407,85 @@ static void duskAnalyzeExpr(
         }
 
         DuskType *func_type = expr->function_call.func_expr->type;
-        if (func_type->kind != DUSK_TYPE_FUNCTION)
+        switch (func_type->kind)
         {
+        case DUSK_TYPE_FUNCTION: {
+            expr->type = func_type->function.return_type;
+            DUSK_ASSERT(expr->type);
+
+            if (duskArrayLength(expr->function_call.params) !=
+                duskArrayLength(func_type->function.param_types))
+            {
+                duskAddError(
+                    compiler,
+                    expr->location,
+                    "wrong number of function parameters, exptected %zu, "
+                    "instead got %zu",
+                    duskArrayLength(func_type->function.param_types),
+                    duskArrayLength(expr->function_call.params));
+                break;
+            }
+
+            for (size_t i = 0; i < duskArrayLength(expr->function_call.params);
+                 ++i)
+            {
+                DuskExpr *param = expr->function_call.params[i];
+                DuskType *expected_param_type =
+                    func_type->function.param_types[i];
+                duskAnalyzeExpr(
+                    compiler, state, param, expected_param_type, false);
+            }
+            break;
+        }
+        case DUSK_TYPE_TYPE: {
+            DuskType *constructed_type = expr->function_call.func_expr->as_type;
+            DUSK_ASSERT(constructed_type);
+            expr->type = constructed_type;
+
+            size_t param_count = duskArrayLength(expr->function_call.params);
+
+            switch (constructed_type->kind)
+            {
+            case DUSK_TYPE_VECTOR: {
+                if (!(param_count == 1 ||
+                      param_count == constructed_type->vector.size))
+                {
+                    duskAddError(
+                        compiler,
+                        expr->location,
+                        "wrong element count for '%s' constructor, expected "
+                        "%u, instead got %zu",
+                        duskTypeToPrettyString(allocator, constructed_type),
+                        constructed_type->vector.size,
+                        param_count);
+                    break;
+                }
+
+                for (size_t i = 0; i < param_count; ++i)
+                {
+                    DuskExpr *param = expr->function_call.params[i];
+                    DuskType *expected_param_type =
+                        constructed_type->vector.sub;
+                    duskAnalyzeExpr(
+                        compiler, state, param, expected_param_type, false);
+                }
+
+                break;
+            }
+            default: {
+                expr->type = NULL;
+                duskAddError(
+                    compiler,
+                    expr->location,
+                    "cannot construct type: '%s'",
+                    duskTypeToPrettyString(allocator, constructed_type));
+                break;
+            }
+            }
+
+            break;
+        }
+        default: {
             duskAddError(
                 compiler,
                 expr->location,
@@ -417,28 +494,6 @@ static void duskAnalyzeExpr(
                 duskTypeToPrettyString(allocator, func_type));
             break;
         }
-
-        expr->type = func_type->function.return_type;
-        DUSK_ASSERT(expr->type);
-
-        if (duskArrayLength(expr->function_call.params) !=
-            duskArrayLength(func_type->function.param_types))
-        {
-            duskAddError(
-                compiler,
-                expr->location,
-                "wrong number of function parameters, exptected %zu, instead "
-                "got %zu",
-                duskArrayLength(func_type->function.param_types),
-                duskArrayLength(expr->function_call.params));
-            break;
-        }
-
-        for (size_t i = 0; i < duskArrayLength(expr->function_call.params); ++i)
-        {
-            DuskExpr *param = expr->function_call.params[i];
-            DuskType *expected_param_type = func_type->function.param_types[i];
-            duskAnalyzeExpr(compiler, state, param, expected_param_type, false);
         }
 
         break;
