@@ -205,7 +205,7 @@ const char *duskTypeToPrettyString(DuskAllocator *allocator, DuskType *type)
     return type->pretty_string;
 }
 
-static const char *duskTypeToString(DuskAllocator *allocator, DuskType *type)
+const char *duskTypeToString(DuskAllocator *allocator, DuskType *type)
 {
     if (type->string) return type->string;
 

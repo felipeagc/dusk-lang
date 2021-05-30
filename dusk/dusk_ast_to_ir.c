@@ -110,12 +110,36 @@ duskGenerateExpr(DuskIRModule *module, DuskIRValue *function, DuskExpr *expr)
                     DUSK_ASSERT(0);
                 }
 
-                expr->ir_value = duskIRCreateCompositeConstruct(
-                    module,
-                    block,
-                    constructed_type,
-                    constructed_type->vector.size,
-                    values);
+                bool all_constants = true;
+                for (size_t i = 0; i < value_count; ++i)
+                {
+                    DuskIRValue *value = values[i];
+                    if (!(value->kind == DUSK_IR_VALUE_CONSTANT ||
+                          value->kind == DUSK_IR_VALUE_CONSTANT_BOOL ||
+                          value->kind == DUSK_IR_VALUE_CONSTANT_COMPOSITE))
+                    {
+                        all_constants = false;
+                        break;
+                    }
+                }
+
+                if (all_constants)
+                {
+                    expr->ir_value = duskIRConstCompositeCreate(
+                        module,
+                        constructed_type,
+                        value_count,
+                        values);
+                }
+                else
+                {
+                    expr->ir_value = duskIRCreateCompositeConstruct(
+                        module,
+                        block,
+                        constructed_type,
+                        value_count,
+                        values);
+                }
 
                 break;
             }

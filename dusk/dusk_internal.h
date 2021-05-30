@@ -395,7 +395,13 @@ struct DuskType
 };
 
 bool duskTypeIsRuntime(DuskType *type);
+
+// Gets the type's pretty string
 const char *duskTypeToPrettyString(DuskAllocator *allocator, DuskType *type);
+
+// Gets the type's internal unique string representation for use as a key in hash tables
+const char *duskTypeToString(DuskAllocator *allocator, DuskType *type);
+
 DuskType *duskTypeNewBasic(DuskCompiler *compiler, DuskTypeKind kind);
 DuskType *duskTypeNewScalar(DuskCompiler *compiler, DuskScalarType scalar_type);
 DuskType *
@@ -432,6 +438,7 @@ void duskTypeMarkNotDead(DuskType *type);
 typedef enum DuskIRValueKind {
     DUSK_IR_VALUE_CONSTANT_BOOL,
     DUSK_IR_VALUE_CONSTANT,
+    DUSK_IR_VALUE_CONSTANT_COMPOSITE,
     DUSK_IR_VALUE_FUNCTION,
     DUSK_IR_VALUE_BLOCK,
     DUSK_IR_VALUE_VARIABLE,
@@ -466,6 +473,10 @@ struct DuskIRValue
             uint32_t *value_words;
             size_t value_word_count;
         } constant;
+        struct
+        {
+            DuskArray(DuskIRValue *) values;
+        } constant_composite;
         struct
         {
             const char *name;
@@ -517,7 +528,7 @@ struct DuskIRValue
         } vector_shuffle;
         struct
         {
-            DuskArray(DuskIRValue*) values;
+            DuskArray(DuskIRValue *) values;
         } composite_construct;
     };
 };
@@ -567,6 +578,11 @@ DuskIRValue *
 duskIRConstIntCreate(DuskIRModule *module, DuskType *type, uint64_t int_value);
 DuskIRValue *duskIRConstFloatCreate(
     DuskIRModule *module, DuskType *type, double double_value);
+DuskIRValue *duskIRConstCompositeCreate(
+    DuskIRModule *module,
+    DuskType *type,
+    size_t value_count,
+    DuskIRValue **values);
 
 void duskIRCreateReturn(
     DuskIRModule *module, DuskIRValue *block, DuskIRValue *value);

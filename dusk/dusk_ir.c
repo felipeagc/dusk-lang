@@ -104,6 +104,25 @@ duskIRConstToString(DuskAllocator *allocator, DuskIRValue *value)
         }
         break;
     }
+    case DUSK_IR_VALUE_CONSTANT_COMPOSITE: {
+        DuskStringBuilder *sb = duskStringBuilderCreate(allocator, 1024);
+        duskStringBuilderAppend(sb, duskTypeToString(allocator, value->type));
+        duskStringBuilderAppend(sb, "(");
+        for (size_t i = 0;
+             i < duskArrayLength(value->constant_composite.values);
+             ++i)
+        {
+            if (i != 0) duskStringBuilderAppend(sb, ",");
+            DuskIRValue *elem_value = value->constant_composite.values[i];
+            const char *elem_str = duskIRConstToString(allocator, elem_value);
+            duskStringBuilderAppend(sb, elem_str);
+        }
+        duskStringBuilderAppend(sb, ")");
+
+        value->const_string = duskStringBuilderBuild(sb, allocator);
+        duskStringBuilderDestroy(sb);
+        break;
+    }
     default: DUSK_ASSERT(0); break;
     }
 
@@ -329,6 +348,28 @@ DuskIRValue *duskIRConstFloatCreate(
     }
     default: DUSK_ASSERT(0); break;
     }
+
+    return duskIRGetCachedConst(module, value);
+}
+
+DuskIRValue *duskIRConstCompositeCreate(
+    DuskIRModule *module,
+    DuskType *type,
+    size_t value_count,
+    DuskIRValue **values)
+{
+    DuskIRValue *value = DUSK_NEW(module->allocator, DuskIRValue);
+    value->type = type;
+    duskTypeMarkNotDead(value->type);
+    value->kind = DUSK_IR_VALUE_CONSTANT_COMPOSITE;
+
+    value->constant_composite.values =
+        duskArrayCreate(module->allocator, DuskIRValue *);
+    duskArrayResize(&value->constant_composite.values, value_count);
+    memcpy(
+        value->constant_composite.values,
+        values,
+        value_count * sizeof(DuskIRValue *));
 
     return duskIRGetCachedConst(module, value);
 }
@@ -837,6 +878,25 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
             value->const_bool.value ? SpvOpConstantTrue : SpvOpConstantFalse,
             params,
             DUSK_CARRAY_LENGTH(params));
+        break;
+    }
+    case DUSK_IR_VALUE_CONSTANT_COMPOSITE: {
+        duskEmitType(module, value->type);
+
+        size_t literal_count =
+            duskArrayLength(value->constant_composite.values);
+        size_t param_count = 2 + literal_count;
+        uint32_t *params =
+            duskAllocate(allocator, sizeof(uint32_t) * param_count);
+        params[0] = value->type->id;
+        params[1] = value->id;
+        for (size_t i = 0; i < literal_count; ++i)
+        {
+            params[2 + i] = value->constant_composite.values[i]->id;
+            DUSK_ASSERT(params[2 + i] > 0);
+        }
+
+        duskEncodeInst(module, SpvOpConstantComposite, params, param_count);
         break;
     }
     case DUSK_IR_VALUE_FUNCTION: {
