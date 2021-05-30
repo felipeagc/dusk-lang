@@ -1309,7 +1309,7 @@ static DuskExpr *parsePrimaryExpr(DuskCompiler *compiler, TokenizerState *state)
     }
     case TOKEN_FLOAT_LITERAL: {
         expr->kind = DUSK_EXPR_FLOAT_LITERAL;
-        expr->int_literal = token.float_;
+        expr->float_literal = token.float_;
         break;
     }
     case TOKEN_TRUE: {
