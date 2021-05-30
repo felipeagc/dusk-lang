@@ -34,6 +34,12 @@ fn vs_main() void {
     let b: float = a.xyz.z;
     let c: int = test(1);
     let d: float3 = float3(0.1123);
+    let e: float3x3 = float3x3(
+        float3(0.1123),
+        float3(0.1123),
+        float3(0.1123),
+    );
+    let f: float3x3 = float3x3(d);
 
     let str: struct {
         a: int,

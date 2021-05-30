@@ -472,6 +472,32 @@ static void duskAnalyzeExpr(
 
                 break;
             }
+            case DUSK_TYPE_MATRIX: {
+                if (!(param_count == 1 ||
+                      param_count == constructed_type->matrix.cols))
+                {
+                    duskAddError(
+                        compiler,
+                        expr->location,
+                        "wrong element count for '%s' constructor, expected "
+                        "%u, instead got %zu",
+                        duskTypeToPrettyString(allocator, constructed_type),
+                        constructed_type->matrix.cols,
+                        param_count);
+                    break;
+                }
+
+                for (size_t i = 0; i < param_count; ++i)
+                {
+                    DuskExpr *param = expr->function_call.params[i];
+                    DuskType *expected_param_type =
+                        constructed_type->matrix.col_type;
+                    duskAnalyzeExpr(
+                        compiler, state, param, expected_param_type, false);
+                }
+
+                break;
+            }
             default: {
                 expr->type = NULL;
                 duskAddError(
