@@ -169,6 +169,9 @@ static bool duskIsExprAssignable(DuskAnalyzerState *state, DuskExpr *expr)
 
         break;
     }
+    case DUSK_EXPR_ACCESS: {
+        return duskIsExprAssignable(state, expr->access.base_expr);
+    }
     default: {
         break;
     }
