@@ -663,6 +663,7 @@ typedef enum DuskAttributeKind
     DUSK_ATTRIBUTE_LOCATION,
     DUSK_ATTRIBUTE_SET,
     DUSK_ATTRIBUTE_BINDING,
+    DUSK_ATTRIBUTE_BUILTIN,
 } DuskAttributeKind;
 
 typedef struct DuskAttribute
@@ -697,8 +698,12 @@ struct DuskDecl
 
             const char *link_name;
             DuskScope *scope;
+
             DuskArray(DuskDecl *) parameter_decls;
+
             DuskExpr *return_type_expr;
+            DuskArray(DuskAttribute) return_type_attributes;
+
             DuskArray(DuskStmt *) stmts;
         } function;
         struct

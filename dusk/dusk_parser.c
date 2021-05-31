@@ -1887,7 +1887,12 @@ parseTopLevelDecl(DuskCompiler *compiler, TokenizerState *state)
 
         consumeToken(compiler, state, TOKEN_RPAREN);
 
+        DuskArray(DuskAttribute) return_type_attributes =
+            duskArrayCreate(allocator, DuskAttribute);
+        parseAttributes(compiler, state, &return_type_attributes);
+
         decl->function.return_type_expr = parseExpr(compiler, state);
+        decl->function.return_type_attributes = return_type_attributes;
 
         consumeToken(compiler, state, TOKEN_LCURLY);
 

@@ -25,7 +25,7 @@ fn test2(param: int) int {
 fn vs_main(
     [location(0)] pos: float3,
     [location(1)] uv: float2,
-) void {
+) [builtin(position)] void {
     let my_image: @Image2D(float) = image;
     let a: float3;
     let b: float = a.xyz.z;
