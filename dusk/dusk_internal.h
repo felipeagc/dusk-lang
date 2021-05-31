@@ -656,8 +656,18 @@ typedef enum DuskBuiltinFunctionKind {
     DUSK_BUILTIN_FUNCTION_MAX,
 } DuskBuiltinFunctionKind;
 
+typedef enum DuskAttributeKind
+{
+    DUSK_ATTRIBUTE_UNKNOWN = 0,
+    DUSK_ATTRIBUTE_ENTRY_POINT,
+    DUSK_ATTRIBUTE_LOCATION,
+    DUSK_ATTRIBUTE_SET,
+    DUSK_ATTRIBUTE_BINDING,
+} DuskAttributeKind;
+
 typedef struct DuskAttribute
 {
+    DuskAttributeKind kind;
     const char *name;
     DuskArray(DuskExpr *) value_exprs;
 } DuskAttribute;

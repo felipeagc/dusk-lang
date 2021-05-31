@@ -1074,8 +1074,9 @@ static void duskAnalyzeDecl(
         for (size_t i = 0; i < duskArrayLength(decl->attributes); ++i)
         {
             DuskAttribute *attrib = &decl->attributes[i];
-            if (strcmp(attrib->name, "entry_point") == 0)
+            switch (attrib->kind)
             {
+            case DUSK_ATTRIBUTE_ENTRY_POINT: {
                 if (duskArrayLength(attrib->value_exprs) != 1)
                 {
                     duskAddError(
@@ -1122,6 +1123,10 @@ static void duskAnalyzeDecl(
                         stage_str);
                     continue;
                 }
+                break;
+            }
+
+            default: break;
             }
         }
 
