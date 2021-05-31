@@ -12,11 +12,6 @@ type Hello struct {
 [binding(1)] let image2 : @Image3DSampler(float);
 [binding(2)] let sampler : @Sampler();
 
-[input, location(0)] let in_pos : float3;
-[input, location(1)] let in_uv : float2;
-[output, builtin_gl_position] let out_position : float4;
-[output, location(0)] let out_uv : float2;
-
 fn test(param: int) int {
     let a: int = param;
     return a;
@@ -28,7 +23,8 @@ fn test2(param: int) int {
 
 [entry_point(vertex)]
 fn vs_main(
-    [location(0)] pos: float3
+    [location(0)] pos: float3,
+    [location(1)] uv: float2,
 ) void {
     let my_image: @Image2D(float) = image;
     let a: float3;
@@ -60,13 +56,11 @@ fn vs_main(
     // out_position = float4(in_pos, 1);
 }
 
-[input, location(0)] let uv : float2;
-[output, location(0)] let out_color : float4;
-
 [entry_point(fragment)]
-fn fs_main() void {
+fn fs_main(in_pos: float3) void {
     // let color: float4 = @sample(sampler, image, uv);
 
     // out_color = float4(color, 1.0);
-    let a: int = 123;
+
+    // let a: float3 = in_pos;
 }

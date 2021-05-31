@@ -237,6 +237,8 @@ duskIRFunctionCreate(DuskIRModule *module, DuskType *type, const char *name)
     DuskIRValue *first_block = duskIRBlockCreate(module);
     duskIRFunctionAddBlock(value, first_block);
 
+    duskTypeMarkNotDead(value->type);
+
     return value;
 }
 
@@ -926,6 +928,10 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
     }
     case DUSK_IR_VALUE_FUNCTION: {
         {
+            DUSK_ASSERT(value->type->function.return_type->id > 0);
+            DUSK_ASSERT(value->id > 0);
+            DUSK_ASSERT(value->type->id > 0);
+
             uint32_t params[4] = {
                 value->type->function.return_type->id,
                 value->id,
@@ -976,6 +982,9 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
         break;
     }
     case DUSK_IR_VALUE_STORE: {
+        DUSK_ASSERT(value->store.pointer->id > 0);
+        DUSK_ASSERT(value->store.value->id > 0);
+
         uint32_t params[2] = {
             value->store.pointer->id,
             value->store.value->id,
@@ -985,6 +994,9 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
         break;
     }
     case DUSK_IR_VALUE_LOAD: {
+        DUSK_ASSERT(value->load.pointer->id > 0);
+        DUSK_ASSERT(value->id > 0);
+
         uint32_t params[3] = {
             value->type->id,
             value->id,
@@ -1095,6 +1107,8 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
         break;
     }
     case DUSK_IR_VALUE_FUNCTION_PARAMETER: {
+        DUSK_ASSERT(value->id > 0);
+
         uint32_t params[2] = {
             value->type->id,
             value->id,
