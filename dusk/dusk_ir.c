@@ -928,15 +928,7 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
         for (size_t i = 0; i < duskArrayLength(value->function.params); ++i)
         {
             DuskIRValue *func_param = value->function.params[i];
-            uint32_t params[2] = {
-                func_param->type->id,
-                func_param->id,
-            };
-            duskEncodeInst(
-                module,
-                SpvOpFunctionParameter,
-                params,
-                DUSK_CARRAY_LENGTH(params));
+            duskEmitValue(module, func_param);
         }
 
         for (size_t i = 0; i < duskArrayLength(value->function.blocks); ++i)
@@ -1089,6 +1081,15 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
         }
 
         duskEncodeInst(module, SpvOpCompositeConstruct, params, param_count);
+        break;
+    }
+    case DUSK_IR_VALUE_FUNCTION_PARAMETER: {
+        uint32_t params[2] = {
+            value->type->id,
+            value->id,
+        };
+        duskEncodeInst(
+            module, SpvOpFunctionParameter, params, DUSK_CARRAY_LENGTH(params));
         break;
     }
     }

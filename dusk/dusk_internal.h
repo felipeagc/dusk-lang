@@ -799,6 +799,7 @@ struct DuskExpr
             const char *name;
             DuskArray(const char *) field_names;
             DuskArray(DuskExpr *) field_type_exprs;
+            DuskArray(DuskArray(DuskAttribute)) field_attributes;
         } struct_type;
         struct
         {

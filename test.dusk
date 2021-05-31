@@ -27,7 +27,9 @@ fn test2(param: int) int {
 }
 
 [entry_point(vertex)]
-fn vs_main() void {
+fn vs_main(
+    [location(0)] pos: float3
+) void {
     let my_image: @Image2D(float) = image;
     let a: float3;
     let b: float = a.xyz.z;
