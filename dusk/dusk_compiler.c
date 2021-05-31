@@ -30,7 +30,8 @@ void duskThrow(DuskCompiler *compiler)
     longjmp(compiler->jump_buffer, 1);
 }
 
-void duskAddError(DuskCompiler *compiler, DuskLocation loc, const char *fmt, ...)
+void duskAddError(
+    DuskCompiler *compiler, DuskLocation loc, const char *fmt, ...)
 {
     DUSK_ASSERT(loc.file);
 
@@ -78,8 +79,8 @@ uint8_t *duskCompile(
         .text = text,
         .text_length = text_length,
         .decls = duskArrayCreate(allocator, DuskDecl *),
-        .scope = duskScopeCreate(allocator, NULL, DUSK_SCOPE_OWNER_TYPE_NONE, NULL),
-        .entry_points = duskArrayCreate(allocator, DuskEntryPoint),
+        .scope =
+            duskScopeCreate(allocator, NULL, DUSK_SCOPE_OWNER_TYPE_NONE, NULL),
     };
 
     duskParse(compiler, file);

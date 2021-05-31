@@ -544,15 +544,48 @@ static void duskGenerateGlobalDecl(DuskIRModule *module, DuskDecl *decl)
     {
     case DUSK_DECL_FUNCTION: {
         DUSK_ASSERT(decl->type);
-        decl->ir_value = duskIRFunctionCreate(module, decl->type, decl->name);
+
+        DuskType *function_type = decl->type;
+        if (decl->function.is_entry_point)
+        {
+            // Entry point is a function with no parameters and no return type
+            function_type = duskTypeNewFunction(
+                module->compiler,
+                duskTypeNewBasic(module->compiler, DUSK_TYPE_VOID),
+                duskArrayCreate(module->allocator, DuskType *));
+
+            decl->function.entry_point_referenced_globals =
+                duskArrayCreate(module->allocator, DuskIRValue *);
+        }
+        decl->ir_value =
+            duskIRFunctionCreate(module, function_type, decl->name);
         duskArrayPush(&module->functions, decl->ir_value);
 
         size_t param_count = duskArrayLength(decl->function.parameter_decls);
-        for (size_t i = 0; i < param_count; ++i)
+        if (decl->function.is_entry_point)
         {
-            DuskDecl *param_decl = decl->function.parameter_decls[i];
-            param_decl->ir_value = decl->ir_value->function.params[i];
-            DUSK_ASSERT(param_decl->ir_value);
+            for (size_t i = 0; i < param_count; ++i)
+            {
+                DuskDecl *param_decl = decl->function.parameter_decls[i];
+
+                param_decl->ir_value = duskIRVariableCreate(
+                    module, param_decl->type, DUSK_STORAGE_CLASS_INPUT);
+                duskArrayPush(&module->globals, param_decl->ir_value);
+                duskArrayPush(
+                    &decl->function.entry_point_referenced_globals,
+                    param_decl->ir_value);
+
+                DUSK_ASSERT(param_decl->ir_value);
+            }
+        }
+        else
+        {
+            for (size_t i = 0; i < param_count; ++i)
+            {
+                DuskDecl *param_decl = decl->function.parameter_decls[i];
+                param_decl->ir_value = decl->ir_value->function.params[i];
+                DUSK_ASSERT(param_decl->ir_value);
+            }
         }
 
         size_t stmt_count = duskArrayLength(decl->function.stmts);
@@ -577,6 +610,17 @@ static void duskGenerateGlobalDecl(DuskIRModule *module, DuskDecl *decl)
                     DUSK_ASSERT(0); // Missing terminator instruction
                 }
             }
+        }
+
+        if (decl->function.is_entry_point)
+        {
+            duskIRModuleAddEntryPoint(
+                module,
+                decl->ir_value,
+                decl->function.link_name,
+                decl->function.entry_point_stage,
+                duskArrayLength(decl->function.entry_point_referenced_globals),
+                decl->function.entry_point_referenced_globals);
         }
 
         break;
@@ -614,18 +658,7 @@ DuskIRModule *duskGenerateIRModule(DuskCompiler *compiler, DuskFile *file)
     for (size_t i = 0; i < duskArrayLength(file->decls); ++i)
     {
         DuskDecl *decl = file->decls[i];
-
         duskGenerateGlobalDecl(module, decl);
-    }
-
-    for (size_t i = 0; i < duskArrayLength(file->entry_points); ++i)
-    {
-        DuskEntryPoint *entry_point = &file->entry_points[i];
-        duskIRModuleAddEntryPoint(
-            module,
-            entry_point->function_decl->ir_value,
-            entry_point->name,
-            entry_point->stage);
     }
 
     return module;

@@ -1096,23 +1096,22 @@ static void duskAnalyzeDecl(
                     continue;
                 }
 
-                DuskEntryPoint entry_point = {
-                    .function_decl = decl,
-                    .name = decl->function.link_name,
-                };
+                decl->function.is_entry_point = true;
 
                 const char *stage_str = attrib->value_exprs[0]->identifier.str;
                 if (strcmp(stage_str, "fragment") == 0)
                 {
-                    entry_point.stage = DUSK_SHADER_STAGE_FRAGMENT;
+                    decl->function.entry_point_stage =
+                        DUSK_SHADER_STAGE_FRAGMENT;
                 }
                 else if (strcmp(stage_str, "vertex") == 0)
                 {
-                    entry_point.stage = DUSK_SHADER_STAGE_VERTEX;
+                    decl->function.entry_point_stage = DUSK_SHADER_STAGE_VERTEX;
                 }
                 else if (strcmp(stage_str, "compute") == 0)
                 {
-                    entry_point.stage = DUSK_SHADER_STAGE_COMPUTE;
+                    decl->function.entry_point_stage =
+                        DUSK_SHADER_STAGE_COMPUTE;
                 }
                 else
                 {
@@ -1123,8 +1122,6 @@ static void duskAnalyzeDecl(
                         stage_str);
                     continue;
                 }
-
-                duskArrayPush(&decl->location.file->entry_points, entry_point);
             }
         }
 
@@ -1273,12 +1270,4 @@ void duskAnalyzeFile(DuskCompiler *compiler, DuskFile *file)
     }
 
     duskArrayPop(&state->scope_stack);
-
-    if (duskArrayLength(file->entry_points) == 0)
-    {
-        duskAddError(
-            compiler,
-            (DuskLocation){.file = file},
-            "no entrypoints found in file");
-    }
 }

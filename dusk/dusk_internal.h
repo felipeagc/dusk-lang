@@ -436,6 +436,14 @@ void duskTypeMarkNotDead(DuskType *type);
 // }}}
 
 // IR {{{
+typedef struct DuskIREntryPoint
+{
+    DuskShaderStage stage;
+    const char *name;
+    DuskIRValue *function;
+    DuskArray(DuskIRValue *) referenced_globals;
+} DuskIREntryPoint;
+
 typedef enum DuskIRValueKind {
     DUSK_IR_VALUE_CONSTANT_BOOL,
     DUSK_IR_VALUE_CONSTANT,
@@ -535,13 +543,6 @@ struct DuskIRValue
     };
 };
 
-typedef struct DuskIREntryPoint
-{
-    DuskIRValue *function;
-    const char *name;
-    DuskShaderStage stage;
-} DuskIREntryPoint;
-
 typedef struct DuskIRModule
 {
     DuskCompiler *compiler;
@@ -557,7 +558,7 @@ typedef struct DuskIRModule
     DuskArray(DuskIRValue *) functions;
     DuskArray(DuskIRValue *) globals;
 
-    DuskArray(DuskIREntryPoint) entry_points;
+    DuskArray(DuskIREntryPoint *) entry_points;
 } DuskIRModule;
 
 bool duskIRBlockIsTerminated(DuskIRValue *block);
@@ -572,7 +573,9 @@ void duskIRModuleAddEntryPoint(
     DuskIRModule *module,
     DuskIRValue *function,
     const char *name,
-    DuskShaderStage stage);
+    DuskShaderStage stage,
+    size_t referenced_global_count,
+    DuskIRValue **referenced_globals);
 DuskIRModule *duskIRModuleCreate(DuskCompiler *compiler);
 
 DuskIRValue *duskIRConstBoolCreate(DuskIRModule *module, bool bool_value);
@@ -678,6 +681,10 @@ struct DuskDecl
     {
         struct
         {
+            bool is_entry_point;
+            DuskShaderStage entry_point_stage;
+            DuskArray(DuskIRValue *) entry_point_referenced_globals;
+
             const char *link_name;
             DuskScope *scope;
             DuskArray(DuskDecl *) parameter_decls;
@@ -826,13 +833,6 @@ struct DuskExpr
 // }}}
 
 // Compiler {{{
-typedef struct DuskEntryPoint
-{
-    DuskShaderStage stage;
-    const char *name;
-    DuskDecl *function_decl;
-} DuskEntryPoint;
-
 struct DuskFile
 {
     const char *path;
@@ -842,7 +842,6 @@ struct DuskFile
 
     DuskScope *scope;
     DuskArray(DuskDecl *) decls;
-    DuskArray(DuskEntryPoint) entry_points;
 };
 
 typedef struct DuskError

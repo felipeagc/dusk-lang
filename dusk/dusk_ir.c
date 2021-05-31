@@ -200,7 +200,7 @@ DuskIRModule *duskIRModuleCreate(DuskCompiler *compiler)
 
     module->glsl_ext_inst_id = duskReserveId(module);
 
-    module->entry_points = duskArrayCreate(allocator, DuskIREntryPoint);
+    module->entry_points = duskArrayCreate(allocator, DuskIREntryPoint *);
     module->functions = duskArrayCreate(allocator, DuskIRValue *);
     module->globals = duskArrayCreate(allocator, DuskIRValue *);
 
@@ -264,13 +264,24 @@ void duskIRModuleAddEntryPoint(
     DuskIRModule *module,
     DuskIRValue *function,
     const char *name,
-    DuskShaderStage stage)
+    DuskShaderStage stage,
+    size_t referenced_global_count,
+    DuskIRValue **referenced_globals)
 {
-    DuskIREntryPoint entry_point = {
-        .function = function,
-        .name = name,
-        .stage = stage,
-    };
+    DuskIREntryPoint *entry_point =
+        duskAllocateZeroed(module->allocator, sizeof(DuskIREntryPoint));
+
+    entry_point->name = name;
+    entry_point->function = function;
+    entry_point->stage = stage;
+    entry_point->referenced_globals =
+        duskArrayCreate(module->allocator, DuskIRValue *);
+    duskArrayResize(&entry_point->referenced_globals, referenced_global_count);
+    memcpy(
+        entry_point->referenced_globals,
+        referenced_globals,
+        sizeof(DuskIRValue *) * referenced_global_count);
+
     duskArrayPush(&module->entry_points, entry_point);
 }
 
@@ -821,7 +832,7 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
             storage_class = SpvStorageClassOutput;
             break;
         case DUSK_STORAGE_CLASS_UNIFORM:
-            storage_class = SpvStorageClassUniformConstant;
+            storage_class = SpvStorageClassUniform;
             break;
         case DUSK_STORAGE_CLASS_UNIFORM_CONSTANT:
             storage_class = SpvStorageClassUniformConstant;
@@ -1132,6 +1143,12 @@ DuskArray(uint32_t)
         value->id = duskReserveId(module);
     }
 
+    for (size_t i = 0; i < duskArrayLength(module->globals); ++i)
+    {
+        DuskIRValue *value = module->globals[i];
+        value->id = duskReserveId(module);
+    }
+
     for (size_t i = 0; i < duskArrayLength(module->functions); ++i)
     {
         DuskIRValue *function = module->functions[i];
@@ -1206,12 +1223,13 @@ DuskArray(uint32_t)
 
     for (size_t i = 0; i < duskArrayLength(module->entry_points); ++i)
     {
-        DuskIREntryPoint *entry_point = &module->entry_points[i];
+        DuskIREntryPoint *entry_point = module->entry_points[i];
         size_t entry_point_name_len = strlen(entry_point->name);
 
         size_t name_word_count = DUSK_ROUND_TO_4(entry_point_name_len + 1) / 4;
 
-        size_t param_count = 2 + name_word_count;
+        size_t param_count = 2 + name_word_count +
+                             duskArrayLength(entry_point->referenced_globals);
         uint32_t *params = DUSK_NEW_ARRAY(allocator, uint32_t, param_count);
 
         switch (entry_point->stage)
@@ -1231,12 +1249,19 @@ DuskArray(uint32_t)
 
         memcpy(&params[2], entry_point->name, entry_point_name_len + 1);
 
+        for (size_t i = 0; i < duskArrayLength(entry_point->referenced_globals);
+             ++i)
+        {
+            params[2 + name_word_count + i] =
+                entry_point->referenced_globals[i]->id;
+        }
+
         duskEncodeInst(module, SpvOpEntryPoint, params, param_count);
     }
 
     for (size_t i = 0; i < duskArrayLength(module->entry_points); ++i)
     {
-        DuskIREntryPoint *entry_point = &module->entry_points[i];
+        DuskIREntryPoint *entry_point = module->entry_points[i];
         switch (entry_point->stage)
         {
         case DUSK_SHADER_STAGE_FRAGMENT: {
@@ -1263,6 +1288,12 @@ DuskArray(uint32_t)
     for (size_t i = 0; i < duskArrayLength(module->consts); ++i)
     {
         DuskIRValue *value = module->consts[i];
+        duskEmitValue(module, value);
+    }
+
+    for (size_t i = 0; i < duskArrayLength(module->globals); ++i)
+    {
+        DuskIRValue *value = module->globals[i];
         duskEmitValue(module, value);
     }
 
