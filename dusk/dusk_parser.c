@@ -1499,30 +1499,76 @@ static DuskExpr *parseAccessExpr(DuskCompiler *compiler, TokenizerState *state)
     DUSK_ASSERT(expr);
 
     Token next_token = {0};
-    tokenizerNextToken(allocator, *state, &next_token);
+    TokenizerState next_state =
+        tokenizerNextToken(allocator, *state, &next_token);
 
     if (next_token.type == TOKEN_DOT)
     {
-        DuskExpr *base_expr = expr;
-        expr = DUSK_NEW(allocator, DuskExpr);
-        expr->location = base_expr->location;
-        expr->kind = DUSK_EXPR_ACCESS;
-        expr->access.base_expr = base_expr;
-        expr->access.chain = duskArrayCreate(allocator, DuskExpr*);
-
-        while (next_token.type == TOKEN_DOT)
+        tokenizerNextToken(allocator, next_state, &next_token);
+        if (next_token.type == TOKEN_LCURLY)
         {
+            // Struct literal
             consumeToken(compiler, state, TOKEN_DOT);
-            Token ident_token = consumeToken(compiler, state, TOKEN_IDENT);
+            consumeToken(compiler, state, TOKEN_LCURLY);
 
-            DuskExpr *ident_expr = DUSK_NEW(allocator, DuskExpr);
-            ident_expr->location = ident_token.location;
-            ident_expr->kind = DUSK_EXPR_IDENT;
-            ident_expr->identifier.str = ident_token.str;
-
-            duskArrayPush(&expr->access.chain, ident_expr);
+            DuskExpr *type_expr = expr;
+            expr = DUSK_NEW(allocator, DuskExpr);
+            expr->location = type_expr->location;
+            expr->kind = DUSK_EXPR_STRUCT_LITERAL;
+            expr->struct_literal.type_expr = type_expr;
+            expr->struct_literal.field_names =
+                duskArrayCreate(allocator, const char *);
+            expr->struct_literal.field_values =
+                duskArrayCreate(allocator, DuskExpr *);
 
             tokenizerNextToken(allocator, *state, &next_token);
+            while (next_token.type != TOKEN_RCURLY)
+            {
+                Token ident_token = consumeToken(compiler, state, TOKEN_IDENT);
+                consumeToken(compiler, state, TOKEN_COLON);
+                DuskExpr *field_value_expr = parseExpr(compiler, state);
+
+                duskArrayPush(
+                    &expr->struct_literal.field_names, ident_token.str);
+                duskArrayPush(
+                    &expr->struct_literal.field_values, field_value_expr);
+
+                tokenizerNextToken(allocator, *state, &next_token);
+                if (next_token.type != TOKEN_RCURLY)
+                {
+                    consumeToken(compiler, state, TOKEN_COMMA);
+                    tokenizerNextToken(allocator, *state, &next_token);
+                }
+            }
+
+            consumeToken(compiler, state, TOKEN_RCURLY);
+        }
+        else
+        {
+            // Access expr
+            DuskExpr *base_expr = expr;
+            expr = DUSK_NEW(allocator, DuskExpr);
+            expr->location = base_expr->location;
+            expr->kind = DUSK_EXPR_ACCESS;
+            expr->access.base_expr = base_expr;
+            expr->access.chain = duskArrayCreate(allocator, DuskExpr *);
+
+            tokenizerNextToken(allocator, *state, &next_token);
+            while (next_token.type == TOKEN_DOT)
+            {
+                consumeToken(compiler, state, TOKEN_DOT);
+
+                Token ident_token = consumeToken(compiler, state, TOKEN_IDENT);
+
+                DuskExpr *ident_expr = DUSK_NEW(allocator, DuskExpr);
+                ident_expr->location = ident_token.location;
+                ident_expr->kind = DUSK_EXPR_IDENT;
+                ident_expr->identifier.str = ident_token.str;
+
+                duskArrayPush(&expr->access.chain, ident_expr);
+
+                tokenizerNextToken(allocator, *state, &next_token);
+            }
         }
     }
 

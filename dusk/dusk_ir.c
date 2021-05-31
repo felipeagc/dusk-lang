@@ -569,6 +569,13 @@ DuskIRValue *duskIRCreateCompositeConstruct(
     return inst;
 }
 
+bool duskIRValueIsConstant(DuskIRValue *value)
+{
+    return value->kind == DUSK_IR_VALUE_CONSTANT ||
+           value->kind == DUSK_IR_VALUE_CONSTANT_BOOL ||
+           value->kind == DUSK_IR_VALUE_CONSTANT_COMPOSITE;
+}
+
 bool duskIRIsLvalue(DuskIRValue *value)
 {
     return value->kind == DUSK_IR_VALUE_VARIABLE ||

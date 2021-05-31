@@ -399,7 +399,8 @@ bool duskTypeIsRuntime(DuskType *type);
 // Gets the type's pretty string
 const char *duskTypeToPrettyString(DuskAllocator *allocator, DuskType *type);
 
-// Gets the type's internal unique string representation for use as a key in hash tables
+// Gets the type's internal unique string representation for use as a key in
+// hash tables
 const char *duskTypeToString(DuskAllocator *allocator, DuskType *type);
 
 DuskType *duskTypeNewBasic(DuskCompiler *compiler, DuskTypeKind kind);
@@ -627,6 +628,7 @@ DuskIRValue *duskIRCreateCompositeConstruct(
     size_t value_count,
     DuskIRValue **values);
 
+bool duskIRValueIsConstant(DuskIRValue *value);
 bool duskIRIsLvalue(DuskIRValue *value);
 DuskIRValue *
 duskIRLoadLvalue(DuskIRModule *module, DuskIRValue *block, DuskIRValue *value);
@@ -740,6 +742,7 @@ typedef enum DuskExprKind {
     DUSK_EXPR_INT_LITERAL,
     DUSK_EXPR_FLOAT_LITERAL,
     DUSK_EXPR_BOOL_LITERAL,
+    DUSK_EXPR_STRUCT_LITERAL,
     DUSK_EXPR_IDENT,
     DUSK_EXPR_STRUCT_TYPE,
     DUSK_EXPR_ARRAY_TYPE,
@@ -774,6 +777,12 @@ struct DuskExpr
         int64_t int_literal;
         double float_literal;
         bool bool_literal;
+        struct
+        {
+            DuskExpr *type_expr;
+            DuskArray(const char *) field_names;
+            DuskArray(DuskExpr *) field_values;
+        } struct_literal;
         struct
         {
             const char *str;

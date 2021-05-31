@@ -122,6 +122,7 @@ static bool duskExprResolveInteger(
         return false;
     }
 
+    case DUSK_EXPR_STRUCT_LITERAL:
     case DUSK_EXPR_ACCESS:
     case DUSK_EXPR_FUNCTION_CALL:
     case DUSK_EXPR_BUILTIN_FUNCTION_CALL:
@@ -230,6 +231,102 @@ static void duskAnalyzeExpr(
     }
     case DUSK_EXPR_BOOL_LITERAL: {
         expr->type = duskTypeNewBasic(compiler, DUSK_TYPE_BOOL);
+        break;
+    }
+    case DUSK_EXPR_STRUCT_LITERAL: {
+        DuskType *type_type = duskTypeNewBasic(compiler, DUSK_TYPE_TYPE);
+
+        duskAnalyzeExpr(
+            compiler, state, expr->struct_literal.type_expr, type_type, false);
+
+        DuskType *struct_type = expr->struct_literal.type_expr->as_type;
+        if (!struct_type)
+        {
+            DUSK_ASSERT(duskArrayLength(compiler->errors) > 0);
+            break;
+        }
+
+        if (struct_type->kind != DUSK_TYPE_STRUCT)
+        {
+            duskAddError(
+                compiler,
+                expr->location,
+                "expected a struct type for struct literal, instead got: '%s'",
+                duskTypeToPrettyString(allocator, struct_type));
+            break;
+        }
+
+        bool *got_fields = duskAllocateZeroed(
+            allocator,
+            sizeof(bool) * duskArrayLength(struct_type->struct_.field_types));
+
+        for (size_t i = 0;
+             i < duskArrayLength(expr->struct_literal.field_names);
+             ++i)
+        {
+            const char *field_name = expr->struct_literal.field_names[i];
+            uintptr_t index;
+            if (duskMapGet(
+                    struct_type->struct_.index_map, field_name, (void *)&index))
+            {
+                got_fields[index] = true;
+            }
+            else
+            {
+                duskAddError(
+                    compiler,
+                    expr->location,
+                    "no field called '%s' in type '%s'",
+                    field_name,
+                    duskTypeToPrettyString(allocator, struct_type));
+            }
+        }
+
+        bool got_all_fields = true;
+        for (size_t i = 0;
+             i < duskArrayLength(struct_type->struct_.field_types);
+             ++i)
+        {
+            const char *field_name = struct_type->struct_.field_names[i];
+            if (!got_fields[i])
+            {
+                duskAddError(
+                    compiler,
+                    expr->location,
+                    "missing field '%s' in struct literal for type '%s'",
+                    field_name,
+                    duskTypeToPrettyString(allocator, struct_type));
+                got_all_fields = false;
+            }
+        }
+
+        if (!got_all_fields)
+        {
+            DUSK_ASSERT(duskArrayLength(compiler->errors) > 0);
+            break;
+        }
+
+        if (duskArrayLength(struct_type->struct_.field_types) !=
+            duskArrayLength(expr->struct_literal.field_values))
+        {
+            DUSK_ASSERT(duskArrayLength(compiler->errors) > 0);
+            break;
+        }
+
+        for (size_t i = 0;
+             i < duskArrayLength(expr->struct_literal.field_values);
+             ++i)
+        {
+            duskAnalyzeExpr(
+                compiler,
+                state,
+                expr->struct_literal.field_values[i],
+                struct_type->struct_.field_types[i],
+                false);
+        }
+
+        expr->type = struct_type;
+
         break;
     }
     case DUSK_EXPR_IDENT: {
