@@ -18,13 +18,12 @@ type Hello struct {
 [output, location(0)] let out_uv : float2;
 
 fn test(param: int) int {
-    let a: int = 321;
-    let b: int = 123;
-    let c: int = a;
-    let hey: bool = false;
-    a = 456;
-    a = b;
-    return 123;
+    let a: int = param;
+    return a;
+}
+
+fn test2(param: int) int {
+    return param;
 }
 
 [entry_point(vertex)]
@@ -33,6 +32,7 @@ fn vs_main() void {
     let a: float3;
     let b: float = a.xyz.z;
     let c: int = test(1);
+    c = test2(1);
     let d: float3 = float3(0.1123);
     let e: float3x3 = float3x3(
         float3(0.1123),
@@ -45,6 +45,8 @@ fn vs_main() void {
         a: 123,
         b: d.x,
     };
+
+    str = Hello.{ a: 123, b: 321 };
 
     str.a = 123;
 

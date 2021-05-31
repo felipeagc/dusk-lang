@@ -430,6 +430,8 @@ duskGenerateStmt(DuskIRModule *module, DuskIRValue *function, DuskStmt *stmt)
         {
             duskGenerateExpr(module, function, stmt->return_.expr);
             returned_value = stmt->return_.expr->ir_value;
+            returned_value =
+                duskIRLoadLvalue(module, block, stmt->return_.expr->ir_value);
             DUSK_ASSERT(returned_value);
         }
 
@@ -545,8 +547,15 @@ static void duskGenerateGlobalDecl(DuskIRModule *module, DuskDecl *decl)
         decl->ir_value = duskIRFunctionCreate(module, decl->type, decl->name);
         duskArrayPush(&module->functions, decl->ir_value);
 
-        size_t stmt_count = duskArrayLength(decl->function.stmts);
+        size_t param_count = duskArrayLength(decl->function.parameter_decls);
+        for (size_t i = 0; i < param_count; ++i)
+        {
+            DuskDecl *param_decl = decl->function.parameter_decls[i];
+            param_decl->ir_value = decl->ir_value->function.params[i];
+            DUSK_ASSERT(param_decl->ir_value);
+        }
 
+        size_t stmt_count = duskArrayLength(decl->function.stmts);
         for (size_t i = 0; i < stmt_count; ++i)
         {
             DuskStmt *stmt = decl->function.stmts[i];

@@ -226,6 +226,13 @@ duskIRFunctionCreate(DuskIRModule *module, DuskType *type, const char *name)
     value->function.variables =
         duskArrayCreate(module->allocator, DuskIRValue *);
     value->function.params = duskArrayCreate(module->allocator, DuskIRValue *);
+    for (size_t i = 0; i < duskArrayLength(type->function.param_types); ++i)
+    {
+        DuskIRValue *param_value = DUSK_NEW(module->allocator, DuskIRValue);
+        param_value->kind = DUSK_IR_VALUE_FUNCTION_PARAMETER;
+        param_value->type = type->function.param_types[i];
+        duskArrayPush(&value->function.params, param_value);
+    }
 
     DuskIRValue *first_block = duskIRBlockCreate(module);
     duskIRFunctionAddBlock(value, first_block);
