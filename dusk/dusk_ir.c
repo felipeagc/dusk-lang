@@ -259,6 +259,19 @@ DuskIRValue *duskIRVariableCreate(
 
     duskTypeMarkNotDead(value->type);
 
+    switch (storage_class)
+    {
+    case DUSK_STORAGE_CLASS_UNIFORM:
+    case DUSK_STORAGE_CLASS_INPUT:
+    case DUSK_STORAGE_CLASS_OUTPUT:
+    case DUSK_STORAGE_CLASS_PUSH_CONSTANT:
+    case DUSK_STORAGE_CLASS_UNIFORM_CONSTANT: {
+        duskArrayPush(&module->globals, value);
+        break;
+    }
+    default: break;
+    }
+
     return value;
 }
 
@@ -506,6 +519,7 @@ DuskIRValue *duskIRCreateAccessChain(
 DuskIRValue *duskIRCreateCompositeExtract(
     DuskIRModule *module,
     DuskIRValue *block,
+    DuskType *accessed_type,
     DuskIRValue *composite,
     size_t index_count,
     uint32_t *indices)
@@ -521,15 +535,7 @@ DuskIRValue *duskIRCreateCompositeExtract(
         indices,
         index_count * sizeof(uint32_t));
 
-    switch (composite->type->kind)
-    {
-    case DUSK_TYPE_VECTOR: {
-        inst->type = composite->type->vector.sub;
-        break;
-    }
-    default: DUSK_ASSERT(0); break;
-    }
-
+    inst->type = accessed_type;
     duskTypeMarkNotDead(inst->type);
 
     duskIRBlockAppendInst(block, inst);

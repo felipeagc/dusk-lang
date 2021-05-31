@@ -21,11 +21,15 @@ fn test2(param: int) int {
     return param;
 }
 
+type VsOutput struct {
+    [builtin(position)] pos: float3,
+};
+
 [entry_point(vertex)]
 fn vs_main(
     [location(0)] pos: float3,
     [location(1)] uv: float2,
-) [builtin(position)] void {
+) VsOutput {
     let my_image: @Image2D(float) = image;
     let a: float3;
     let b: float = a.xyz.z;
@@ -54,13 +58,18 @@ fn vs_main(
 
     // out_uv = in_uv;
     // out_position = float4(in_pos, 1);
+    return VsOutput.{
+        pos: float3(0),
+    };
 }
 
 [entry_point(fragment)]
-fn fs_main(in_pos: float3) void {
+fn fs_main(in_pos: float3) float4 {
     // let color: float4 = @sample(sampler, image, uv);
 
     // out_color = float4(color, 1.0);
 
     // let a: float3 = in_pos;
+
+    return float4(1);
 }

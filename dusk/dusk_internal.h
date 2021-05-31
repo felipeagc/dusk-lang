@@ -615,6 +615,7 @@ DuskIRValue *duskIRCreateAccessChain(
 DuskIRValue *duskIRCreateCompositeExtract(
     DuskIRModule *module,
     DuskIRValue *block,
+    DuskType *accessed_type,
     DuskIRValue *composite,
     size_t index_count,
     uint32_t *indices);
@@ -694,7 +695,8 @@ struct DuskDecl
         {
             bool is_entry_point;
             DuskShaderStage entry_point_stage;
-            DuskArray(DuskIRValue *) entry_point_referenced_globals;
+            DuskArray(DuskIRValue *) entry_point_inputs;
+            DuskArray(DuskIRValue *) entry_point_outputs;
 
             const char *link_name;
             DuskScope *scope;

@@ -1,10 +1,10 @@
 #include "dusk_internal.h"
 
 static void duskGenerateLocalDecl(
-    DuskIRModule *module, DuskIRValue *function, DuskDecl *decl);
+    DuskIRModule *module, DuskDecl *func_decl, DuskDecl *decl);
 
 static void
-duskGenerateExpr(DuskIRModule *module, DuskIRValue *function, DuskExpr *expr)
+duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
 {
     switch (expr->kind)
     {
@@ -53,7 +53,7 @@ duskGenerateExpr(DuskIRModule *module, DuskIRValue *function, DuskExpr *expr)
                     struct_type->struct_.index_map, field_name, (void *)&index))
             {
                 duskGenerateExpr(
-                    module, function, expr->struct_literal.field_values[i]);
+                    module, func_decl, expr->struct_literal.field_values[i]);
                 field_values[index] =
                     expr->struct_literal.field_values[i]->ir_value;
                 DUSK_ASSERT(field_values[index]);
@@ -81,6 +81,7 @@ duskGenerateExpr(DuskIRModule *module, DuskIRValue *function, DuskExpr *expr)
         }
         else
         {
+            DuskIRValue *function = func_decl->ir_value;
             DUSK_ASSERT(duskArrayLength(function->function.blocks) > 0);
             DuskIRValue *block =
                 function->function
@@ -104,7 +105,7 @@ duskGenerateExpr(DuskIRModule *module, DuskIRValue *function, DuskExpr *expr)
         switch (func_type->kind)
         {
         case DUSK_TYPE_FUNCTION: {
-            duskGenerateExpr(module, function, expr->function_call.func_expr);
+            duskGenerateExpr(module, func_decl, expr->function_call.func_expr);
 
             DuskArray(DuskIRValue *) param_values =
                 duskArrayCreate(module->allocator, DuskIRValue *);
@@ -115,11 +116,12 @@ duskGenerateExpr(DuskIRModule *module, DuskIRValue *function, DuskExpr *expr)
                  ++i)
             {
                 DuskExpr *param_expr = expr->function_call.params[i];
-                duskGenerateExpr(module, function, param_expr);
+                duskGenerateExpr(module, func_decl, param_expr);
                 DUSK_ASSERT(param_expr->ir_value);
                 param_values[i] = param_expr->ir_value;
             }
 
+            DuskIRValue *function = func_decl->ir_value;
             DUSK_ASSERT(duskArrayLength(function->function.blocks) > 0);
             DuskIRValue *block =
                 function->function
@@ -157,8 +159,9 @@ duskGenerateExpr(DuskIRModule *module, DuskIRValue *function, DuskExpr *expr)
             DuskIRValue **values = duskAllocateZeroed(
                 module->allocator, sizeof(DuskIRValue *) * value_count);
 
-            if (function)
+            if (func_decl)
             {
+                DuskIRValue *function = func_decl->ir_value;
                 DUSK_ASSERT(duskArrayLength(function->function.blocks) > 0);
                 DuskIRValue *block =
                     function->function
@@ -170,7 +173,7 @@ duskGenerateExpr(DuskIRModule *module, DuskIRValue *function, DuskExpr *expr)
                     for (size_t i = 0; i < value_count; ++i)
                     {
                         DuskExpr *param = expr->function_call.params[i];
-                        duskGenerateExpr(module, function, param);
+                        duskGenerateExpr(module, func_decl, param);
                         values[i] = param->ir_value;
                         if (!duskIRValueIsConstant(values[i]))
                         {
@@ -183,7 +186,7 @@ duskGenerateExpr(DuskIRModule *module, DuskIRValue *function, DuskExpr *expr)
                 else if (param_count == 1)
                 {
                     DuskExpr *param = expr->function_call.params[0];
-                    duskGenerateExpr(module, function, param);
+                    duskGenerateExpr(module, func_decl, param);
                     DuskIRValue *param_value = param->ir_value;
                     if (!duskIRValueIsConstant(param_value))
                     {
@@ -222,7 +225,7 @@ duskGenerateExpr(DuskIRModule *module, DuskIRValue *function, DuskExpr *expr)
                     for (size_t i = 0; i < value_count; ++i)
                     {
                         DuskExpr *param = expr->function_call.params[i];
-                        duskGenerateExpr(module, function, param);
+                        duskGenerateExpr(module, func_decl, param);
                         values[i] = param->ir_value;
                         DUSK_ASSERT(duskIRValueIsConstant(values[i]));
                     }
@@ -230,7 +233,7 @@ duskGenerateExpr(DuskIRModule *module, DuskIRValue *function, DuskExpr *expr)
                 else if (param_count == 1)
                 {
                     DuskExpr *param = expr->function_call.params[0];
-                    duskGenerateExpr(module, function, param);
+                    duskGenerateExpr(module, func_decl, param);
                     DuskIRValue *param_value = param->ir_value;
                     DUSK_ASSERT(duskIRValueIsConstant(param_value));
 
@@ -282,13 +285,14 @@ duskGenerateExpr(DuskIRModule *module, DuskIRValue *function, DuskExpr *expr)
     }
 
     case DUSK_EXPR_ACCESS: {
+        DuskIRValue *function = func_decl->ir_value;
         DUSK_ASSERT(duskArrayLength(function->function.blocks) > 0);
         DuskIRValue *block =
             function->function
                 .blocks[duskArrayLength(function->function.blocks) - 1];
 
         DuskExpr *left_expr = expr->access.base_expr;
-        duskGenerateExpr(module, function, left_expr);
+        duskGenerateExpr(module, func_decl, left_expr);
 
         for (size_t i = 0; i < duskArrayLength(expr->access.chain); ++i)
         {
@@ -343,7 +347,12 @@ duskGenerateExpr(DuskIRModule *module, DuskIRValue *function, DuskExpr *expr)
                         DuskIRValue *vec_value = duskIRLoadLvalue(
                             module, block, left_expr->ir_value);
                         right_expr->ir_value = duskIRCreateCompositeExtract(
-                            module, block, vec_value, index_count, indices);
+                            module,
+                            block,
+                            left_expr->type->vector.sub,
+                            vec_value,
+                            index_count,
+                            indices);
                     }
                 }
 
@@ -381,7 +390,12 @@ duskGenerateExpr(DuskIRModule *module, DuskIRValue *function, DuskExpr *expr)
                     DuskIRValue *struct_value =
                         duskIRLoadLvalue(module, block, left_expr->ir_value);
                     right_expr->ir_value = duskIRCreateCompositeExtract(
-                        module, block, struct_value, 1, &index);
+                        module,
+                        block,
+                        left_expr->type->struct_.field_types[field_index],
+                        struct_value,
+                        1,
+                        &index);
                 }
 
                 break;
@@ -415,8 +429,10 @@ duskGenerateExpr(DuskIRModule *module, DuskIRValue *function, DuskExpr *expr)
 }
 
 static void
-duskGenerateStmt(DuskIRModule *module, DuskIRValue *function, DuskStmt *stmt)
+duskGenerateStmt(DuskIRModule *module, DuskDecl *func_decl, DuskStmt *stmt)
 {
+    DuskIRValue *function = func_decl->ir_value;
+
     DUSK_ASSERT(duskArrayLength(function->function.blocks) > 0);
     DuskIRValue *block =
         function->function
@@ -425,17 +441,79 @@ duskGenerateStmt(DuskIRModule *module, DuskIRValue *function, DuskStmt *stmt)
     switch (stmt->kind)
     {
     case DUSK_STMT_RETURN: {
-        DuskIRValue *returned_value = NULL;
-        if (stmt->return_.expr)
+        if (func_decl->function.is_entry_point)
         {
-            duskGenerateExpr(module, function, stmt->return_.expr);
-            returned_value = stmt->return_.expr->ir_value;
-            returned_value =
-                duskIRLoadLvalue(module, block, stmt->return_.expr->ir_value);
-            DUSK_ASSERT(returned_value);
-        }
+            DuskType *return_type = func_decl->type->function.return_type;
+            size_t output_count =
+                duskArrayLength(func_decl->function.entry_point_outputs);
 
-        duskIRCreateReturn(module, block, returned_value);
+            switch (return_type->kind)
+            {
+            case DUSK_TYPE_VOID: {
+                DUSK_ASSERT(output_count == 0);
+                break;
+            }
+            case DUSK_TYPE_STRUCT: {
+                DUSK_ASSERT(
+                    output_count ==
+                    duskArrayLength(return_type->struct_.field_types));
+
+                duskGenerateExpr(module, func_decl, stmt->return_.expr);
+                DuskIRValue *struct_value = stmt->return_.expr->ir_value;
+                struct_value = duskIRLoadLvalue(
+                    module, block, stmt->return_.expr->ir_value);
+
+                for (uint32_t i = 0; i < output_count; ++i)
+                {
+                    DuskIRValue *field_value = duskIRCreateCompositeExtract(
+                        module,
+                        block,
+                        return_type->struct_.field_types[i],
+                        struct_value,
+                        1,
+                        &i);
+                    DUSK_ASSERT(!duskIRIsLvalue(field_value));
+
+                    duskIRCreateStore(
+                        module,
+                        block,
+                        func_decl->function.entry_point_outputs[i],
+                        field_value);
+                }
+                break;
+            }
+            default: {
+                DUSK_ASSERT(output_count == 1);
+                DUSK_ASSERT(stmt->return_.expr);
+                DuskIRValue *output_value =
+                    func_decl->function.entry_point_outputs[0];
+
+                duskGenerateExpr(module, func_decl, stmt->return_.expr);
+                DuskIRValue *returned_value = stmt->return_.expr->ir_value;
+                returned_value = duskIRLoadLvalue(
+                    module, block, stmt->return_.expr->ir_value);
+
+                duskIRCreateStore(module, block, output_value, returned_value);
+                break;
+            }
+            }
+
+            duskIRCreateReturn(module, block, NULL);
+        }
+        else
+        {
+            DuskIRValue *returned_value = NULL;
+            if (stmt->return_.expr)
+            {
+                duskGenerateExpr(module, func_decl, stmt->return_.expr);
+                returned_value = stmt->return_.expr->ir_value;
+                returned_value = duskIRLoadLvalue(
+                    module, block, stmt->return_.expr->ir_value);
+                DUSK_ASSERT(returned_value);
+            }
+
+            duskIRCreateReturn(module, block, returned_value);
+        }
         break;
     }
     case DUSK_STMT_DISCARD: {
@@ -443,12 +521,12 @@ duskGenerateStmt(DuskIRModule *module, DuskIRValue *function, DuskStmt *stmt)
         break;
     }
     case DUSK_STMT_DECL: {
-        duskGenerateLocalDecl(module, function, stmt->decl);
+        duskGenerateLocalDecl(module, func_decl, stmt->decl);
         break;
     }
     case DUSK_STMT_ASSIGN: {
-        duskGenerateExpr(module, function, stmt->assign.assigned_expr);
-        duskGenerateExpr(module, function, stmt->assign.value_expr);
+        duskGenerateExpr(module, func_decl, stmt->assign.assigned_expr);
+        duskGenerateExpr(module, func_decl, stmt->assign.value_expr);
 
         DuskIRValue *pointer = stmt->assign.assigned_expr->ir_value;
         DuskIRValue *value = stmt->assign.value_expr->ir_value;
@@ -458,22 +536,23 @@ duskGenerateStmt(DuskIRModule *module, DuskIRValue *function, DuskStmt *stmt)
         break;
     }
     case DUSK_STMT_EXPR: {
-        duskGenerateExpr(module, function, stmt->expr);
+        duskGenerateExpr(module, func_decl, stmt->expr);
         break;
     }
     case DUSK_STMT_BLOCK: {
         for (size_t i = 0; i < duskArrayLength(stmt->block.stmts); ++i)
         {
-            duskGenerateStmt(module, function, stmt->block.stmts[i]);
+            duskGenerateStmt(module, func_decl, stmt->block.stmts[i]);
         }
         break;
     }
     }
 }
 
-static void duskGenerateLocalDecl(
-    DuskIRModule *module, DuskIRValue *function, DuskDecl *decl)
+static void
+duskGenerateLocalDecl(DuskIRModule *module, DuskDecl *func_decl, DuskDecl *decl)
 {
+    DuskIRValue *function = func_decl->ir_value;
     DuskIRValue *block =
         function->function
             .blocks[duskArrayLength(function->function.blocks) - 1];
@@ -508,7 +587,7 @@ static void duskGenerateLocalDecl(
 
         if (decl->var.value_expr)
         {
-            duskGenerateExpr(module, function, decl->var.value_expr);
+            duskGenerateExpr(module, func_decl, decl->var.value_expr);
             DuskIRValue *assigned_value = decl->var.value_expr->ir_value;
 
             if (should_create_var)
@@ -554,7 +633,9 @@ static void duskGenerateGlobalDecl(DuskIRModule *module, DuskDecl *decl)
                 duskTypeNewBasic(module->compiler, DUSK_TYPE_VOID),
                 duskArrayCreate(module->allocator, DuskType *));
 
-            decl->function.entry_point_referenced_globals =
+            decl->function.entry_point_inputs =
+                duskArrayCreate(module->allocator, DuskIRValue *);
+            decl->function.entry_point_outputs =
                 duskArrayCreate(module->allocator, DuskIRValue *);
         }
         decl->ir_value =
@@ -570,12 +651,36 @@ static void duskGenerateGlobalDecl(DuskIRModule *module, DuskDecl *decl)
 
                 param_decl->ir_value = duskIRVariableCreate(
                     module, param_decl->type, DUSK_STORAGE_CLASS_INPUT);
-                duskArrayPush(&module->globals, param_decl->ir_value);
                 duskArrayPush(
-                    &decl->function.entry_point_referenced_globals,
-                    param_decl->ir_value);
+                    &decl->function.entry_point_inputs, param_decl->ir_value);
 
                 DUSK_ASSERT(param_decl->ir_value);
+            }
+
+            DuskType *return_type = decl->type->function.return_type;
+            switch (return_type->kind)
+            {
+            case DUSK_TYPE_VOID: break;
+            case DUSK_TYPE_STRUCT: {
+                for (size_t i = 0;
+                     i < duskArrayLength(return_type->struct_.field_types);
+                     ++i)
+                {
+                    DuskType *field_type = return_type->struct_.field_types[i];
+                    DuskIRValue *output_value = duskIRVariableCreate(
+                        module, field_type, DUSK_STORAGE_CLASS_OUTPUT);
+                    duskArrayPush(
+                        &decl->function.entry_point_outputs, output_value);
+                }
+                break;
+            }
+            default: {
+                DuskIRValue *output_value = duskIRVariableCreate(
+                    module, return_type, DUSK_STORAGE_CLASS_OUTPUT);
+                duskArrayPush(
+                    &decl->function.entry_point_outputs, output_value);
+                break;
+            }
             }
         }
         else
@@ -592,7 +697,7 @@ static void duskGenerateGlobalDecl(DuskIRModule *module, DuskDecl *decl)
         for (size_t i = 0; i < stmt_count; ++i)
         {
             DuskStmt *stmt = decl->function.stmts[i];
-            duskGenerateStmt(module, decl->ir_value, stmt);
+            duskGenerateStmt(module, decl, stmt);
         }
 
         for (size_t i = 0; i < duskArrayLength(decl->ir_value->function.blocks);
@@ -614,13 +719,32 @@ static void duskGenerateGlobalDecl(DuskIRModule *module, DuskDecl *decl)
 
         if (decl->function.is_entry_point)
         {
+            DuskArray(DuskIRValue *) referenced_globals =
+                duskArrayCreate(module->allocator, DuskIRValue *);
+
+            for (size_t i = 0;
+                 i < duskArrayLength(decl->function.entry_point_inputs);
+                 ++i)
+            {
+                duskArrayPush(
+                    &referenced_globals, decl->function.entry_point_inputs[i]);
+            }
+
+            for (size_t i = 0;
+                 i < duskArrayLength(decl->function.entry_point_outputs);
+                 ++i)
+            {
+                duskArrayPush(
+                    &referenced_globals, decl->function.entry_point_outputs[i]);
+            }
+
             duskIRModuleAddEntryPoint(
                 module,
                 decl->ir_value,
                 decl->function.link_name,
                 decl->function.entry_point_stage,
-                duskArrayLength(decl->function.entry_point_referenced_globals),
-                decl->function.entry_point_referenced_globals);
+                duskArrayLength(referenced_globals),
+                referenced_globals);
         }
 
         break;
@@ -642,7 +766,6 @@ static void duskGenerateGlobalDecl(DuskIRModule *module, DuskDecl *decl)
 
         decl->ir_value =
             duskIRVariableCreate(module, decl->type, storage_class);
-        duskArrayPush(&module->globals, decl->ir_value);
         break;
     }
     case DUSK_DECL_TYPE: break;
