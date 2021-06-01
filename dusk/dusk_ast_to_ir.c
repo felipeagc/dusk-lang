@@ -1,7 +1,104 @@
 #include "dusk_internal.h"
+#include "spirv.h"
 
 static void duskGenerateLocalDecl(
     DuskIRModule *module, DuskDecl *func_decl, DuskDecl *decl);
+
+static void duskDecorateValueFromAttributes(
+    DuskIRModule *module,
+    DuskIRValue *value,
+    size_t attrib_count,
+    DuskAttribute *attributes)
+{
+    for (size_t i = 0; i < attrib_count; ++i)
+    {
+        DuskAttribute *attribute = &attributes[i];
+        switch (attribute->kind)
+        {
+        case DUSK_ATTRIBUTE_LOCATION: {
+            DUSK_ASSERT(duskArrayLength(attribute->value_exprs) == 1);
+            DUSK_ASSERT(attribute->value_exprs[0]->resolved_int);
+            uint32_t location =
+                (uint32_t)*attribute->value_exprs[0]->resolved_int;
+            duskIRValueAddDecoration(
+                module, value, DUSK_IR_DECORATION_LOCATION, 1, &location);
+            break;
+        }
+        case DUSK_ATTRIBUTE_BUILTIN: {
+            DUSK_ASSERT(duskArrayLength(attribute->value_exprs) == 1);
+            DUSK_ASSERT(attribute->value_exprs[0]->kind == DUSK_EXPR_IDENT);
+            const char *builtin_name = attribute->value_exprs[0]->string.str;
+
+            uint32_t builtin = 0;
+            if (strcmp(builtin_name, "position") == 0)
+            {
+                builtin = SpvBuiltInPosition;
+            }
+            else if (strcmp(builtin_name, "frag_coord") == 0)
+            {
+                builtin = SpvBuiltInFragCoord;
+            }
+            else if (strcmp(builtin_name, "frag_coord") == 0)
+            {
+                builtin = SpvBuiltInFragCoord;
+            }
+            else if (strcmp(builtin_name, "vertex_id") == 0)
+            {
+                builtin = SpvBuiltInVertexId;
+            }
+            else if (strcmp(builtin_name, "vertex_index") == 0)
+            {
+                builtin = SpvBuiltInVertexIndex;
+            }
+            else if (strcmp(builtin_name, "instance_id") == 0)
+            {
+                builtin = SpvBuiltInInstanceId;
+            }
+            else if (strcmp(builtin_name, "instance_index") == 0)
+            {
+                builtin = SpvBuiltInInstanceIndex;
+            }
+            else if (strcmp(builtin_name, "frag_depth") == 0)
+            {
+                builtin = SpvBuiltInFragDepth;
+            }
+            else if (strcmp(builtin_name, "num_workgroups") == 0)
+            {
+                builtin = SpvBuiltInNumWorkgroups;
+            }
+            else if (strcmp(builtin_name, "workgroup_size") == 0)
+            {
+                builtin = SpvBuiltInWorkgroupSize;
+            }
+            else if (strcmp(builtin_name, "workgroup_id") == 0)
+            {
+                builtin = SpvBuiltInWorkgroupId;
+            }
+            else if (strcmp(builtin_name, "local_invocation_id") == 0)
+            {
+                builtin = SpvBuiltInLocalInvocationId;
+            }
+            else if (strcmp(builtin_name, "local_invocation_index") == 0)
+            {
+                builtin = SpvBuiltInLocalInvocationIndex;
+            }
+            else if (strcmp(builtin_name, "global_invocation_id") == 0)
+            {
+                builtin = SpvBuiltInGlobalInvocationId;
+            }
+            else
+            {
+                DUSK_ASSERT(0);
+            }
+
+            duskIRValueAddDecoration(
+                module, value, DUSK_IR_DECORATION_BUILTIN, 1, &builtin);
+            break;
+        }
+        default: break;
+        }
+    }
+}
 
 static void
 duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
@@ -654,6 +751,12 @@ static void duskGenerateGlobalDecl(DuskIRModule *module, DuskDecl *decl)
                 duskArrayPush(
                     &decl->function.entry_point_inputs, param_decl->ir_value);
 
+                duskDecorateValueFromAttributes(
+                    module,
+                    param_decl->ir_value,
+                    duskArrayLength(decl->function.return_type_attributes),
+                    decl->function.return_type_attributes);
+
                 DUSK_ASSERT(param_decl->ir_value);
             }
 
@@ -671,6 +774,15 @@ static void duskGenerateGlobalDecl(DuskIRModule *module, DuskDecl *decl)
                         module, field_type, DUSK_STORAGE_CLASS_OUTPUT);
                     duskArrayPush(
                         &decl->function.entry_point_outputs, output_value);
+
+                    DuskArray(DuskAttribute) field_attributes =
+                        return_type->struct_.field_attributes[i];
+
+                    duskDecorateValueFromAttributes(
+                        module,
+                        output_value,
+                        duskArrayLength(field_attributes),
+                        field_attributes);
                 }
                 break;
             }
@@ -679,6 +791,12 @@ static void duskGenerateGlobalDecl(DuskIRModule *module, DuskDecl *decl)
                     module, return_type, DUSK_STORAGE_CLASS_OUTPUT);
                 duskArrayPush(
                     &decl->function.entry_point_outputs, output_value);
+
+                duskDecorateValueFromAttributes(
+                    module,
+                    output_value,
+                    duskArrayLength(decl->function.return_type_attributes),
+                    decl->function.return_type_attributes);
                 break;
             }
             }

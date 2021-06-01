@@ -75,7 +75,7 @@ fn vs_main(
 }
 
 [stage(fragment)]
-fn fs_main(in_pos: float3) float4 {
+fn fs_main([location(0)] in_pos: float3) [location(0)] float4 {
     // let color: float4 = @sample(sampler, image, uv);
 
     // out_color = float4(color, 1.0);

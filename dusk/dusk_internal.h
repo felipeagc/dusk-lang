@@ -310,6 +310,26 @@ typedef struct DuskIRDecoration
     DuskArray(uint32_t) literals;
 } DuskIRDecoration;
 
+typedef enum DuskAttributeKind {
+    DUSK_ATTRIBUTE_UNKNOWN = 0,
+    DUSK_ATTRIBUTE_STAGE,
+    DUSK_ATTRIBUTE_LOCATION,
+    DUSK_ATTRIBUTE_SET,
+    DUSK_ATTRIBUTE_BINDING,
+    DUSK_ATTRIBUTE_BUILTIN,
+    DUSK_ATTRIBUTE_BLOCK,
+    DUSK_ATTRIBUTE_UNIFORM,
+    DUSK_ATTRIBUTE_STORAGE,
+    DUSK_ATTRIBUTE_PUSH_CONSTANT,
+} DuskAttributeKind;
+
+typedef struct DuskAttribute
+{
+    DuskAttributeKind kind;
+    const char *name;
+    DuskArray(DuskExpr *) value_exprs;
+} DuskAttribute;
+
 typedef enum DuskImageDimension {
     DUSK_IMAGE_DIMENSION_1D,
     DUSK_IMAGE_DIMENSION_2D,
@@ -382,6 +402,7 @@ struct DuskType
             const char *name;
             DuskArray(DuskType *) field_types;
             DuskArray(const char *) field_names;
+            DuskArray(DuskArray(DuskAttribute)) field_attributes;
             DuskMap *index_map;
         } struct_;
         struct
@@ -431,7 +452,8 @@ DuskType *duskTypeNewStruct(
     DuskCompiler *compiler,
     const char *name,
     DuskArray(const char *) field_names,
-    DuskArray(DuskType *) field_types);
+    DuskArray(DuskType *) field_types,
+    DuskArray(DuskArray(DuskAttribute)) field_attributes);
 DuskType *duskTypeNewFunction(
     DuskCompiler *compiler,
     DuskType *return_type,
@@ -686,26 +708,6 @@ typedef enum DuskBuiltinFunctionKind {
     DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_SAMPLER_TYPE,
     DUSK_BUILTIN_FUNCTION_MAX,
 } DuskBuiltinFunctionKind;
-
-typedef enum DuskAttributeKind {
-    DUSK_ATTRIBUTE_UNKNOWN = 0,
-    DUSK_ATTRIBUTE_STAGE,
-    DUSK_ATTRIBUTE_LOCATION,
-    DUSK_ATTRIBUTE_SET,
-    DUSK_ATTRIBUTE_BINDING,
-    DUSK_ATTRIBUTE_BUILTIN,
-    DUSK_ATTRIBUTE_BLOCK,
-    DUSK_ATTRIBUTE_UNIFORM,
-    DUSK_ATTRIBUTE_STORAGE,
-    DUSK_ATTRIBUTE_PUSH_CONSTANT,
-} DuskAttributeKind;
-
-typedef struct DuskAttribute
-{
-    DuskAttributeKind kind;
-    const char *name;
-    DuskArray(DuskExpr *) value_exprs;
-} DuskAttribute;
 
 typedef enum DuskDeclKind {
     DUSK_DECL_FUNCTION,

@@ -21,7 +21,6 @@ typedef struct DuskAnalyzerState
     DuskArray(DuskScope *) scope_stack;
     DuskArray(DuskStmt *) break_stack;
     DuskArray(DuskStmt *) continue_stack;
-    DuskArray(DuskDecl *) module_stack;
     DuskArray(DuskDecl *) function_stack;
 } DuskAnalyzerState;
 
@@ -494,7 +493,8 @@ static void duskAnalyzeExpr(
             compiler,
             expr->struct_type.name,
             expr->struct_type.field_names,
-            field_types);
+            field_types,
+            expr->struct_type.field_attributes);
 
         break;
     }
@@ -1085,19 +1085,7 @@ static void duskAnalyzeDecl(
     case DUSK_DECL_FUNCTION: {
         DUSK_ASSERT(decl->function.scope == NULL);
 
-        {
-            DuskStringBuilder *sb = duskStringBuilderCreate(NULL, 1024);
-            for (size_t i = 0; i < duskArrayLength(state->module_stack); ++i)
-            {
-                DuskDecl *module_decl = state->module_stack[i];
-                duskStringBuilderAppendFormat(sb, "%s.", module_decl->name);
-            }
-            duskStringBuilderAppend(sb, decl->name);
-
-            decl->function.link_name = duskStringBuilderBuild(sb, allocator);
-
-            duskStringBuilderDestroy(sb);
-        }
+        decl->function.link_name = decl->name;
 
         for (size_t i = 0; i < duskArrayLength(decl->attributes); ++i)
         {
@@ -1155,6 +1143,23 @@ static void duskAnalyzeDecl(
             }
 
             default: break;
+            }
+        }
+
+        for (size_t i = 0; i < duskArrayLength(decl->function.return_type_attributes); ++i)
+        {
+            DuskAttribute *attribute = &decl->function.return_type_attributes[i];
+
+            for (size_t j = 0; j < duskArrayLength(attribute->value_exprs); ++j)
+            {
+                DuskExpr *value_expr = attribute->value_exprs[j];
+                int64_t resolved_int;
+                if (duskExprResolveInteger(state, value_expr, &resolved_int))
+                {
+                    value_expr->resolved_int =
+                        duskAllocateZeroed(allocator, sizeof(int64_t));
+                    *value_expr->resolved_int = resolved_int;
+                }
             }
         }
 
@@ -1284,7 +1289,6 @@ void duskAnalyzeFile(DuskCompiler *compiler, DuskFile *file)
         .scope_stack = duskArrayCreate(allocator, DuskScope *),
         .break_stack = duskArrayCreate(allocator, DuskStmt *),
         .continue_stack = duskArrayCreate(allocator, DuskStmt *),
-        .module_stack = duskArrayCreate(allocator, DuskDecl *),
         .function_stack = duskArrayCreate(allocator, DuskDecl *),
     };
 

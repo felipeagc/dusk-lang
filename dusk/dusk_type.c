@@ -506,7 +506,8 @@ DuskType *duskTypeNewStruct(
     DuskCompiler *compiler,
     const char *name,
     DuskArray(const char *) field_names,
-    DuskArray(DuskType *) field_types)
+    DuskArray(DuskType *) field_types,
+    DuskArray(DuskArray(DuskAttribute)) field_attributes)
 {
     DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
     DuskType *type = DUSK_NEW(allocator, DuskType);
@@ -514,6 +515,7 @@ DuskType *duskTypeNewStruct(
     type->struct_.name = name;
     type->struct_.field_names = field_names;
     type->struct_.field_types = field_types;
+    type->struct_.field_attributes = field_attributes;
 
     size_t field_count = duskArrayLength(field_names);
     type->struct_.index_map = duskMapCreate(allocator, field_count);
