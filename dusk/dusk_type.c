@@ -340,6 +340,7 @@ const char *duskTypeToString(DuskAllocator *allocator, DuskType *type)
         case DUSK_STORAGE_CLASS_UNIFORM_CONSTANT:
             storage_class = "uniform_constant";
             break;
+        case DUSK_STORAGE_CLASS_STORAGE: storage_class = "storage"; break;
         case DUSK_STORAGE_CLASS_PARAMETER: storage_class = "parameter"; break;
         case DUSK_STORAGE_CLASS_FUNCTION: storage_class = "function"; break;
         case DUSK_STORAGE_CLASS_INPUT: storage_class = "input"; break;

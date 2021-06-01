@@ -261,6 +261,7 @@ DuskIRValue *duskIRVariableCreate(
 
     switch (storage_class)
     {
+    case DUSK_STORAGE_CLASS_STORAGE:
     case DUSK_STORAGE_CLASS_UNIFORM:
     case DUSK_STORAGE_CLASS_INPUT:
     case DUSK_STORAGE_CLASS_OUTPUT:
@@ -269,7 +270,8 @@ DuskIRValue *duskIRVariableCreate(
         duskArrayPush(&module->globals, value);
         break;
     }
-    default: break;
+    case DUSK_STORAGE_CLASS_PARAMETER:
+    case DUSK_STORAGE_CLASS_FUNCTION: break;
     }
 
     return value;
@@ -673,6 +675,9 @@ static void duskEmitType(DuskIRModule *module, DuskType *type)
         case DUSK_STORAGE_CLASS_UNIFORM:
             storage_class = SpvStorageClassUniform;
             break;
+        case DUSK_STORAGE_CLASS_STORAGE:
+            storage_class = SpvStorageClassStorageBuffer;
+            break;
         case DUSK_STORAGE_CLASS_UNIFORM_CONSTANT:
             storage_class = SpvStorageClassUniformConstant;
             break;
@@ -841,6 +846,9 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
             break;
         case DUSK_STORAGE_CLASS_UNIFORM:
             storage_class = SpvStorageClassUniform;
+            break;
+        case DUSK_STORAGE_CLASS_STORAGE:
+            storage_class = SpvStorageClassStorageBuffer;
             break;
         case DUSK_STORAGE_CLASS_UNIFORM_CONSTANT:
             storage_class = SpvStorageClassUniformConstant;
@@ -1206,13 +1214,9 @@ DuskArray(uint32_t)
         }
     }
 
-    static const uint8_t MAGIC_NUMBER[4] = {'D', 'U', 'S', 'K'};
-    uint32_t uint_magic_number;
-    memcpy(&uint_magic_number, MAGIC_NUMBER, sizeof(uint32_t));
-
     duskArrayPush(&module->stream, SpvMagicNumber);
     duskArrayPush(&module->stream, SpvVersion);
-    duskArrayPush(&module->stream, uint_magic_number);
+    duskArrayPush(&module->stream, 28); // Khronos compiler ID
     duskArrayPush(&module->stream, 0); // ID Bound (fill out later)
     duskArrayPush(&module->stream, 0);
 
@@ -1298,6 +1302,15 @@ DuskArray(uint32_t)
         case DUSK_SHADER_STAGE_COMPUTE: break;
         }
     }
+
+    {
+        uint32_t params[2] = {SpvSourceLanguageGLSL, 450};
+        duskEncodeInst(module, SpvOpSource, params, DUSK_CARRAY_LENGTH(params));
+    }
+
+    // TODO: generate names here
+
+    // TODO: generate decorations here
 
     for (size_t i = 0; i < duskArrayLength(compiler->types); ++i)
     {

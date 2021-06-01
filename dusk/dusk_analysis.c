@@ -161,7 +161,8 @@ static bool duskIsExprAssignable(DuskAnalyzerState *state, DuskExpr *expr)
             case DUSK_STORAGE_CLASS_FUNCTION:
             case DUSK_STORAGE_CLASS_INPUT:
             case DUSK_STORAGE_CLASS_OUTPUT:
-            case DUSK_STORAGE_CLASS_UNIFORM: return true;
+            case DUSK_STORAGE_CLASS_STORAGE: return true;
+            case DUSK_STORAGE_CLASS_UNIFORM:
             case DUSK_STORAGE_CLASS_UNIFORM_CONSTANT:
             case DUSK_STORAGE_CLASS_PUSH_CONSTANT:
             case DUSK_STORAGE_CLASS_PARAMETER: return false;
