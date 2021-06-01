@@ -417,6 +417,27 @@ static void duskIRBlockAppendInst(DuskIRValue *block, DuskIRValue *inst)
     }
 }
 
+void duskIRValueAddDecoration(
+    DuskIRModule *module,
+    DuskIRValue *value,
+    DuskIRDecorationKind kind,
+    size_t literal_count,
+    uint32_t *literals)
+{
+    if (value->decorations == NULL)
+    {
+        value->decorations = duskArrayCreate(module->allocator, DuskIRDecoration);
+    }
+
+    DuskIRDecoration decoration = {0};
+    decoration.kind = kind;
+    decoration.literals = duskArrayCreate(module->allocator, uint32_t);
+    duskArrayResize(&decoration.literals, literal_count);
+    memcpy(decoration.literals, literals, sizeof(uint32_t) * literal_count);
+
+    duskArrayPush(&value->decorations, decoration);
+}
+
 void duskIRCreateReturn(
     DuskIRModule *module, DuskIRValue *block, DuskIRValue *value)
 {
@@ -822,6 +843,46 @@ static void duskEmitType(DuskIRModule *module, DuskType *type)
     }
 }
 
+static void
+duskEmitDecorationsForValue(DuskIRModule *module, DuskIRValue *value)
+{
+    if (!value->decorations) return;
+
+    for (size_t j = 0; j < duskArrayLength(value->decorations); ++j)
+    {
+        DuskIRDecoration *decoration = &value->decorations[j];
+        DUSK_ASSERT(decoration->literals != NULL);
+
+        size_t param_count = 2 + duskArrayLength(decoration->literals);
+        uint32_t *params = duskAllocateZeroed(
+            module->allocator, param_count * sizeof(uint32_t));
+        params[0] = value->id;
+
+        switch (decoration->kind)
+        {
+        case DUSK_IR_DECORATION_LOCATION:
+            params[1] = SpvDecorationLocation;
+            break;
+        case DUSK_IR_DECORATION_BUILTIN:
+            params[1] = SpvDecorationBuiltIn;
+            break;
+        case DUSK_IR_DECORATION_SET:
+            params[1] = SpvDecorationDescriptorSet;
+            break;
+        case DUSK_IR_DECORATION_BINDING:
+            params[1] = SpvDecorationBinding;
+            break;
+        }
+
+        memcpy(
+            &params[2],
+            decoration->literals,
+            sizeof(uint32_t) * duskArrayLength(decoration->literals));
+
+        duskEncodeInst(module, SpvOpDecorate, params, param_count);
+    }
+}
+
 static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
 {
     if (value->emitted) return;
@@ -1217,7 +1278,7 @@ DuskArray(uint32_t)
     duskArrayPush(&module->stream, SpvMagicNumber);
     duskArrayPush(&module->stream, SpvVersion);
     duskArrayPush(&module->stream, 28); // Khronos compiler ID
-    duskArrayPush(&module->stream, 0); // ID Bound (fill out later)
+    duskArrayPush(&module->stream, 0);  // ID Bound (fill out later)
     duskArrayPush(&module->stream, 0);
 
     {
@@ -1310,7 +1371,11 @@ DuskArray(uint32_t)
 
     // TODO: generate names here
 
-    // TODO: generate decorations here
+    for (size_t i = 0; i < duskArrayLength(module->globals); ++i)
+    {
+        DuskIRValue *value = module->globals[i];
+        duskEmitDecorationsForValue(module, value);
+    }
 
     for (size_t i = 0; i < duskArrayLength(compiler->types); ++i)
     {

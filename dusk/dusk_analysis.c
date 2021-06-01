@@ -1077,7 +1077,7 @@ static void duskAnalyzeDecl(
             DuskAttribute *attrib = &decl->attributes[i];
             switch (attrib->kind)
             {
-            case DUSK_ATTRIBUTE_ENTRY_POINT: {
+            case DUSK_ATTRIBUTE_STAGE: {
                 if (duskArrayLength(attrib->value_exprs) != 1)
                 {
                     duskAddError(

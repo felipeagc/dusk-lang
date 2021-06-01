@@ -445,6 +445,19 @@ typedef struct DuskIREntryPoint
     DuskArray(DuskIRValue *) referenced_globals;
 } DuskIREntryPoint;
 
+typedef enum DuskIRDecorationKind {
+    DUSK_IR_DECORATION_LOCATION,
+    DUSK_IR_DECORATION_BUILTIN,
+    DUSK_IR_DECORATION_SET,
+    DUSK_IR_DECORATION_BINDING,
+} DuskIRDecorationKind;
+
+typedef struct DuskIRDecoration
+{
+    DuskIRDecorationKind kind;
+    DuskArray(uint32_t) literals;
+} DuskIRDecoration;
+
 typedef enum DuskIRValueKind {
     DUSK_IR_VALUE_CONSTANT_BOOL,
     DUSK_IR_VALUE_CONSTANT,
@@ -472,6 +485,7 @@ struct DuskIRValue
     DuskType *type;
     const char *const_string;
     bool emitted;
+    DuskArray(DuskIRDecoration) decorations;
 
     union
     {
@@ -590,6 +604,13 @@ DuskIRValue *duskIRConstCompositeCreate(
     size_t value_count,
     DuskIRValue **values);
 
+void duskIRValueAddDecoration(
+    DuskIRModule *module,
+    DuskIRValue *value,
+    DuskIRDecorationKind kind,
+    size_t literal_count,
+    uint32_t *literals);
+
 void duskIRCreateReturn(
     DuskIRModule *module, DuskIRValue *block, DuskIRValue *value);
 void duskIRCreateDiscard(DuskIRModule *module, DuskIRValue *block);
@@ -658,10 +679,9 @@ typedef enum DuskBuiltinFunctionKind {
     DUSK_BUILTIN_FUNCTION_MAX,
 } DuskBuiltinFunctionKind;
 
-typedef enum DuskAttributeKind
-{
+typedef enum DuskAttributeKind {
     DUSK_ATTRIBUTE_UNKNOWN = 0,
-    DUSK_ATTRIBUTE_ENTRY_POINT,
+    DUSK_ATTRIBUTE_STAGE,
     DUSK_ATTRIBUTE_LOCATION,
     DUSK_ATTRIBUTE_SET,
     DUSK_ATTRIBUTE_BINDING,

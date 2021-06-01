@@ -1296,9 +1296,9 @@ static void parseAttributes(
             {
                 attrib.kind = DUSK_ATTRIBUTE_BINDING;
             }
-            else if (strcmp(attrib_name_token.str, "entry_point") == 0)
+            else if (strcmp(attrib_name_token.str, "stage") == 0)
             {
-                attrib.kind = DUSK_ATTRIBUTE_ENTRY_POINT;
+                attrib.kind = DUSK_ATTRIBUTE_STAGE;
             }
             attrib.name = attrib_name_token.str;
             attrib.value_exprs = duskArrayCreate(allocator, DuskExpr *);
