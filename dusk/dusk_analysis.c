@@ -928,6 +928,14 @@ static void duskAnalyzeExpr(
         DUSK_ASSERT(duskArrayLength(compiler->errors) > 0);
     }
 
+    int64_t resolved_int;
+    if (duskExprResolveInteger(state, expr, &resolved_int))
+    {
+        expr->resolved_int =
+            duskAllocateZeroed(allocator, sizeof(*expr->resolved_int));
+        *expr->resolved_int = resolved_int;
+    }
+
     if (expected_type && expr->type)
     {
         if (expected_type != expr->type)

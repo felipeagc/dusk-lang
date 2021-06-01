@@ -812,6 +812,7 @@ struct DuskExpr
     DuskType *type;
     DuskType *as_type;
     DuskIRValue *ir_value;
+    int64_t *resolved_int; // To be filled after semantic analysis
 
     union
     {

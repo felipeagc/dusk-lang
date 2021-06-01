@@ -1,3 +1,4 @@
+[block]
 type Hello struct {
     a: int,
     b: float,
