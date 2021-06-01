@@ -697,6 +697,7 @@ typedef enum DuskAttributeKind {
     DUSK_ATTRIBUTE_BLOCK,
     DUSK_ATTRIBUTE_UNIFORM,
     DUSK_ATTRIBUTE_STORAGE,
+    DUSK_ATTRIBUTE_PUSH_CONSTANT,
 } DuskAttributeKind;
 
 typedef struct DuskAttribute

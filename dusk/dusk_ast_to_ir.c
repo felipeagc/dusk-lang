@@ -777,6 +777,10 @@ static void duskGenerateGlobalDecl(DuskIRModule *module, DuskDecl *decl)
                 storage_class = DUSK_STORAGE_CLASS_STORAGE;
                 break;
             }
+            case DUSK_ATTRIBUTE_PUSH_CONSTANT: {
+                storage_class = DUSK_STORAGE_CLASS_PUSH_CONSTANT;
+                break;
+            }
             default: break;
             }
         }

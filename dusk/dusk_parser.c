@@ -1316,6 +1316,10 @@ static void parseAttributes(
             {
                 attrib.kind = DUSK_ATTRIBUTE_STORAGE;
             }
+            else if (strcmp(attrib_name_token.str, "push_constant") == 0)
+            {
+                attrib.kind = DUSK_ATTRIBUTE_PUSH_CONSTANT;
+            }
             attrib.name = attrib_name_token.str;
             attrib.value_exprs = duskArrayCreate(allocator, DuskExpr *);
 
