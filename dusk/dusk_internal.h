@@ -302,6 +302,7 @@ typedef enum DuskIRDecorationKind {
     DUSK_IR_DECORATION_SET,
     DUSK_IR_DECORATION_BINDING,
     DUSK_IR_DECORATION_BLOCK,
+    DUSK_IR_DECORATION_OFFSET,
 } DuskIRDecorationKind;
 
 typedef struct DuskIRDecoration
@@ -321,6 +322,7 @@ typedef enum DuskAttributeKind {
     DUSK_ATTRIBUTE_UNIFORM,
     DUSK_ATTRIBUTE_STORAGE,
     DUSK_ATTRIBUTE_PUSH_CONSTANT,
+    DUSK_ATTRIBUTE_OFFSET,
 } DuskAttributeKind;
 
 typedef struct DuskAttribute
@@ -403,6 +405,7 @@ struct DuskType
             DuskArray(DuskType *) field_types;
             DuskArray(const char *) field_names;
             DuskArray(DuskArray(DuskAttribute)) field_attributes;
+            DuskArray(DuskArray(DuskIRDecoration)) field_decorations;
             DuskMap *index_map;
         } struct_;
         struct
@@ -628,15 +631,8 @@ DuskIRValue *duskIRConstCompositeCreate(
     size_t value_count,
     DuskIRValue **values);
 
-void duskIRValueAddDecoration(
+DuskIRDecoration duskIRCreateDecoration(
     DuskIRModule *module,
-    DuskIRValue *value,
-    DuskIRDecorationKind kind,
-    size_t literal_count,
-    uint32_t *literals);
-void duskIRTypeAddDecoration(
-    DuskIRModule *module,
-    DuskType *type,
     DuskIRDecorationKind kind,
     size_t literal_count,
     uint32_t *literals);

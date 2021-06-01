@@ -3,9 +3,10 @@ type Hello struct {
     b: float,
 };
 
+[block]
 type HelloUniform struct {
-    a: int,
-    b: float,
+    [offset(0)] a: int,
+    [offset(4)] b: float,
 };
 
 type HelloStorage struct {

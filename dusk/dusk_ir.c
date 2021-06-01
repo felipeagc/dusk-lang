@@ -417,48 +417,23 @@ static void duskIRBlockAppendInst(DuskIRValue *block, DuskIRValue *inst)
     }
 }
 
-void duskIRValueAddDecoration(
+DuskIRDecoration duskIRCreateDecoration(
     DuskIRModule *module,
-    DuskIRValue *value,
     DuskIRDecorationKind kind,
     size_t literal_count,
     uint32_t *literals)
 {
-    if (value->decorations == NULL)
-    {
-        value->decorations =
-            duskArrayCreate(module->allocator, DuskIRDecoration);
-    }
-
     DuskIRDecoration decoration = {0};
     decoration.kind = kind;
     decoration.literals = duskArrayCreate(module->allocator, uint32_t);
-    duskArrayResize(&decoration.literals, literal_count);
-    memcpy(decoration.literals, literals, sizeof(uint32_t) * literal_count);
 
-    duskArrayPush(&value->decorations, decoration);
-}
-
-void duskIRTypeAddDecoration(
-    DuskIRModule *module,
-    DuskType *type,
-    DuskIRDecorationKind kind,
-    size_t literal_count,
-    uint32_t *literals)
-{
-    if (type->decorations == NULL)
+    if (literal_count > 0)
     {
-        type->decorations =
-            duskArrayCreate(module->allocator, DuskIRDecoration);
+        duskArrayResize(&decoration.literals, literal_count);
+        memcpy(decoration.literals, literals, sizeof(uint32_t) * literal_count);
     }
 
-    DuskIRDecoration decoration = {0};
-    decoration.kind = kind;
-    decoration.literals = duskArrayCreate(module->allocator, uint32_t);
-    duskArrayResize(&decoration.literals, literal_count);
-    memcpy(decoration.literals, literals, sizeof(uint32_t) * literal_count);
-
-    duskArrayPush(&type->decorations, decoration);
+    return decoration;
 }
 
 void duskIRCreateReturn(
@@ -872,9 +847,9 @@ static void duskEmitDecorations(
     if (decorations == NULL) return;
     if (id == 0) return;
 
-    for (size_t j = 0; j < duskArrayLength(decorations); ++j)
+    for (size_t i = 0; i < duskArrayLength(decorations); ++i)
     {
-        DuskIRDecoration *decoration = &decorations[j];
+        DuskIRDecoration *decoration = &decorations[i];
         DUSK_ASSERT(decoration->literals != NULL);
 
         size_t param_count = 2 + duskArrayLength(decoration->literals);
@@ -896,9 +871,9 @@ static void duskEmitDecorations(
         case DUSK_IR_DECORATION_BINDING:
             params[1] = SpvDecorationBinding;
             break;
-        case DUSK_IR_DECORATION_BLOCK:
-            params[1] = SpvDecorationBlock;
-            break;
+        case DUSK_IR_DECORATION_BLOCK: params[1] = SpvDecorationBlock; break;
+
+        case DUSK_IR_DECORATION_OFFSET: continue;
         }
 
         memcpy(
@@ -907,6 +882,45 @@ static void duskEmitDecorations(
             sizeof(uint32_t) * duskArrayLength(decoration->literals));
 
         duskEncodeInst(module, SpvOpDecorate, params, param_count);
+    }
+}
+
+static void duskEmitMemberDecorations(
+    DuskIRModule *module,
+    uint32_t id,
+    uint32_t member_index,
+    DuskArray(DuskIRDecoration) decorations)
+{
+    if (decorations == NULL) return;
+    if (id == 0) return;
+
+    for (size_t i = 0; i < duskArrayLength(decorations); ++i)
+    {
+        DuskIRDecoration *decoration = &decorations[i];
+        DUSK_ASSERT(decoration->literals != NULL);
+
+        size_t param_count = 3 + duskArrayLength(decoration->literals);
+        uint32_t *params = duskAllocateZeroed(
+            module->allocator, param_count * sizeof(uint32_t));
+        params[0] = id;
+        params[1] = member_index;
+
+        switch (decoration->kind)
+        {
+        case DUSK_IR_DECORATION_OFFSET: params[2] = SpvDecorationOffset; break;
+        case DUSK_IR_DECORATION_LOCATION:
+        case DUSK_IR_DECORATION_BUILTIN:
+        case DUSK_IR_DECORATION_SET:
+        case DUSK_IR_DECORATION_BINDING:
+        case DUSK_IR_DECORATION_BLOCK: continue;
+        }
+
+        memcpy(
+            &params[3],
+            decoration->literals,
+            sizeof(uint32_t) * duskArrayLength(decoration->literals));
+
+        duskEncodeInst(module, SpvOpMemberDecorate, params, param_count);
     }
 }
 
@@ -1402,7 +1416,20 @@ DuskArray(uint32_t)
     {
         DuskType *type = compiler->types[i];
         if (!type->emit) continue;
+
         duskEmitDecorations(module, type->id, type->decorations);
+
+        if (type->kind == DUSK_TYPE_STRUCT)
+        {
+            for (uint32_t j = 0;
+                 j < duskArrayLength(type->struct_.field_decorations);
+                 ++j)
+            {
+                printf("Field decorations: %zu\n", duskArrayLength(type->struct_.field_decorations[j]));
+                duskEmitMemberDecorations(
+                    module, type->id, j, type->struct_.field_decorations[j]);
+            }
+        }
     }
 
     for (size_t i = 0; i < duskArrayLength(module->globals); ++i)

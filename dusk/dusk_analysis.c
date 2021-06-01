@@ -432,6 +432,33 @@ static void duskAnalyzeExpr(
         break;
     }
     case DUSK_EXPR_STRUCT_TYPE: {
+        for (size_t i = 0;
+             i < duskArrayLength(expr->struct_type.field_attributes);
+             ++i)
+        {
+            DuskArray(DuskAttribute) field_attributes =
+                expr->struct_type.field_attributes[i];
+
+            for (size_t j = 0; j < duskArrayLength(field_attributes); ++j)
+            {
+                DuskAttribute *attribute = &field_attributes[j];
+
+                for (size_t k = 0; k < duskArrayLength(attribute->value_exprs);
+                     ++k)
+                {
+                    DuskExpr *value_expr = attribute->value_exprs[k];
+                    int64_t resolved_int;
+                    if (duskExprResolveInteger(
+                            state, value_expr, &resolved_int))
+                    {
+                        value_expr->resolved_int =
+                            duskAllocateZeroed(allocator, sizeof(int64_t));
+                        *value_expr->resolved_int = resolved_int;
+                    }
+                }
+            }
+        }
+
         size_t field_count =
             duskArrayLength(expr->struct_type.field_type_exprs);
 
@@ -1146,9 +1173,12 @@ static void duskAnalyzeDecl(
             }
         }
 
-        for (size_t i = 0; i < duskArrayLength(decl->function.return_type_attributes); ++i)
+        for (size_t i = 0;
+             i < duskArrayLength(decl->function.return_type_attributes);
+             ++i)
         {
-            DuskAttribute *attribute = &decl->function.return_type_attributes[i];
+            DuskAttribute *attribute =
+                &decl->function.return_type_attributes[i];
 
             for (size_t j = 0; j < duskArrayLength(attribute->value_exprs); ++j)
             {
@@ -1236,6 +1266,12 @@ static void duskAnalyzeDecl(
     }
     case DUSK_DECL_TYPE: {
         DuskType *type_type = duskTypeNewBasic(compiler, DUSK_TYPE_TYPE);
+
+        if (decl->typedef_.type_expr->kind == DUSK_EXPR_STRUCT_TYPE)
+        {
+            decl->typedef_.type_expr->struct_type.name = decl->name;
+        }
+
         duskAnalyzeExpr(
             compiler, state, decl->typedef_.type_expr, type_type, false);
         decl->type = type_type;
