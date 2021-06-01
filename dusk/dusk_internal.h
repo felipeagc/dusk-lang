@@ -296,6 +296,19 @@ void duskScopeSet(DuskScope *scope, const char *name, DuskDecl *decl);
 // }}}
 
 // Type {{{
+typedef enum DuskIRDecorationKind {
+    DUSK_IR_DECORATION_LOCATION,
+    DUSK_IR_DECORATION_BUILTIN,
+    DUSK_IR_DECORATION_SET,
+    DUSK_IR_DECORATION_BINDING,
+} DuskIRDecorationKind;
+
+typedef struct DuskIRDecoration
+{
+    DuskIRDecorationKind kind;
+    DuskArray(uint32_t) literals;
+} DuskIRDecoration;
+
 typedef enum DuskImageDimension {
     DUSK_IMAGE_DIMENSION_1D,
     DUSK_IMAGE_DIMENSION_2D,
@@ -334,6 +347,7 @@ struct DuskType
     uint32_t id;
     bool emit; // This flag is set before SPIRV emission in order to emit the
                // type. Once the type is emitted, the flag is set to false.
+    DuskArray(DuskIRDecoration) decorations;
 
     union
     {
@@ -444,19 +458,6 @@ typedef struct DuskIREntryPoint
     DuskIRValue *function;
     DuskArray(DuskIRValue *) referenced_globals;
 } DuskIREntryPoint;
-
-typedef enum DuskIRDecorationKind {
-    DUSK_IR_DECORATION_LOCATION,
-    DUSK_IR_DECORATION_BUILTIN,
-    DUSK_IR_DECORATION_SET,
-    DUSK_IR_DECORATION_BINDING,
-} DuskIRDecorationKind;
-
-typedef struct DuskIRDecoration
-{
-    DuskIRDecorationKind kind;
-    DuskArray(uint32_t) literals;
-} DuskIRDecoration;
 
 typedef enum DuskIRValueKind {
     DUSK_IR_VALUE_CONSTANT_BOOL,
@@ -607,6 +608,12 @@ DuskIRValue *duskIRConstCompositeCreate(
 void duskIRValueAddDecoration(
     DuskIRModule *module,
     DuskIRValue *value,
+    DuskIRDecorationKind kind,
+    size_t literal_count,
+    uint32_t *literals);
+void duskIRTypeAddDecoration(
+    DuskIRModule *module,
+    DuskType *type,
     DuskIRDecorationKind kind,
     size_t literal_count,
     uint32_t *literals);

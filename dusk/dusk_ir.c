@@ -426,7 +426,8 @@ void duskIRValueAddDecoration(
 {
     if (value->decorations == NULL)
     {
-        value->decorations = duskArrayCreate(module->allocator, DuskIRDecoration);
+        value->decorations =
+            duskArrayCreate(module->allocator, DuskIRDecoration);
     }
 
     DuskIRDecoration decoration = {0};
@@ -436,6 +437,28 @@ void duskIRValueAddDecoration(
     memcpy(decoration.literals, literals, sizeof(uint32_t) * literal_count);
 
     duskArrayPush(&value->decorations, decoration);
+}
+
+void duskIRTypeAddDecoration(
+    DuskIRModule *module,
+    DuskType *type,
+    DuskIRDecorationKind kind,
+    size_t literal_count,
+    uint32_t *literals)
+{
+    if (type->decorations == NULL)
+    {
+        type->decorations =
+            duskArrayCreate(module->allocator, DuskIRDecoration);
+    }
+
+    DuskIRDecoration decoration = {0};
+    decoration.kind = kind;
+    decoration.literals = duskArrayCreate(module->allocator, uint32_t);
+    duskArrayResize(&decoration.literals, literal_count);
+    memcpy(decoration.literals, literals, sizeof(uint32_t) * literal_count);
+
+    duskArrayPush(&type->decorations, decoration);
 }
 
 void duskIRCreateReturn(
@@ -843,20 +866,21 @@ static void duskEmitType(DuskIRModule *module, DuskType *type)
     }
 }
 
-static void
-duskEmitDecorationsForValue(DuskIRModule *module, DuskIRValue *value)
+static void duskEmitDecorations(
+    DuskIRModule *module, uint32_t id, DuskArray(DuskIRDecoration) decorations)
 {
-    if (!value->decorations) return;
+    if (decorations == NULL) return;
+    if (id == 0) return;
 
-    for (size_t j = 0; j < duskArrayLength(value->decorations); ++j)
+    for (size_t j = 0; j < duskArrayLength(decorations); ++j)
     {
-        DuskIRDecoration *decoration = &value->decorations[j];
+        DuskIRDecoration *decoration = &decorations[j];
         DUSK_ASSERT(decoration->literals != NULL);
 
         size_t param_count = 2 + duskArrayLength(decoration->literals);
         uint32_t *params = duskAllocateZeroed(
             module->allocator, param_count * sizeof(uint32_t));
-        params[0] = value->id;
+        params[0] = id;
 
         switch (decoration->kind)
         {
@@ -1371,10 +1395,17 @@ DuskArray(uint32_t)
 
     // TODO: generate names here
 
+    for (size_t i = 0; i < duskArrayLength(compiler->types); ++i)
+    {
+        DuskType *type = compiler->types[i];
+        if (!type->emit) continue;
+        duskEmitDecorations(module, type->id, type->decorations);
+    }
+
     for (size_t i = 0; i < duskArrayLength(module->globals); ++i)
     {
         DuskIRValue *value = module->globals[i];
-        duskEmitDecorationsForValue(module, value);
+        duskEmitDecorations(module, value->id, value->decorations);
     }
 
     for (size_t i = 0; i < duskArrayLength(compiler->types); ++i)
