@@ -795,18 +795,74 @@ static void duskGenerateGlobalDecl(DuskIRModule *module, DuskDecl *decl)
             {
                 DuskDecl *param_decl = decl->function.parameter_decls[i];
 
-                param_decl->ir_value = duskIRVariableCreate(
-                    module, param_decl->type, DUSK_STORAGE_CLASS_INPUT);
-                duskArrayPush(
-                    &decl->function.entry_point_inputs, param_decl->ir_value);
+                switch (param_decl->type->kind)
+                {
+                case DUSK_TYPE_STRUCT: {
+                    DuskArray(DuskIRValue *) field_values =
+                        duskArrayCreate(module->allocator, DuskIRValue *);
+                    size_t field_count =
+                        duskArrayLength(param_decl->type->struct_.field_types);
 
-                duskDecorateFromAttributes(
-                    module,
-                    &param_decl->ir_value->decorations,
-                    duskArrayLength(decl->function.return_type_attributes),
-                    decl->function.return_type_attributes);
+                    for (size_t j = 0; j < field_count; ++j)
+                    {
+                        DuskType *field_type =
+                            param_decl->type->struct_.field_types[j];
+                        DuskIRValue *input_value = duskIRVariableCreate(
+                            module, field_type, DUSK_STORAGE_CLASS_INPUT);
+                        duskArrayPush(
+                            &decl->function.entry_point_inputs, input_value);
 
-                DUSK_ASSERT(param_decl->ir_value);
+                        DuskArray(DuskAttribute) field_attributes =
+                            param_decl->type->struct_.field_attributes[j];
+
+                        duskDecorateFromAttributes(
+                            module,
+                            &input_value->decorations,
+                            duskArrayLength(field_attributes),
+                            field_attributes);
+
+                        duskArrayPush(&field_values, input_value);
+                    }
+
+                    DUSK_ASSERT(duskArrayLength(field_values) == field_count);
+                    DUSK_ASSERT(
+                        duskArrayLength(decl->ir_value->function.blocks) > 0);
+                    DuskIRValue *block =
+                        decl->ir_value->function.blocks
+                            [duskArrayLength(decl->ir_value->function.blocks) -
+                             1];
+
+                    for (size_t j = 0; j < field_count; ++j)
+                    {
+                        field_values[j] =
+                            duskIRLoadLvalue(module, block, field_values[j]);
+                    }
+
+                    param_decl->ir_value = duskIRCreateCompositeConstruct(
+                        module,
+                        block,
+                        param_decl->type,
+                        field_count,
+                        field_values);
+                    break;
+                }
+                default: {
+                    param_decl->ir_value = duskIRVariableCreate(
+                        module, param_decl->type, DUSK_STORAGE_CLASS_INPUT);
+                    duskArrayPush(
+                        &decl->function.entry_point_inputs,
+                        param_decl->ir_value);
+
+                    duskDecorateFromAttributes(
+                        module,
+                        &param_decl->ir_value->decorations,
+                        duskArrayLength(decl->function.return_type_attributes),
+                        decl->function.return_type_attributes);
+
+                    DUSK_ASSERT(param_decl->ir_value);
+                    break;
+                }
+                }
             }
 
             DuskType *return_type = decl->type->function.return_type;

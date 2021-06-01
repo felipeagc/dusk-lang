@@ -37,10 +37,14 @@ type VsOutput struct {
     [builtin(position)] pos: float3,
 };
 
-[stage(vertex)]
-fn vs_main(
+type VsInput struct {
     [location(0)] pos: float3,
     [location(1)] uv: float2,
+};
+
+[stage(vertex)]
+fn vs_main(
+    input: VsInput,
 ) VsOutput {
     let my_image: @Image2D(float) = image;
     let a: float3;
@@ -71,7 +75,7 @@ fn vs_main(
     // out_uv = in_uv;
     // out_position = float4(in_pos, 1);
     return VsOutput.{
-        pos: float3(0),
+        pos: input.pos,
     };
 }
 
