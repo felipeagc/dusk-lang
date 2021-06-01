@@ -1,5 +1,14 @@
-[block]
 type Hello struct {
+    a: int,
+    b: float,
+};
+
+type HelloUniform struct {
+    a: int,
+    b: float,
+};
+
+type HelloStorage struct {
     a: int,
     b: float,
 };
@@ -7,10 +16,11 @@ type Hello struct {
 	
 // };
 
-[binding(0)] let hello : Hello; 
-[binding(1)] let image : @Image2D(float);
-[binding(1)] let image2 : @Image3DSampler(float);
-[binding(2)] let sampler : @Sampler();
+[uniform, binding(0)] let uniform : HelloUniform; 
+[storage, binding(1)] let storage : HelloStorage; 
+[binding(2)] let image : @Image2D(float);
+[binding(3)] let image2 : @Image3DSampler(float);
+[binding(4)] let sampler : @Sampler();
 
 
 fn test(param: int) int {

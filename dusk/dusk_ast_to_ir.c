@@ -764,6 +764,23 @@ static void duskGenerateGlobalDecl(DuskIRModule *module, DuskDecl *decl)
         default: storage_class = DUSK_STORAGE_CLASS_UNIFORM; break;
         }
 
+        for (size_t i = 0; i < duskArrayLength(decl->attributes); ++i)
+        {
+            DuskAttribute *attribute = &decl->attributes[i];
+            switch (attribute->kind)
+            {
+            case DUSK_ATTRIBUTE_UNIFORM: {
+                storage_class = DUSK_STORAGE_CLASS_UNIFORM;
+                break;
+            }
+            case DUSK_ATTRIBUTE_STORAGE: {
+                storage_class = DUSK_STORAGE_CLASS_STORAGE;
+                break;
+            }
+            default: break;
+            }
+        }
+
         decl->ir_value =
             duskIRVariableCreate(module, decl->type, storage_class);
         break;
