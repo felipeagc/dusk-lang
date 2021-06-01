@@ -764,6 +764,11 @@ static void duskGenerateGlobalDecl(DuskIRModule *module, DuskDecl *decl)
         default: storage_class = DUSK_STORAGE_CLASS_UNIFORM; break;
         }
 
+        bool got_descriptor_set = false;
+        bool got_binding = false;
+        uint32_t descriptor_set = 0;
+        uint32_t binding = 0;
+
         for (size_t i = 0; i < duskArrayLength(decl->attributes); ++i)
         {
             DuskAttribute *attribute = &decl->attributes[i];
@@ -781,12 +786,48 @@ static void duskGenerateGlobalDecl(DuskIRModule *module, DuskDecl *decl)
                 storage_class = DUSK_STORAGE_CLASS_PUSH_CONSTANT;
                 break;
             }
+            case DUSK_ATTRIBUTE_BINDING: {
+                DUSK_ASSERT(duskArrayLength(attribute->value_exprs) == 1);
+                DUSK_ASSERT(attribute->value_exprs[0]->resolved_int);
+                binding = (uint32_t)*attribute->value_exprs[0]->resolved_int;
+                got_binding = true;
+                break;
+            }
+            case DUSK_ATTRIBUTE_SET: {
+                DUSK_ASSERT(duskArrayLength(attribute->value_exprs) == 1);
+                DUSK_ASSERT(attribute->value_exprs[0]->resolved_int);
+                descriptor_set =
+                    (uint32_t)*attribute->value_exprs[0]->resolved_int;
+                got_descriptor_set = true;
+                break;
+            }
             default: break;
             }
         }
 
         decl->ir_value =
             duskIRVariableCreate(module, decl->type, storage_class);
+
+        if (got_descriptor_set)
+        {
+            duskIRValueAddDecoration(
+                module,
+                decl->ir_value,
+                DUSK_IR_DECORATION_SET,
+                1,
+                &descriptor_set);
+        }
+
+        if (got_binding)
+        {
+            duskIRValueAddDecoration(
+                module,
+                decl->ir_value,
+                DUSK_IR_DECORATION_BINDING,
+                1,
+                &binding);
+        }
+
         break;
     }
     case DUSK_DECL_TYPE: {

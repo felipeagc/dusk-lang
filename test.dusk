@@ -16,11 +16,11 @@ type HelloStorage struct {
 	
 // };
 
-[uniform, binding(0)] let uniform : HelloUniform; 
-[storage, binding(1)] let storage : HelloStorage; 
-[binding(2)] let image : @Image2D(float);
-[binding(3)] let image2 : @Image3DSampler(float);
-[binding(4)] let sampler : @Sampler();
+[uniform, set(0), binding(0)] let uniform : HelloUniform; 
+[storage, set(0), binding(1)] let storage : HelloStorage; 
+[set(0), binding(2)] let image : @Image2D(float);
+[set(0), binding(3)] let image2 : @Image3DSampler(float);
+[set(0), binding(4)] let sampler : @Sampler();
 
 
 fn test(param: int) int {

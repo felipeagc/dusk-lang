@@ -928,12 +928,14 @@ static void duskAnalyzeExpr(
         DUSK_ASSERT(duskArrayLength(compiler->errors) > 0);
     }
 
-    int64_t resolved_int;
-    if (duskExprResolveInteger(state, expr, &resolved_int))
     {
-        expr->resolved_int =
-            duskAllocateZeroed(allocator, sizeof(*expr->resolved_int));
-        *expr->resolved_int = resolved_int;
+        int64_t resolved_int;
+        if (duskExprResolveInteger(state, expr, &resolved_int))
+        {
+            expr->resolved_int =
+                duskAllocateZeroed(allocator, sizeof(*expr->resolved_int));
+            *expr->resolved_int = resolved_int;
+        }
     }
 
     if (expected_type && expr->type)
@@ -1060,6 +1062,23 @@ static void duskAnalyzeDecl(
     DuskCompiler *compiler, DuskAnalyzerState *state, DuskDecl *decl)
 {
     DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
+
+    for (size_t i = 0; i < duskArrayLength(decl->attributes); ++i)
+    {
+        DuskAttribute *attribute = &decl->attributes[i];
+
+        for (size_t j = 0; j < duskArrayLength(attribute->value_exprs); ++j)
+        {
+            DuskExpr *value_expr = attribute->value_exprs[j];
+            int64_t resolved_int;
+            if (duskExprResolveInteger(state, value_expr, &resolved_int))
+            {
+                value_expr->resolved_int =
+                    duskAllocateZeroed(allocator, sizeof(int64_t));
+                *value_expr->resolved_int = resolved_int;
+            }
+        }
+    }
 
     switch (decl->kind)
     {
