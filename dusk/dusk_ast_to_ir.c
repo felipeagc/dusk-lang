@@ -768,7 +768,26 @@ static void duskGenerateGlobalDecl(DuskIRModule *module, DuskDecl *decl)
             duskIRVariableCreate(module, decl->type, storage_class);
         break;
     }
-    case DUSK_DECL_TYPE: break;
+    case DUSK_DECL_TYPE: {
+        DuskType *type = decl->typedef_.type_expr->as_type;
+        DUSK_ASSERT(type);
+
+        for (size_t i = 0; i < duskArrayLength(decl->attributes); ++i)
+        {
+            DuskAttribute *attribute = &decl->attributes[i];
+            switch (attribute->kind)
+            {
+            case DUSK_ATTRIBUTE_BLOCK: {
+                duskIRTypeAddDecoration(
+                    module, type, DUSK_IR_DECORATION_BLOCK, 0, NULL);
+                break;
+            }
+            default: break;
+            }
+        }
+
+        break;
+    }
     }
 }
 

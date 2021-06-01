@@ -3,7 +3,6 @@ type Hello struct {
     a: int,
     b: float,
 };
-
 // [push_constant] let pc : struct {
 	
 // };
@@ -12,6 +11,7 @@ type Hello struct {
 [binding(1)] let image : @Image2D(float);
 [binding(1)] let image2 : @Image3DSampler(float);
 [binding(2)] let sampler : @Sampler();
+
 
 fn test(param: int) int {
     let a: int = param;

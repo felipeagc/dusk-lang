@@ -896,6 +896,9 @@ static void duskEmitDecorations(
         case DUSK_IR_DECORATION_BINDING:
             params[1] = SpvDecorationBinding;
             break;
+        case DUSK_IR_DECORATION_BLOCK:
+            params[1] = SpvDecorationBlock;
+            break;
         }
 
         memcpy(

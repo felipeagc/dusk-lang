@@ -301,6 +301,7 @@ typedef enum DuskIRDecorationKind {
     DUSK_IR_DECORATION_BUILTIN,
     DUSK_IR_DECORATION_SET,
     DUSK_IR_DECORATION_BINDING,
+    DUSK_IR_DECORATION_BLOCK,
 } DuskIRDecorationKind;
 
 typedef struct DuskIRDecoration
@@ -693,6 +694,9 @@ typedef enum DuskAttributeKind {
     DUSK_ATTRIBUTE_SET,
     DUSK_ATTRIBUTE_BINDING,
     DUSK_ATTRIBUTE_BUILTIN,
+    DUSK_ATTRIBUTE_BLOCK,
+    DUSK_ATTRIBUTE_UNIFORM,
+    DUSK_ATTRIBUTE_STORAGE,
 } DuskAttributeKind;
 
 typedef struct DuskAttribute

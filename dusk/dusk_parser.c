@@ -1300,6 +1300,22 @@ static void parseAttributes(
             {
                 attrib.kind = DUSK_ATTRIBUTE_STAGE;
             }
+            else if (strcmp(attrib_name_token.str, "builtin") == 0)
+            {
+                attrib.kind = DUSK_ATTRIBUTE_BUILTIN;
+            }
+            else if (strcmp(attrib_name_token.str, "block") == 0)
+            {
+                attrib.kind = DUSK_ATTRIBUTE_BLOCK;
+            }
+            else if (strcmp(attrib_name_token.str, "uniform") == 0)
+            {
+                attrib.kind = DUSK_ATTRIBUTE_UNIFORM;
+            }
+            else if (strcmp(attrib_name_token.str, "storage") == 0)
+            {
+                attrib.kind = DUSK_ATTRIBUTE_STORAGE;
+            }
             attrib.name = attrib_name_token.str;
             attrib.value_exprs = duskArrayCreate(allocator, DuskExpr *);
 
@@ -1322,8 +1338,6 @@ static void parseAttributes(
                     tokenizerNextToken(allocator, *state, &next_token);
                 }
 
-                duskArrayPush(attributes, attrib);
-
                 consumeToken(compiler, state, TOKEN_RPAREN);
             }
 
@@ -1333,6 +1347,8 @@ static void parseAttributes(
                 consumeToken(compiler, state, TOKEN_COMMA);
                 tokenizerNextToken(allocator, *state, &next_token);
             }
+
+            duskArrayPush(attributes, attrib);
         }
 
         consumeToken(compiler, state, TOKEN_RBRACKET);
