@@ -181,6 +181,90 @@ static bool duskIsExprAssignable(DuskAnalyzerState *state, DuskExpr *expr)
     return false;
 }
 
+static DuskAttribute *
+duskFindAttribute(DuskArray(DuskAttribute) attributes, DuskAttributeKind kind)
+{
+    for (size_t i = 0; i < duskArrayLength(attributes); ++i)
+    {
+        if (attributes[i].kind == kind) return &attributes[i];
+    }
+
+    return NULL;
+}
+
+static void duskCheckEntryPointInterfaceAttributes(
+    DuskAnalyzerState *state,
+    DuskCompiler *compiler,
+    DuskLocation location,
+    DuskArray(DuskAttribute) attributes)
+{
+    DuskAttribute *location_attribute =
+        duskFindAttribute(attributes, DUSK_ATTRIBUTE_LOCATION);
+    DuskAttribute *builtin_attribute =
+        duskFindAttribute(attributes, DUSK_ATTRIBUTE_BUILTIN);
+
+    if (location_attribute && builtin_attribute)
+    {
+        duskAddError(
+            compiler,
+            location,
+            "entry point interface needs either a location or builtin "
+            "attribute, not both");
+    }
+    else if (location_attribute)
+    {
+        if (duskArrayLength(location_attribute->value_exprs) != 1)
+        {
+            duskAddError(
+                compiler,
+                location,
+                "location attribute needs exactly 1 parameter");
+        }
+        else
+        {
+            int64_t resolved_int;
+            if (!duskExprResolveInteger(
+                    state, location_attribute->value_exprs[0], &resolved_int))
+            {
+                duskAddError(
+                    compiler,
+                    location,
+                    "location attribute needs an integer parameter");
+            }
+        }
+    }
+    else if (builtin_attribute)
+    {
+        if (duskArrayLength(builtin_attribute->value_exprs) != 1)
+        {
+            duskAddError(
+                compiler,
+                location,
+                "builtin attribute needs exactly 1 parameter");
+        }
+        else if (builtin_attribute->value_exprs[0]->kind != DUSK_EXPR_IDENT)
+        {
+            duskAddError(
+                compiler,
+                location,
+                "builtin attribute needs a builtin name identifier as a "
+                "parameter");
+        }
+        else
+        {
+            // TODO: check if provided builtin identifier is valid
+        }
+    }
+    else
+    {
+        duskAddError(
+            compiler,
+            location,
+            "entry point interface needs either a location or builtin "
+            "attribute");
+    }
+}
+
 static void duskAnalyzeExpr(
     DuskCompiler *compiler,
     DuskAnalyzerState *state,
@@ -1230,11 +1314,73 @@ static void duskAnalyzeDecl(
 
         if (!got_all_param_types || return_type == NULL)
         {
+            duskArrayPop(&state->function_stack);
+            duskArrayPop(&state->scope_stack);
             DUSK_ASSERT(duskArrayLength(compiler->errors) > 0);
             break;
         }
 
         decl->type = duskTypeNewFunction(compiler, return_type, param_types);
+
+        if (decl->function.is_entry_point)
+        {
+            for (size_t i = 0; i < param_count; ++i)
+            {
+                DuskDecl *param_decl = decl->function.parameter_decls[i];
+                if (param_decl->type->kind != DUSK_TYPE_STRUCT)
+                {
+                    duskCheckEntryPointInterfaceAttributes(
+                        state,
+                        compiler,
+                        param_decl->location,
+                        param_decl->attributes);
+                }
+                else
+                {
+                    DuskType *struct_type = param_decl->type;
+                    for (size_t j = 0;
+                         j < duskArrayLength(struct_type->struct_.field_types);
+                         ++j)
+                    {
+                        DuskArray(DuskAttribute) field_attributes =
+                            struct_type->struct_.field_attributes[j];
+
+                        duskCheckEntryPointInterfaceAttributes(
+                            state,
+                            compiler,
+                            param_decl->location,
+                            field_attributes);
+                    }
+                }
+            }
+
+            switch (decl->type->function.return_type->kind)
+            {
+            case DUSK_TYPE_VOID: break;
+            case DUSK_TYPE_STRUCT: {
+                DuskType *struct_type = decl->type->function.return_type;
+                for (size_t j = 0;
+                     j < duskArrayLength(struct_type->struct_.field_types);
+                     ++j)
+                {
+                    DuskArray(DuskAttribute) field_attributes =
+                        struct_type->struct_.field_attributes[j];
+
+                    duskCheckEntryPointInterfaceAttributes(
+                        state, compiler, decl->location, field_attributes);
+                }
+                break;
+            }
+            default: {
+                duskCheckEntryPointInterfaceAttributes(
+                    state,
+                    compiler,
+                    decl->location,
+                    decl->function.return_type_attributes);
+                break;
+            }
+            }
+        }
 
         bool got_return_stmt = false;
 
