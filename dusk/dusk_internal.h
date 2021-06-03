@@ -51,8 +51,7 @@
 #define DUSK_STATIC_ASSERT(value, msg) static_assert(value, msg)
 #endif
 
-// Rounds to the next multiple of four
-#define DUSK_ROUND_TO_4(x) (((x) + 3) & ~0x03)
+#define DUSK_ROUND_UP(to, x) ((((x) + (to)-1) / (to)) * (to))
 
 // Allocator {{{
 typedef struct DuskAllocator DuskAllocator;

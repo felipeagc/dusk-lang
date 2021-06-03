@@ -1352,7 +1352,7 @@ DuskArray(uint32_t)
         DuskIREntryPoint *entry_point = module->entry_points[i];
         size_t entry_point_name_len = strlen(entry_point->name);
 
-        size_t name_word_count = DUSK_ROUND_TO_4(entry_point_name_len + 1) / 4;
+        size_t name_word_count = DUSK_ROUND_UP(4, entry_point_name_len + 1) / 4;
 
         size_t param_count = 2 + name_word_count +
                              duskArrayLength(entry_point->referenced_globals);
