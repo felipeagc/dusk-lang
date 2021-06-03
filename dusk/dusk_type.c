@@ -124,7 +124,7 @@ const char *duskTypeToPrettyString(DuskAllocator *allocator, DuskType *type)
 
         duskStringBuilderAppend(sb, "fn (");
 
-        for (size_t i = 0; i < duskArrayLength(type->function.param_types); ++i)
+        for (size_t i = 0; i < type->function.param_type_count; ++i)
         {
             if (i > 0) duskStringBuilderAppend(sb, ", ");
 
@@ -307,7 +307,7 @@ const char *duskTypeToString(DuskAllocator *allocator, DuskType *type)
 
         duskStringBuilderAppend(sb, "@fn((");
 
-        for (size_t i = 0; i < duskArrayLength(type->function.param_types); ++i)
+        for (size_t i = 0; i < type->function.param_type_count; ++i)
         {
             if (i > 0) duskStringBuilderAppend(sb, ",");
 
@@ -396,7 +396,7 @@ static DuskType *duskTypeGetCached(DuskCompiler *compiler, DuskType *type)
     }
 
     duskMapSet(compiler->type_cache, type_str, type);
-    duskArrayPush(&compiler->types, type);
+    duskArrayPush(&compiler->types_arr, type);
 
     return type;
 }
@@ -529,13 +529,24 @@ DuskType *duskTypeNewStruct(
 DuskType *duskTypeNewFunction(
     DuskCompiler *compiler,
     DuskType *return_type,
-    DuskArray(DuskType *) param_types)
+    size_t param_type_count,
+    DuskType **param_types)
 {
     DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
     DuskType *type = DUSK_NEW(allocator, DuskType);
     type->kind = DUSK_TYPE_FUNCTION;
     type->function.return_type = return_type;
-    type->function.param_types = param_types;
+    type->function.param_type_count = param_type_count;
+    type->function.param_types =
+        DUSK_NEW_ARRAY(allocator, DuskType *, param_type_count);
+    if (param_type_count > 0)
+    {
+        memcpy(
+            type->function.param_types,
+            param_types,
+            sizeof(DuskType *) * param_type_count);
+    }
+
     return duskTypeGetCached(compiler, type);
 }
 

@@ -12,9 +12,9 @@ DuskCompiler *duskCompilerCreate(void)
 
     *compiler = (DuskCompiler){
         .main_arena = arena,
-        .errors = duskArrayCreate(allocator, DuskError),
+        .errors_arr = duskArrayCreate(allocator, DuskError),
         .type_cache = duskMapCreate(allocator, 32),
-        .types = duskArrayCreate(allocator, DuskType *),
+        .types_arr = duskArrayCreate(allocator, DuskType *),
     };
     return compiler;
 }
@@ -45,7 +45,7 @@ void duskAddError(
         .location = loc,
     };
 
-    duskArrayPush(&compiler->errors, error);
+    duskArrayPush(&compiler->errors_arr, error);
 }
 
 uint8_t *duskCompile(
@@ -59,9 +59,9 @@ uint8_t *duskCompile(
 
     if (setjmp(compiler->jump_buffer) != 0)
     {
-        for (size_t i = 0; i < duskArrayLength(compiler->errors); ++i)
+        for (size_t i = 0; i < duskArrayLength(compiler->errors_arr); ++i)
         {
-            DuskError err = compiler->errors[i];
+            DuskError err = compiler->errors_arr[i];
             fprintf(
                 stderr,
                 "%s:%zu:%zu: %s\n",
@@ -78,7 +78,7 @@ uint8_t *duskCompile(
         .path = path,
         .text = text,
         .text_length = text_length,
-        .decls = duskArrayCreate(allocator, DuskDecl *),
+        .decls_arr = duskArrayCreate(allocator, DuskDecl *),
         .scope =
             duskScopeCreate(allocator, NULL, DUSK_SCOPE_OWNER_TYPE_NONE, NULL),
     };
@@ -86,7 +86,7 @@ uint8_t *duskCompile(
     duskParse(compiler, file);
 
     duskAnalyzeFile(compiler, file);
-    if (duskArrayLength(compiler->errors) > 0)
+    if (duskArrayLength(compiler->errors_arr) > 0)
     {
         duskThrow(compiler);
     }

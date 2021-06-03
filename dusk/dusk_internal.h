@@ -307,7 +307,8 @@ typedef enum DuskIRDecorationKind {
 typedef struct DuskIRDecoration
 {
     DuskIRDecorationKind kind;
-    DuskArray(uint32_t) literals;
+    uint32_t *literals;
+    size_t literal_count;
 } DuskIRDecoration;
 
 typedef enum DuskAttributeKind {
@@ -378,7 +379,7 @@ struct DuskType
                // type. Once the type is emitted, the flag is set to false.
     const char *string;
     const char *pretty_string;
-    DuskArray(DuskIRDecoration) decorations;
+    DuskArray(DuskIRDecoration) decorations_arr;
 
     union
     {
@@ -421,7 +422,8 @@ struct DuskType
         struct
         {
             DuskType *return_type;
-            DuskArray(DuskType *) param_types;
+            size_t param_type_count;
+            DuskType **param_types;
         } function;
         struct
         {
@@ -471,7 +473,8 @@ DuskType *duskTypeNewStruct(
 DuskType *duskTypeNewFunction(
     DuskCompiler *compiler,
     DuskType *return_type,
-    DuskArray(DuskType *) param_types);
+    size_t param_type_count,
+    DuskType **param_types);
 DuskType *duskTypeNewPointer(
     DuskCompiler *compiler, DuskType *sub, DuskStorageClass storage_class);
 DuskType *duskTypeNewImage(
@@ -493,7 +496,7 @@ typedef struct DuskIREntryPoint
     DuskShaderStage stage;
     const char *name;
     DuskIRValue *function;
-    DuskArray(DuskIRValue *) referenced_globals;
+    DuskArray(DuskIRValue *) referenced_globals_arr;
 } DuskIREntryPoint;
 
 typedef enum DuskIRValueKind {
@@ -523,7 +526,7 @@ struct DuskIRValue
     DuskType *type;
     const char *const_string;
     bool emitted;
-    DuskArray(DuskIRDecoration) decorations;
+    DuskArray(DuskIRDecoration) decorations_arr;
 
     union
     {
@@ -538,14 +541,14 @@ struct DuskIRValue
         } constant;
         struct
         {
-            DuskArray(DuskIRValue *) values;
+            DuskArray(DuskIRValue *) values_arr;
         } constant_composite;
         struct
         {
             const char *name;
-            DuskArray(DuskIRValue *) params;
-            DuskArray(DuskIRValue *) variables;
-            DuskArray(DuskIRValue *) blocks;
+            DuskArray(DuskIRValue *) params_arr;
+            DuskArray(DuskIRValue *) variables_arr;
+            DuskArray(DuskIRValue *) blocks_arr;
         } function;
         struct
         {
@@ -553,7 +556,7 @@ struct DuskIRValue
         } var;
         struct
         {
-            DuskArray(DuskIRValue *) insts;
+            DuskArray(DuskIRValue *) insts_arr;
         } block;
         struct
         {
@@ -571,27 +574,27 @@ struct DuskIRValue
         struct
         {
             DuskIRValue *function;
-            DuskArray(DuskIRValue *) params;
+            DuskArray(DuskIRValue *) params_arr;
         } function_call;
         struct
         {
             DuskIRValue *base;
-            DuskArray(DuskIRValue *) indices;
+            DuskArray(DuskIRValue *) indices_arr;
         } access_chain;
         struct
         {
             DuskIRValue *composite;
-            DuskArray(uint32_t) indices;
+            DuskArray(uint32_t) indices_arr;
         } composite_extract;
         struct
         {
             DuskIRValue *vec1;
             DuskIRValue *vec2;
-            DuskArray(uint32_t) indices;
+            DuskArray(uint32_t) indices_arr;
         } vector_shuffle;
         struct
         {
-            DuskArray(DuskIRValue *) values;
+            DuskArray(DuskIRValue *) values_arr;
         } composite_construct;
     };
 };
@@ -600,18 +603,18 @@ typedef struct DuskIRModule
 {
     DuskCompiler *compiler;
     DuskAllocator *allocator;
-    DuskArray(uint32_t) stream;
+    DuskArray(uint32_t) stream_arr;
     uint32_t last_id;
 
     DuskMap *const_cache;
-    DuskArray(DuskIRValue *) consts;
+    DuskArray(DuskIRValue *) consts_arr;
 
     uint32_t glsl_ext_inst_id;
 
-    DuskArray(DuskIRValue *) functions;
-    DuskArray(DuskIRValue *) globals;
+    DuskArray(DuskIRValue *) functions_arr;
+    DuskArray(DuskIRValue *) globals_arr;
 
-    DuskArray(DuskIREntryPoint *) entry_points;
+    DuskArray(DuskIREntryPoint *) entry_points_arr;
 } DuskIRModule;
 
 bool duskIRBlockIsTerminated(DuskIRValue *block);
@@ -727,7 +730,7 @@ struct DuskDecl
     DuskDeclKind kind;
     DuskLocation location;
     const char *name;
-    DuskArray(DuskAttribute) attributes;
+    DuskArray(DuskAttribute) attributes_arr;
     DuskType *type;
     DuskIRValue *ir_value;
 
@@ -737,18 +740,18 @@ struct DuskDecl
         {
             bool is_entry_point;
             DuskShaderStage entry_point_stage;
-            DuskArray(DuskIRValue *) entry_point_inputs;
-            DuskArray(DuskIRValue *) entry_point_outputs;
+            DuskArray(DuskIRValue *) entry_point_inputs_arr;
+            DuskArray(DuskIRValue *) entry_point_outputs_arr;
 
             const char *link_name;
             DuskScope *scope;
 
-            DuskArray(DuskDecl *) parameter_decls;
+            DuskArray(DuskDecl *) parameter_decls_arr;
 
             DuskExpr *return_type_expr;
-            DuskArray(DuskAttribute) return_type_attributes;
+            DuskArray(DuskAttribute) return_type_attributes_arr;
 
-            DuskArray(DuskStmt *) stmts;
+            DuskArray(DuskStmt *) stmts_arr;
         } function;
         struct
         {
@@ -789,7 +792,7 @@ struct DuskStmt
         } assign;
         struct
         {
-            DuskArray(DuskStmt *) stmts;
+            DuskArray(DuskStmt *) stmts_arr;
             DuskScope *scope;
         } block;
         struct
@@ -848,14 +851,14 @@ struct DuskExpr
         struct
         {
             DuskExpr *type_expr;
-            DuskArray(const char *) field_names;
-            DuskArray(DuskExpr *) field_values;
+            DuskArray(const char *) field_names_arr;
+            DuskArray(DuskExpr *) field_values_arr;
         } struct_literal;
         struct
         {
             const char *str;
             DuskDecl *decl;
-            DuskArray(uint32_t) shuffle_indices;
+            DuskArray(uint32_t) shuffle_indices_arr;
         } identifier;
         struct
         {
@@ -877,17 +880,17 @@ struct DuskExpr
         struct
         {
             DuskExpr *func_expr;
-            DuskArray(DuskExpr *) params;
+            DuskArray(DuskExpr *) params_arr;
         } function_call;
         struct
         {
             DuskBuiltinFunctionKind kind;
-            DuskArray(DuskExpr *) params;
+            DuskArray(DuskExpr *) params_arr;
         } builtin_call;
         struct
         {
             DuskExpr *base_expr;
-            DuskArray(DuskExpr *) chain;
+            DuskArray(DuskExpr *) chain_arr;
         } access;
     };
 };
@@ -902,7 +905,7 @@ struct DuskFile
     size_t text_length;
 
     DuskScope *scope;
-    DuskArray(DuskDecl *) decls;
+    DuskArray(DuskDecl *) decls_arr;
 };
 
 typedef struct DuskError
@@ -914,9 +917,9 @@ typedef struct DuskError
 typedef struct DuskCompiler
 {
     DuskArena *main_arena;
-    DuskArray(DuskError) errors;
+    DuskArray(DuskError) errors_arr;
     DuskMap *type_cache;
-    DuskArray(DuskType *) types;
+    DuskArray(DuskType *) types_arr;
     jmp_buf jump_buffer;
 } DuskCompiler;
 // }}}

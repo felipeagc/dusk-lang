@@ -109,11 +109,11 @@ duskIRConstToString(DuskAllocator *allocator, DuskIRValue *value)
         duskStringBuilderAppend(sb, duskTypeToString(allocator, value->type));
         duskStringBuilderAppend(sb, "(");
         for (size_t i = 0;
-             i < duskArrayLength(value->constant_composite.values);
+             i < duskArrayLength(value->constant_composite.values_arr);
              ++i)
         {
             if (i != 0) duskStringBuilderAppend(sb, ",");
-            DuskIRValue *elem_value = value->constant_composite.values[i];
+            DuskIRValue *elem_value = value->constant_composite.values_arr[i];
             const char *elem_str = duskIRConstToString(allocator, elem_value);
             duskStringBuilderAppend(sb, elem_str);
         }
@@ -142,7 +142,7 @@ duskIRGetCachedConst(DuskIRModule *module, DuskIRValue *value)
     }
 
     duskMapSet(module->const_cache, value_str, value);
-    duskArrayPush(&module->consts, value);
+    duskArrayPush(&module->consts_arr, value);
 
     return value;
 }
@@ -158,10 +158,10 @@ static void duskEncodeInst(
     uint32_t opcode_word = opcode;
     opcode_word |= ((uint16_t)(params_count + 1)) << 16;
 
-    duskArrayPush(&m->stream, opcode_word);
+    duskArrayPush(&m->stream_arr, opcode_word);
     for (uint32_t i = 0; i < params_count; ++i)
     {
-        duskArrayPush(&m->stream, params[i]);
+        duskArrayPush(&m->stream_arr, params[i]);
     }
 }
 
@@ -169,10 +169,10 @@ bool duskIRBlockIsTerminated(DuskIRValue *block)
 {
     DUSK_ASSERT(block->kind == DUSK_IR_VALUE_BLOCK);
 
-    size_t inst_count = duskArrayLength(block->block.insts);
+    size_t inst_count = duskArrayLength(block->block.insts_arr);
     if (inst_count == 0) return false;
 
-    DuskIRValue *inst = block->block.insts[inst_count - 1];
+    DuskIRValue *inst = block->block.insts_arr[inst_count - 1];
     switch (inst->kind)
     {
     case DUSK_IR_VALUE_RETURN:
@@ -193,16 +193,16 @@ DuskIRModule *duskIRModuleCreate(DuskCompiler *compiler)
     module->allocator = allocator;
 
     module->last_id = 0;
-    module->stream = duskArrayCreate(allocator, uint32_t);
+    module->stream_arr = duskArrayCreate(allocator, uint32_t);
 
     module->const_cache = duskMapCreate(allocator, 32);
-    module->consts = duskArrayCreate(allocator, DuskIRValue *);
+    module->consts_arr = duskArrayCreate(allocator, DuskIRValue *);
 
     module->glsl_ext_inst_id = duskReserveId(module);
 
-    module->entry_points = duskArrayCreate(allocator, DuskIREntryPoint *);
-    module->functions = duskArrayCreate(allocator, DuskIRValue *);
-    module->globals = duskArrayCreate(allocator, DuskIRValue *);
+    module->entry_points_arr = duskArrayCreate(allocator, DuskIREntryPoint *);
+    module->functions_arr = duskArrayCreate(allocator, DuskIRValue *);
+    module->globals_arr = duskArrayCreate(allocator, DuskIRValue *);
 
     return module;
 }
@@ -211,7 +211,7 @@ DuskIRValue *duskIRBlockCreate(DuskIRModule *module)
 {
     DuskIRValue *value = DUSK_NEW(module->allocator, DuskIRValue);
     value->kind = DUSK_IR_VALUE_BLOCK;
-    value->block.insts = duskArrayCreate(module->allocator, DuskIRValue *);
+    value->block.insts_arr = duskArrayCreate(module->allocator, DuskIRValue *);
     return value;
 }
 
@@ -222,16 +222,16 @@ duskIRFunctionCreate(DuskIRModule *module, DuskType *type, const char *name)
     value->kind = DUSK_IR_VALUE_FUNCTION;
     value->type = type;
     value->function.name = name;
-    value->function.blocks = duskArrayCreate(module->allocator, DuskIRValue *);
-    value->function.variables =
+    value->function.blocks_arr = duskArrayCreate(module->allocator, DuskIRValue *);
+    value->function.variables_arr =
         duskArrayCreate(module->allocator, DuskIRValue *);
-    value->function.params = duskArrayCreate(module->allocator, DuskIRValue *);
-    for (size_t i = 0; i < duskArrayLength(type->function.param_types); ++i)
+    value->function.params_arr = duskArrayCreate(module->allocator, DuskIRValue *);
+    for (size_t i = 0; i < type->function.param_type_count; ++i)
     {
         DuskIRValue *param_value = DUSK_NEW(module->allocator, DuskIRValue);
         param_value->kind = DUSK_IR_VALUE_FUNCTION_PARAMETER;
         param_value->type = type->function.param_types[i];
-        duskArrayPush(&value->function.params, param_value);
+        duskArrayPush(&value->function.params_arr, param_value);
     }
 
     DuskIRValue *first_block = duskIRBlockCreate(module);
@@ -246,7 +246,7 @@ void duskIRFunctionAddBlock(DuskIRValue *function, DuskIRValue *block)
 {
     DUSK_ASSERT(function->kind == DUSK_IR_VALUE_FUNCTION);
     DUSK_ASSERT(block->kind == DUSK_IR_VALUE_BLOCK);
-    duskArrayPush(&function->function.blocks, block);
+    duskArrayPush(&function->function.blocks_arr, block);
 }
 
 DuskIRValue *duskIRVariableCreate(
@@ -267,7 +267,7 @@ DuskIRValue *duskIRVariableCreate(
     case DUSK_STORAGE_CLASS_OUTPUT:
     case DUSK_STORAGE_CLASS_PUSH_CONSTANT:
     case DUSK_STORAGE_CLASS_UNIFORM_CONSTANT: {
-        duskArrayPush(&module->globals, value);
+        duskArrayPush(&module->globals_arr, value);
         break;
     }
     case DUSK_STORAGE_CLASS_PARAMETER:
@@ -291,15 +291,15 @@ void duskIRModuleAddEntryPoint(
     entry_point->name = name;
     entry_point->function = function;
     entry_point->stage = stage;
-    entry_point->referenced_globals =
+    entry_point->referenced_globals_arr =
         duskArrayCreate(module->allocator, DuskIRValue *);
-    duskArrayResize(&entry_point->referenced_globals, referenced_global_count);
+    duskArrayResize(&entry_point->referenced_globals_arr, referenced_global_count);
     memcpy(
-        entry_point->referenced_globals,
+        entry_point->referenced_globals_arr,
         referenced_globals,
         sizeof(DuskIRValue *) * referenced_global_count);
 
-    duskArrayPush(&module->entry_points, entry_point);
+    duskArrayPush(&module->entry_points_arr, entry_point);
 }
 
 DuskIRValue *duskIRConstBoolCreate(DuskIRModule *module, bool bool_value)
@@ -398,11 +398,11 @@ DuskIRValue *duskIRConstCompositeCreate(
     duskTypeMarkNotDead(value->type);
     value->kind = DUSK_IR_VALUE_CONSTANT_COMPOSITE;
 
-    value->constant_composite.values =
+    value->constant_composite.values_arr =
         duskArrayCreate(module->allocator, DuskIRValue *);
-    duskArrayResize(&value->constant_composite.values, value_count);
+    duskArrayResize(&value->constant_composite.values_arr, value_count);
     memcpy(
-        value->constant_composite.values,
+        value->constant_composite.values_arr,
         values,
         value_count * sizeof(DuskIRValue *));
 
@@ -413,7 +413,7 @@ static void duskIRBlockAppendInst(DuskIRValue *block, DuskIRValue *inst)
 {
     if (!duskIRBlockIsTerminated(block))
     {
-        duskArrayPush(&block->block.insts, inst);
+        duskArrayPush(&block->block.insts_arr, inst);
     }
 }
 
@@ -425,11 +425,11 @@ DuskIRDecoration duskIRCreateDecoration(
 {
     DuskIRDecoration decoration = {0};
     decoration.kind = kind;
-    decoration.literals = duskArrayCreate(module->allocator, uint32_t);
-
+    decoration.literal_count = literal_count;
+    decoration.literals =
+        DUSK_NEW_ARRAY(module->allocator, uint32_t, literal_count);
     if (literal_count > 0)
     {
-        duskArrayResize(&decoration.literals, literal_count);
         memcpy(decoration.literals, literals, sizeof(uint32_t) * literal_count);
     }
 
@@ -492,13 +492,13 @@ DuskIRValue *duskIRCreateFunctionCall(
     inst->type = function->type->function.return_type;
     inst->kind = DUSK_IR_VALUE_FUNCTION_CALL;
     inst->function_call.function = function;
-    inst->function_call.params =
+    inst->function_call.params_arr =
         duskArrayCreate(module->allocator, DuskIRValue *);
-    duskArrayResize(&inst->function_call.params, param_count);
+    duskArrayResize(&inst->function_call.params_arr, param_count);
 
     for (size_t i = 0; i < param_count; ++i)
     {
-        inst->function_call.params[i] = params[i];
+        inst->function_call.params_arr[i] = params[i];
     }
 
     duskIRBlockAppendInst(block, inst);
@@ -516,11 +516,11 @@ DuskIRValue *duskIRCreateAccessChain(
     DuskIRValue *inst = DUSK_NEW(module->allocator, DuskIRValue);
     inst->kind = DUSK_IR_VALUE_ACCESS_CHAIN;
     inst->access_chain.base = base;
-    inst->access_chain.indices =
+    inst->access_chain.indices_arr =
         duskArrayCreate(module->allocator, DuskIRValue *);
-    duskArrayResize(&inst->access_chain.indices, index_count);
+    duskArrayResize(&inst->access_chain.indices_arr, index_count);
     memcpy(
-        inst->access_chain.indices,
+        inst->access_chain.indices_arr,
         indices,
         index_count * sizeof(DuskIRValue *));
 
@@ -548,11 +548,11 @@ DuskIRValue *duskIRCreateCompositeExtract(
     DuskIRValue *inst = DUSK_NEW(module->allocator, DuskIRValue);
     inst->kind = DUSK_IR_VALUE_COMPOSITE_EXTRACT;
     inst->composite_extract.composite = composite;
-    inst->composite_extract.indices =
+    inst->composite_extract.indices_arr =
         duskArrayCreate(module->allocator, uint32_t);
-    duskArrayResize(&inst->composite_extract.indices, index_count);
+    duskArrayResize(&inst->composite_extract.indices_arr, index_count);
     memcpy(
-        inst->composite_extract.indices,
+        inst->composite_extract.indices_arr,
         indices,
         index_count * sizeof(uint32_t));
 
@@ -575,10 +575,10 @@ DuskIRValue *duskIRCreateVectorShuffle(
     inst->kind = DUSK_IR_VALUE_VECTOR_SHUFFLE;
     inst->vector_shuffle.vec1 = vec1;
     inst->vector_shuffle.vec2 = vec2;
-    inst->vector_shuffle.indices = duskArrayCreate(module->allocator, uint32_t);
-    duskArrayResize(&inst->vector_shuffle.indices, index_count);
+    inst->vector_shuffle.indices_arr = duskArrayCreate(module->allocator, uint32_t);
+    duskArrayResize(&inst->vector_shuffle.indices_arr, index_count);
     memcpy(
-        inst->vector_shuffle.indices, indices, index_count * sizeof(uint32_t));
+        inst->vector_shuffle.indices_arr, indices, index_count * sizeof(uint32_t));
 
     DUSK_ASSERT(vec1->type->kind == DUSK_TYPE_VECTOR);
     DUSK_ASSERT(vec2->type->kind == DUSK_TYPE_VECTOR);
@@ -601,11 +601,11 @@ DuskIRValue *duskIRCreateCompositeConstruct(
 {
     DuskIRValue *inst = DUSK_NEW(module->allocator, DuskIRValue);
     inst->kind = DUSK_IR_VALUE_COMPOSITE_CONSTRUCT;
-    inst->composite_construct.values =
+    inst->composite_construct.values_arr =
         duskArrayCreate(module->allocator, DuskIRValue *);
-    duskArrayResize(&inst->composite_construct.values, value_count);
+    duskArrayResize(&inst->composite_construct.values_arr, value_count);
     memcpy(
-        inst->composite_construct.values,
+        inst->composite_construct.values_arr,
         values,
         value_count * sizeof(DuskIRValue *));
 
@@ -750,7 +750,7 @@ static void duskEmitType(DuskIRModule *module, DuskType *type)
         break;
     }
     case DUSK_TYPE_FUNCTION: {
-        size_t func_param_count = duskArrayLength(type->function.param_types);
+        size_t func_param_count = type->function.param_type_count;
 
         duskEmitType(module, type->function.return_type);
         for (size_t i = 0; i < func_param_count; ++i)
@@ -842,17 +842,17 @@ static void duskEmitType(DuskIRModule *module, DuskType *type)
 }
 
 static void duskEmitDecorations(
-    DuskIRModule *module, uint32_t id, DuskArray(DuskIRDecoration) decorations)
+    DuskIRModule *module, uint32_t id, DuskArray(DuskIRDecoration) decorations_arr)
 {
-    if (decorations == NULL) return;
+    if (decorations_arr == NULL) return;
     if (id == 0) return;
 
-    for (size_t i = 0; i < duskArrayLength(decorations); ++i)
+    for (size_t i = 0; i < duskArrayLength(decorations_arr); ++i)
     {
-        DuskIRDecoration *decoration = &decorations[i];
+        DuskIRDecoration *decoration = &decorations_arr[i];
         DUSK_ASSERT(decoration->literals != NULL);
 
-        size_t param_count = 2 + duskArrayLength(decoration->literals);
+        size_t param_count = 2 + decoration->literal_count;
         uint32_t *params = duskAllocateZeroed(
             module->allocator, param_count * sizeof(uint32_t));
         params[0] = id;
@@ -879,7 +879,7 @@ static void duskEmitDecorations(
         memcpy(
             &params[2],
             decoration->literals,
-            sizeof(uint32_t) * duskArrayLength(decoration->literals));
+            sizeof(uint32_t) * decoration->literal_count);
 
         duskEncodeInst(module, SpvOpDecorate, params, param_count);
     }
@@ -889,17 +889,17 @@ static void duskEmitMemberDecorations(
     DuskIRModule *module,
     uint32_t id,
     uint32_t member_index,
-    DuskArray(DuskIRDecoration) decorations)
+    DuskArray(DuskIRDecoration) decorations_arr)
 {
-    if (decorations == NULL) return;
+    if (decorations_arr == NULL) return;
     if (id == 0) return;
 
-    for (size_t i = 0; i < duskArrayLength(decorations); ++i)
+    for (size_t i = 0; i < duskArrayLength(decorations_arr); ++i)
     {
-        DuskIRDecoration *decoration = &decorations[i];
+        DuskIRDecoration *decoration = &decorations_arr[i];
         DUSK_ASSERT(decoration->literals != NULL);
 
-        size_t param_count = 3 + duskArrayLength(decoration->literals);
+        size_t param_count = 3 + decoration->literal_count;
         uint32_t *params = duskAllocateZeroed(
             module->allocator, param_count * sizeof(uint32_t));
         params[0] = id;
@@ -918,7 +918,7 @@ static void duskEmitMemberDecorations(
         memcpy(
             &params[3],
             decoration->literals,
-            sizeof(uint32_t) * duskArrayLength(decoration->literals));
+            sizeof(uint32_t) * decoration->literal_count);
 
         duskEncodeInst(module, SpvOpMemberDecorate, params, param_count);
     }
@@ -1027,7 +1027,7 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
         duskEmitType(module, value->type);
 
         size_t literal_count =
-            duskArrayLength(value->constant_composite.values);
+            duskArrayLength(value->constant_composite.values_arr);
         size_t param_count = 2 + literal_count;
         uint32_t *params =
             duskAllocate(allocator, sizeof(uint32_t) * param_count);
@@ -1035,7 +1035,7 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
         params[1] = value->id;
         for (size_t i = 0; i < literal_count; ++i)
         {
-            params[2 + i] = value->constant_composite.values[i]->id;
+            params[2 + i] = value->constant_composite.values_arr[i]->id;
             DUSK_ASSERT(params[2 + i] > 0);
         }
 
@@ -1058,15 +1058,15 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
                 module, SpvOpFunction, params, DUSK_CARRAY_LENGTH(params));
         }
 
-        for (size_t i = 0; i < duskArrayLength(value->function.params); ++i)
+        for (size_t i = 0; i < duskArrayLength(value->function.params_arr); ++i)
         {
-            DuskIRValue *func_param = value->function.params[i];
+            DuskIRValue *func_param = value->function.params_arr[i];
             duskEmitValue(module, func_param);
         }
 
-        for (size_t i = 0; i < duskArrayLength(value->function.blocks); ++i)
+        for (size_t i = 0; i < duskArrayLength(value->function.blocks_arr); ++i)
         {
-            DuskIRValue *block = value->function.blocks[i];
+            DuskIRValue *block = value->function.blocks_arr[i];
 
             uint32_t params[1] = {block->id};
             duskEncodeInst(
@@ -1075,10 +1075,10 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
             if (i == 0)
             {
                 for (size_t j = 0;
-                     j < duskArrayLength(value->function.variables);
+                     j < duskArrayLength(value->function.variables_arr);
                      ++j)
                 {
-                    DuskIRValue *variable = value->function.variables[j];
+                    DuskIRValue *variable = value->function.variables_arr[j];
                     duskEmitValue(module, variable);
                 }
             }
@@ -1090,9 +1090,9 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
         break;
     }
     case DUSK_IR_VALUE_BLOCK: {
-        for (size_t i = 0; i < duskArrayLength(value->block.insts); ++i)
+        for (size_t i = 0; i < duskArrayLength(value->block.insts_arr); ++i)
         {
-            DuskIRValue *inst = value->block.insts[i];
+            DuskIRValue *inst = value->block.insts_arr[i];
             duskEmitValue(module, inst);
         }
         break;
@@ -1123,7 +1123,7 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
         break;
     }
     case DUSK_IR_VALUE_FUNCTION_CALL: {
-        size_t func_param_count = duskArrayLength(value->function_call.params);
+        size_t func_param_count = duskArrayLength(value->function_call.params_arr);
         size_t param_count = 3 + func_param_count;
         uint32_t *params =
             duskAllocate(allocator, sizeof(uint32_t) * param_count);
@@ -1132,7 +1132,7 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
         params[2] = value->function_call.function->id;
         for (size_t i = 0; i < func_param_count; ++i)
         {
-            params[3 + i] = value->function_call.params[i]->id;
+            params[3 + i] = value->function_call.params_arr[i]->id;
         }
 
         duskEncodeInst(module, SpvOpFunctionCall, params, param_count);
@@ -1143,7 +1143,7 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
         DUSK_ASSERT(value->id > 0);
         DUSK_ASSERT(value->access_chain.base->id > 0);
 
-        size_t literal_count = duskArrayLength(value->access_chain.indices);
+        size_t literal_count = duskArrayLength(value->access_chain.indices_arr);
         size_t param_count = 3 + literal_count;
         uint32_t *params =
             duskAllocate(allocator, sizeof(uint32_t) * param_count);
@@ -1152,8 +1152,8 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
         params[2] = value->access_chain.base->id;
         for (size_t i = 0; i < literal_count; ++i)
         {
-            DUSK_ASSERT(value->access_chain.indices[i]->id > 0);
-            params[3 + i] = value->access_chain.indices[i]->id;
+            DUSK_ASSERT(value->access_chain.indices_arr[i]->id > 0);
+            params[3 + i] = value->access_chain.indices_arr[i]->id;
         }
 
         duskEncodeInst(module, SpvOpAccessChain, params, param_count);
@@ -1165,7 +1165,7 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
         DUSK_ASSERT(value->composite_extract.composite->id > 0);
 
         size_t literal_count =
-            duskArrayLength(value->composite_extract.indices);
+            duskArrayLength(value->composite_extract.indices_arr);
         size_t param_count = 3 + literal_count;
         uint32_t *params =
             duskAllocate(allocator, sizeof(uint32_t) * param_count);
@@ -1174,7 +1174,7 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
         params[2] = value->composite_extract.composite->id;
         for (size_t i = 0; i < literal_count; ++i)
         {
-            params[3 + i] = value->composite_extract.indices[i];
+            params[3 + i] = value->composite_extract.indices_arr[i];
         }
 
         duskEncodeInst(module, SpvOpCompositeExtract, params, param_count);
@@ -1186,7 +1186,7 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
         DUSK_ASSERT(value->vector_shuffle.vec1->id > 0);
         DUSK_ASSERT(value->vector_shuffle.vec2->id > 0);
 
-        size_t literal_count = duskArrayLength(value->vector_shuffle.indices);
+        size_t literal_count = duskArrayLength(value->vector_shuffle.indices_arr);
         size_t param_count = 4 + literal_count;
         uint32_t *params =
             duskAllocate(allocator, sizeof(uint32_t) * param_count);
@@ -1196,7 +1196,7 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
         params[3] = value->vector_shuffle.vec2->id;
         for (size_t i = 0; i < literal_count; ++i)
         {
-            params[4 + i] = value->vector_shuffle.indices[i];
+            params[4 + i] = value->vector_shuffle.indices_arr[i];
         }
 
         duskEncodeInst(module, SpvOpVectorShuffle, params, param_count);
@@ -1207,7 +1207,7 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
         DUSK_ASSERT(value->id > 0);
 
         size_t literal_count =
-            duskArrayLength(value->composite_construct.values);
+            duskArrayLength(value->composite_construct.values_arr);
         size_t param_count = 2 + literal_count;
         uint32_t *params =
             duskAllocate(allocator, sizeof(uint32_t) * param_count);
@@ -1215,7 +1215,7 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
         params[1] = value->id;
         for (size_t i = 0; i < literal_count; ++i)
         {
-            params[2 + i] = value->composite_construct.values[i]->id;
+            params[2 + i] = value->composite_construct.values_arr[i]->id;
             DUSK_ASSERT(params[2 + i] > 0);
         }
 
@@ -1241,9 +1241,9 @@ DuskArray(uint32_t)
 {
     DuskAllocator *allocator = module->allocator;
 
-    for (size_t i = 0; i < duskArrayLength(compiler->types); ++i)
+    for (size_t i = 0; i < duskArrayLength(compiler->types_arr); ++i)
     {
-        DuskType *type = compiler->types[i];
+        DuskType *type = compiler->types_arr[i];
         switch (type->kind)
         {
         case DUSK_TYPE_ARRAY: {
@@ -1258,69 +1258,69 @@ DuskArray(uint32_t)
         }
     }
 
-    for (size_t i = 0; i < duskArrayLength(compiler->types); ++i)
+    for (size_t i = 0; i < duskArrayLength(compiler->types_arr); ++i)
     {
-        DuskType *type = compiler->types[i];
+        DuskType *type = compiler->types_arr[i];
         if (type->emit)
         {
             type->id = duskReserveId(module);
         }
     }
 
-    for (size_t i = 0; i < duskArrayLength(module->consts); ++i)
+    for (size_t i = 0; i < duskArrayLength(module->consts_arr); ++i)
     {
-        DuskIRValue *value = module->consts[i];
+        DuskIRValue *value = module->consts_arr[i];
         value->id = duskReserveId(module);
     }
 
-    for (size_t i = 0; i < duskArrayLength(module->globals); ++i)
+    for (size_t i = 0; i < duskArrayLength(module->globals_arr); ++i)
     {
-        DuskIRValue *value = module->globals[i];
+        DuskIRValue *value = module->globals_arr[i];
         value->id = duskReserveId(module);
     }
 
-    for (size_t i = 0; i < duskArrayLength(module->functions); ++i)
+    for (size_t i = 0; i < duskArrayLength(module->functions_arr); ++i)
     {
-        DuskIRValue *function = module->functions[i];
+        DuskIRValue *function = module->functions_arr[i];
         function->id = duskReserveId(module);
 
-        for (size_t j = 0; j < duskArrayLength(function->function.params); ++j)
+        for (size_t j = 0; j < duskArrayLength(function->function.params_arr); ++j)
         {
-            DuskIRValue *param = function->function.params[j];
+            DuskIRValue *param = function->function.params_arr[j];
             param->id = duskReserveId(module);
         }
 
-        for (size_t j = 0; j < duskArrayLength(function->function.blocks); ++j)
+        for (size_t j = 0; j < duskArrayLength(function->function.blocks_arr); ++j)
         {
-            DuskIRValue *block = function->function.blocks[j];
+            DuskIRValue *block = function->function.blocks_arr[j];
             block->id = duskReserveId(module);
 
             if (j == 0)
             {
                 for (size_t k = 0;
-                     k < duskArrayLength(function->function.variables);
+                     k < duskArrayLength(function->function.variables_arr);
                      ++k)
                 {
 
-                    DuskIRValue *variable = function->function.variables[k];
+                    DuskIRValue *variable = function->function.variables_arr[k];
                     variable->id = duskReserveId(module);
                 }
             }
 
-            for (size_t k = 0; k < duskArrayLength(block->block.insts); ++k)
+            for (size_t k = 0; k < duskArrayLength(block->block.insts_arr); ++k)
             {
 
-                DuskIRValue *inst = block->block.insts[k];
+                DuskIRValue *inst = block->block.insts_arr[k];
                 inst->id = duskReserveId(module);
             }
         }
     }
 
-    duskArrayPush(&module->stream, SpvMagicNumber);
-    duskArrayPush(&module->stream, SpvVersion);
-    duskArrayPush(&module->stream, 28); // Khronos compiler ID
-    duskArrayPush(&module->stream, 0);  // ID Bound (fill out later)
-    duskArrayPush(&module->stream, 0);
+    duskArrayPush(&module->stream_arr, SpvMagicNumber);
+    duskArrayPush(&module->stream_arr, SpvVersion);
+    duskArrayPush(&module->stream_arr, 28); // Khronos compiler ID
+    duskArrayPush(&module->stream_arr, 0);  // ID Bound (fill out later)
+    duskArrayPush(&module->stream_arr, 0);
 
     {
         uint32_t params[1] = {SpvCapabilityShader};
@@ -1347,15 +1347,15 @@ DuskArray(uint32_t)
             module, SpvOpMemoryModel, params, DUSK_CARRAY_LENGTH(params));
     }
 
-    for (size_t i = 0; i < duskArrayLength(module->entry_points); ++i)
+    for (size_t i = 0; i < duskArrayLength(module->entry_points_arr); ++i)
     {
-        DuskIREntryPoint *entry_point = module->entry_points[i];
+        DuskIREntryPoint *entry_point = module->entry_points_arr[i];
         size_t entry_point_name_len = strlen(entry_point->name);
 
         size_t name_word_count = DUSK_ROUND_UP(4, entry_point_name_len + 1) / 4;
 
         size_t param_count = 2 + name_word_count +
-                             duskArrayLength(entry_point->referenced_globals);
+                             duskArrayLength(entry_point->referenced_globals_arr);
         uint32_t *params = DUSK_NEW_ARRAY(allocator, uint32_t, param_count);
 
         switch (entry_point->stage)
@@ -1375,19 +1375,19 @@ DuskArray(uint32_t)
 
         memcpy(&params[2], entry_point->name, entry_point_name_len + 1);
 
-        for (size_t i = 0; i < duskArrayLength(entry_point->referenced_globals);
+        for (size_t i = 0; i < duskArrayLength(entry_point->referenced_globals_arr);
              ++i)
         {
             params[2 + name_word_count + i] =
-                entry_point->referenced_globals[i]->id;
+                entry_point->referenced_globals_arr[i]->id;
         }
 
         duskEncodeInst(module, SpvOpEntryPoint, params, param_count);
     }
 
-    for (size_t i = 0; i < duskArrayLength(module->entry_points); ++i)
+    for (size_t i = 0; i < duskArrayLength(module->entry_points_arr); ++i)
     {
-        DuskIREntryPoint *entry_point = module->entry_points[i];
+        DuskIREntryPoint *entry_point = module->entry_points_arr[i];
         switch (entry_point->stage)
         {
         case DUSK_SHADER_STAGE_FRAGMENT: {
@@ -1412,12 +1412,12 @@ DuskArray(uint32_t)
 
     // TODO: generate names here
 
-    for (size_t i = 0; i < duskArrayLength(compiler->types); ++i)
+    for (size_t i = 0; i < duskArrayLength(compiler->types_arr); ++i)
     {
-        DuskType *type = compiler->types[i];
+        DuskType *type = compiler->types_arr[i];
         if (!type->emit) continue;
 
-        duskEmitDecorations(module, type->id, type->decorations);
+        duskEmitDecorations(module, type->id, type->decorations_arr);
 
         if (type->kind == DUSK_TYPE_STRUCT)
         {
@@ -1432,38 +1432,38 @@ DuskArray(uint32_t)
         }
     }
 
-    for (size_t i = 0; i < duskArrayLength(module->globals); ++i)
+    for (size_t i = 0; i < duskArrayLength(module->globals_arr); ++i)
     {
-        DuskIRValue *value = module->globals[i];
-        duskEmitDecorations(module, value->id, value->decorations);
+        DuskIRValue *value = module->globals_arr[i];
+        duskEmitDecorations(module, value->id, value->decorations_arr);
     }
 
-    for (size_t i = 0; i < duskArrayLength(compiler->types); ++i)
+    for (size_t i = 0; i < duskArrayLength(compiler->types_arr); ++i)
     {
-        DuskType *type = compiler->types[i];
+        DuskType *type = compiler->types_arr[i];
         duskEmitType(module, type);
     }
 
-    for (size_t i = 0; i < duskArrayLength(module->consts); ++i)
+    for (size_t i = 0; i < duskArrayLength(module->consts_arr); ++i)
     {
-        DuskIRValue *value = module->consts[i];
+        DuskIRValue *value = module->consts_arr[i];
         duskEmitValue(module, value);
     }
 
-    for (size_t i = 0; i < duskArrayLength(module->globals); ++i)
+    for (size_t i = 0; i < duskArrayLength(module->globals_arr); ++i)
     {
-        DuskIRValue *value = module->globals[i];
+        DuskIRValue *value = module->globals_arr[i];
         duskEmitValue(module, value);
     }
 
-    for (size_t i = 0; i < duskArrayLength(module->functions); ++i)
+    for (size_t i = 0; i < duskArrayLength(module->functions_arr); ++i)
     {
-        DuskIRValue *function = module->functions[i];
+        DuskIRValue *function = module->functions_arr[i];
         duskEmitValue(module, function);
     }
 
     // Fill out ID bound
-    module->stream[3] = module->last_id + 1;
+    module->stream_arr[3] = module->last_id + 1;
 
-    return module->stream;
+    return module->stream_arr;
 }
