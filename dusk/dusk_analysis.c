@@ -264,6 +264,20 @@ static void duskCheckTypeAttributes(
                 "'block' attribute only accepts the 'std140' and 'std430' "
                 "structure layouts");
         }
+        else
+        {
+            if (strcmp(block_attribute->value_exprs[0]->string.str, "std140") ==
+                0)
+            {
+                type_expr->as_type->struct_.layout = DUSK_STRUCT_LAYOUT_STD140;
+            }
+            else if (
+                strcmp(block_attribute->value_exprs[0]->string.str, "std430") ==
+                0)
+            {
+                type_expr->as_type->struct_.layout = DUSK_STRUCT_LAYOUT_STD430;
+            }
+        }
     }
 }
 
@@ -1646,6 +1660,7 @@ static void duskAnalyzeDecl(
 
         duskCheckTypeAttributes(
             state, compiler, decl->typedef_.type_expr, decl->attributes);
+
         break;
     }
     case DUSK_DECL_VAR: {
@@ -1689,8 +1704,80 @@ static void duskAnalyzeDecl(
                 state, compiler, decl, decl->attributes);
         }
 
-        // TODO: check if variable has struct type. If yes,
-        // check if it has the proper layout for the given storage class
+        // Set the storage class
+
+        if (duskArrayLength(state->function_stack) == 0)
+        {
+            decl->var.storage_class = DUSK_STORAGE_CLASS_UNIFORM;
+
+            switch (decl->type->kind)
+            {
+            case DUSK_TYPE_SAMPLER:
+            case DUSK_TYPE_IMAGE:
+            case DUSK_TYPE_SAMPLED_IMAGE: {
+                decl->var.storage_class = DUSK_STORAGE_CLASS_UNIFORM_CONSTANT;
+                break;
+            }
+            default:
+                decl->var.storage_class = DUSK_STORAGE_CLASS_UNIFORM;
+                break;
+            }
+
+            for (size_t i = 0; i < duskArrayLength(decl->attributes); ++i)
+            {
+                DuskAttribute *attribute = &decl->attributes[i];
+                switch (attribute->kind)
+                {
+                case DUSK_ATTRIBUTE_UNIFORM: {
+                    decl->var.storage_class = DUSK_STORAGE_CLASS_UNIFORM;
+                    break;
+                }
+                case DUSK_ATTRIBUTE_STORAGE: {
+                    decl->var.storage_class = DUSK_STORAGE_CLASS_STORAGE;
+                    break;
+                }
+                case DUSK_ATTRIBUTE_PUSH_CONSTANT: {
+                    decl->var.storage_class = DUSK_STORAGE_CLASS_PUSH_CONSTANT;
+                    break;
+                }
+                default: break;
+                }
+            }
+        }
+
+        // Check if struct type has proper layout
+
+        if (decl->type->kind == DUSK_TYPE_STRUCT)
+        {
+            switch (decl->var.storage_class)
+            {
+            case DUSK_STORAGE_CLASS_PUSH_CONSTANT:
+            case DUSK_STORAGE_CLASS_UNIFORM: {
+                if (decl->type->struct_.layout != DUSK_STRUCT_LAYOUT_STD140)
+                {
+                    duskAddError(
+                        compiler,
+                        decl->location,
+                        "uniform buffer requires structure to have the "
+                        "'std140' layout");
+                }
+                break;
+            }
+            case DUSK_STORAGE_CLASS_STORAGE: {
+                if (decl->type->struct_.layout != DUSK_STRUCT_LAYOUT_STD430)
+                {
+                    duskAddError(
+                        compiler,
+                        decl->location,
+                        "storage buffer requires structure to have the "
+                        "'std430' layout");
+                }
+                break;
+            }
+
+            default: break;
+            }
+        }
 
         break;
     }

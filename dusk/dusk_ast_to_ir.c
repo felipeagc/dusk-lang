@@ -975,41 +975,8 @@ static void duskGenerateGlobalDecl(DuskIRModule *module, DuskDecl *decl)
     case DUSK_DECL_VAR: {
         DUSK_ASSERT(decl->type);
 
-        DuskStorageClass storage_class = DUSK_STORAGE_CLASS_UNIFORM;
-        switch (decl->type->kind)
-        {
-        case DUSK_TYPE_SAMPLER:
-        case DUSK_TYPE_IMAGE:
-        case DUSK_TYPE_SAMPLED_IMAGE: {
-            storage_class = DUSK_STORAGE_CLASS_UNIFORM_CONSTANT;
-            break;
-        }
-        default: storage_class = DUSK_STORAGE_CLASS_UNIFORM; break;
-        }
-
-        for (size_t i = 0; i < duskArrayLength(decl->attributes); ++i)
-        {
-            DuskAttribute *attribute = &decl->attributes[i];
-            switch (attribute->kind)
-            {
-            case DUSK_ATTRIBUTE_UNIFORM: {
-                storage_class = DUSK_STORAGE_CLASS_UNIFORM;
-                break;
-            }
-            case DUSK_ATTRIBUTE_STORAGE: {
-                storage_class = DUSK_STORAGE_CLASS_STORAGE;
-                break;
-            }
-            case DUSK_ATTRIBUTE_PUSH_CONSTANT: {
-                storage_class = DUSK_STORAGE_CLASS_PUSH_CONSTANT;
-                break;
-            }
-            default: break;
-            }
-        }
-
         decl->ir_value =
-            duskIRVariableCreate(module, decl->type, storage_class);
+            duskIRVariableCreate(module, decl->type, decl->var.storage_class);
 
         duskDecorateFromAttributes(
             module,
