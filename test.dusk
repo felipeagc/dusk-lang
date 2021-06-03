@@ -5,14 +5,15 @@ type Hello struct {
 
 [block(std140)]
 type HelloUniform struct {
-    [offset(0)] a: int,
-    [offset(4)] b: float,
+    a: int,
+    b: float,
+    c: float3,
 };
 
 [block(std430)]
 type HelloStorage struct {
-    [offset(0)] a: int,
-    [offset(4)] b: float,
+    a: int,
+    b: float3,
 };
 
 [push_constant] let pc : HelloUniform;

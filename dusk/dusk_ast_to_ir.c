@@ -4,6 +4,209 @@
 static void duskGenerateLocalDecl(
     DuskIRModule *module, DuskDecl *func_decl, DuskDecl *decl);
 
+static uint32_t
+duskTypeAlignOf(DuskIRModule *module, DuskType *type, DuskStructLayout layout);
+static uint32_t
+duskTypeSizeOf(DuskIRModule *module, DuskType *type, DuskStructLayout layout);
+
+static uint32_t
+duskTypeAlignOf(DuskIRModule *module, DuskType *type, DuskStructLayout layout)
+{
+    if (type->alignment > 0) return type->alignment;
+
+    uint32_t alignment = 0;
+    switch (type->kind)
+    {
+    case DUSK_TYPE_BOOL: alignment = 1; break;
+    case DUSK_TYPE_INT: alignment = type->int_.bits / 8; break;
+    case DUSK_TYPE_FLOAT: alignment = type->float_.bits / 8; break;
+
+    case DUSK_TYPE_VECTOR: {
+        switch (type->vector.size)
+        {
+        case 1:
+            alignment = duskTypeSizeOf(module, type->vector.sub, layout) * 1;
+            break;
+        case 2:
+            alignment = duskTypeSizeOf(module, type->vector.sub, layout) * 2;
+            break;
+        case 3:
+        case 4:
+            alignment = duskTypeSizeOf(module, type->vector.sub, layout) * 4;
+            break;
+        default: DUSK_ASSERT(0); break;
+        }
+        break;
+    }
+
+    case DUSK_TYPE_MATRIX: {
+        alignment = duskTypeAlignOf(module, type->matrix.col_type, layout);
+        break;
+    }
+
+    case DUSK_TYPE_RUNTIME_ARRAY:
+    case DUSK_TYPE_ARRAY: {
+        switch (layout)
+        {
+        case DUSK_STRUCT_LAYOUT_STD140: {
+            uint32_t elem_alignment =
+                duskTypeAlignOf(module, type->array.sub, layout);
+            alignment = DUSK_ROUND_UP(16, elem_alignment);
+            break;
+        }
+
+        case DUSK_STRUCT_LAYOUT_UNKNOWN:
+        case DUSK_STRUCT_LAYOUT_STD430: {
+            alignment = duskTypeAlignOf(module, type->array.sub, layout);
+            break;
+        }
+        }
+        break;
+    }
+
+    case DUSK_TYPE_STRUCT: {
+        for (size_t i = 0; i < duskArrayLength(type->struct_.field_types); ++i)
+        {
+            DuskType *field_type = type->struct_.field_types[i];
+            uint32_t field_align = duskTypeAlignOf(module, field_type, layout);
+            if (alignment < field_align)
+            {
+                alignment = field_align;
+            }
+        }
+
+        if (layout == DUSK_STRUCT_LAYOUT_STD140)
+        {
+            alignment = DUSK_ROUND_UP(16, alignment);
+        }
+
+        break;
+    }
+
+    case DUSK_TYPE_TYPE:
+    case DUSK_TYPE_VOID:
+    case DUSK_TYPE_FUNCTION:
+    case DUSK_TYPE_STRING:
+    case DUSK_TYPE_UNTYPED_FLOAT:
+    case DUSK_TYPE_UNTYPED_INT:
+    case DUSK_TYPE_SAMPLER:
+    case DUSK_TYPE_SAMPLED_IMAGE:
+    case DUSK_TYPE_IMAGE:
+    case DUSK_TYPE_POINTER: break;
+    }
+
+    type->alignment = alignment;
+    return alignment;
+}
+
+static uint32_t
+duskTypeSizeOf(DuskIRModule *module, DuskType *type, DuskStructLayout layout)
+{
+    if (type->size > 0) return type->size;
+
+    uint32_t size = 0;
+    switch (type->kind)
+    {
+    case DUSK_TYPE_BOOL: size = 1; break;
+    case DUSK_TYPE_INT: size = type->int_.bits / 8; break;
+    case DUSK_TYPE_FLOAT: size = type->float_.bits / 8; break;
+
+    case DUSK_TYPE_VECTOR: {
+        size = duskTypeSizeOf(module, type->vector.sub, layout) *
+               type->vector.size;
+        break;
+    }
+
+    case DUSK_TYPE_MATRIX: {
+        size = duskTypeSizeOf(module, type->matrix.col_type, layout) *
+               type->matrix.cols;
+        break;
+    }
+
+    case DUSK_TYPE_ARRAY: {
+        switch (layout)
+        {
+        case DUSK_STRUCT_LAYOUT_STD140: {
+            uint32_t elem_size =
+                duskTypeSizeOf(module, type->array.sub, layout);
+            elem_size = DUSK_ROUND_UP(16, elem_size);
+            uint32_t elem_alignment =
+                duskTypeAlignOf(module, type->array.sub, layout);
+            size = DUSK_ROUND_UP(elem_alignment, elem_size) * type->array.size;
+            break;
+        }
+
+        case DUSK_STRUCT_LAYOUT_UNKNOWN:
+        case DUSK_STRUCT_LAYOUT_STD430: {
+            uint32_t elem_size =
+                duskTypeSizeOf(module, type->array.sub, layout);
+            uint32_t elem_alignment =
+                duskTypeAlignOf(module, type->array.sub, layout);
+            size = DUSK_ROUND_UP(elem_alignment, elem_size) * type->array.size;
+            break;
+        }
+        }
+        break;
+    }
+
+    case DUSK_TYPE_STRUCT: {
+        uint32_t struct_alignment = duskTypeAlignOf(module, type, layout);
+
+        if (!type->struct_.field_decorations)
+        {
+            type->struct_.field_decorations =
+                duskArrayCreate(module->allocator, DuskArray(DuskIRDecoration));
+            duskArrayResize(
+                &type->struct_.field_decorations,
+                duskArrayLength(type->struct_.field_types));
+        }
+
+        for (size_t i = 0; i < duskArrayLength(type->struct_.field_types); ++i)
+        {
+            DuskType *field_type = type->struct_.field_types[i];
+            uint32_t field_align = duskTypeAlignOf(module, field_type, layout);
+            size = DUSK_ROUND_UP(field_align, size);
+
+            if (!type->struct_.field_decorations[i])
+            {
+                type->struct_.field_decorations[i] =
+                    duskArrayCreate(module->allocator, DuskIRDecoration);
+            }
+
+            // Store the field offset
+            DuskIRDecoration decoration = duskIRCreateDecoration(
+                module, DUSK_IR_DECORATION_OFFSET, 1, &size);
+            duskArrayPush(&type->struct_.field_decorations[i], decoration);
+
+            uint32_t field_size = duskTypeSizeOf(module, field_type, layout);
+            size += field_size;
+        }
+
+        size = DUSK_ROUND_UP(struct_alignment, size);
+        break;
+    }
+
+    case DUSK_TYPE_RUNTIME_ARRAY: {
+        size = 0;
+        break;
+    }
+
+    case DUSK_TYPE_TYPE:
+    case DUSK_TYPE_VOID:
+    case DUSK_TYPE_FUNCTION:
+    case DUSK_TYPE_STRING:
+    case DUSK_TYPE_UNTYPED_FLOAT:
+    case DUSK_TYPE_UNTYPED_INT:
+    case DUSK_TYPE_SAMPLER:
+    case DUSK_TYPE_SAMPLED_IMAGE:
+    case DUSK_TYPE_IMAGE:
+    case DUSK_TYPE_POINTER: break;
+    }
+
+    type->size = size;
+    return size;
+}
+
 static void duskDecorateFromAttributes(
     DuskIRModule *module,
     DuskArray(DuskIRDecoration) * decorations,
@@ -998,17 +1201,28 @@ static void duskGenerateGlobalDecl(DuskIRModule *module, DuskDecl *decl)
 
         if (type->kind == DUSK_TYPE_STRUCT)
         {
-            type->struct_.field_decorations =
-                duskArrayCreate(module->allocator, DuskArray(DuskIRDecoration));
-            duskArrayResize(
-                &type->struct_.field_decorations,
-                duskArrayLength(type->struct_.field_types));
+            if (type->struct_.layout != DUSK_STRUCT_LAYOUT_UNKNOWN)
+            {
+                duskTypeSizeOf(module, type, type->struct_.layout);
+            }
+
+            if (!type->struct_.field_decorations)
+            {
+                type->struct_.field_decorations = duskArrayCreate(
+                    module->allocator, DuskArray(DuskIRDecoration));
+                duskArrayResize(
+                    &type->struct_.field_decorations,
+                    duskArrayLength(type->struct_.field_types));
+            }
 
             for (size_t i = 0; i < duskArrayLength(type->struct_.field_types);
                  ++i)
             {
-                type->struct_.field_decorations[i] =
-                    duskArrayCreate(module->allocator, DuskIRDecoration);
+                if (!type->struct_.field_decorations[i])
+                {
+                    type->struct_.field_decorations[i] =
+                        duskArrayCreate(module->allocator, DuskIRDecoration);
+                }
                 duskDecorateFromAttributes(
                     module,
                     &type->struct_.field_decorations[i],

@@ -370,11 +370,13 @@ typedef struct DuskType DuskType;
 struct DuskType
 {
     DuskTypeKind kind;
-    const char *string;
-    const char *pretty_string;
     uint32_t id;
+    uint32_t size;
+    uint32_t alignment;
     bool emit; // This flag is set before SPIRV emission in order to emit the
                // type. Once the type is emitted, the flag is set to false.
+    const char *string;
+    const char *pretty_string;
     DuskArray(DuskIRDecoration) decorations;
 
     union
