@@ -236,6 +236,35 @@ static void duskCheckTypeAttributes(
             type_expr->location,
             "'block' attribute is only used for struct types");
     }
+    else if (block_attribute)
+    {
+        if (duskArrayLength(block_attribute->value_exprs) != 1)
+        {
+            duskAddError(
+                compiler,
+                type_expr->location,
+                "'block' attribute requires exactly 1 parameter");
+        }
+        else if (block_attribute->value_exprs[0]->kind != DUSK_EXPR_IDENT)
+        {
+            duskAddError(
+                compiler,
+                type_expr->location,
+                "'block' attribute requires an identifier parameter "
+                "representing a structure layout");
+        }
+        else if (
+            strcmp(block_attribute->value_exprs[0]->string.str, "std140") !=
+                0 &&
+            strcmp(block_attribute->value_exprs[0]->string.str, "std430") != 0)
+        {
+            duskAddError(
+                compiler,
+                type_expr->location,
+                "'block' attribute only accepts the 'std140' and 'std430' "
+                "structure layouts");
+        }
+    }
 }
 
 static void duskCheckGlobalVariableAttributes(
@@ -272,6 +301,63 @@ static void duskCheckGlobalVariableAttributes(
                 duskGetAttributeName(attribute->kind));
             break;
         }
+        }
+    }
+
+    if (set_attribute)
+    {
+        if (duskArrayLength(set_attribute->value_exprs) != 1)
+        {
+            duskAddError(
+                compiler,
+                var_decl->location,
+                "'set' attribute requires 1 parameter");
+        }
+        else
+        {
+            int64_t resolved_int;
+            if (!duskExprResolveInteger(
+                    state, set_attribute->value_exprs[0], &resolved_int))
+            {
+                duskAddError(
+                    compiler,
+                    var_decl->location,
+                    "'set' attribute requires an integer parameter");
+            }
+        }
+    }
+
+    if (binding_attribute)
+    {
+        if (duskArrayLength(binding_attribute->value_exprs) != 1)
+        {
+            duskAddError(
+                compiler,
+                var_decl->location,
+                "'binding' attribute requires exactly 1 parameter");
+        }
+        else
+        {
+            int64_t resolved_int;
+            if (!duskExprResolveInteger(
+                    state, binding_attribute->value_exprs[0], &resolved_int))
+            {
+                duskAddError(
+                    compiler,
+                    var_decl->location,
+                    "'binding' attribute requires an integer parameter");
+            }
+        }
+    }
+
+    if (push_constant_attribute)
+    {
+        if (duskArrayLength(push_constant_attribute->value_exprs) != 0)
+        {
+            duskAddError(
+                compiler,
+                var_decl->location,
+                "'push_constant' attribute requires exactly 0 parameters");
         }
     }
 
@@ -354,7 +440,7 @@ static void duskCheckEntryPointInterfaceAttributes(
             duskAddError(
                 compiler,
                 location,
-                "location attribute needs exactly 1 parameter");
+                "'location' attribute requires exactly 1 parameter");
         }
         else
         {
@@ -365,7 +451,7 @@ static void duskCheckEntryPointInterfaceAttributes(
                 duskAddError(
                     compiler,
                     location,
-                    "location attribute needs an integer parameter");
+                    "'location' attribute requires an integer parameter");
             }
         }
     }
@@ -376,7 +462,7 @@ static void duskCheckEntryPointInterfaceAttributes(
             duskAddError(
                 compiler,
                 location,
-                "builtin attribute needs exactly 1 parameter");
+                "'builtin' attribute requires exactly 1 parameter");
         }
         else if (builtin_attribute->value_exprs[0]->kind != DUSK_EXPR_IDENT)
         {

@@ -65,7 +65,7 @@ static void duskDecorateFromAttributes(
             break;
         }
         case DUSK_ATTRIBUTE_BLOCK: {
-            DUSK_ASSERT(duskArrayLength(attribute->value_exprs) == 0);
+            DUSK_ASSERT(duskArrayLength(attribute->value_exprs) == 1);
 
             DuskIRDecoration decoration = duskIRCreateDecoration(
                 module, DUSK_IR_DECORATION_BLOCK, 0, NULL);

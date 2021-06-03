@@ -3,15 +3,16 @@ type Hello struct {
     b: float,
 };
 
-[block]
+[block(std140)]
 type HelloUniform struct {
     [offset(0)] a: int,
     [offset(4)] b: float,
 };
 
+[block(std430)]
 type HelloStorage struct {
-    a: int,
-    b: float,
+    [offset(0)] a: int,
+    [offset(4)] b: float,
 };
 
 [push_constant] let pc : HelloUniform;

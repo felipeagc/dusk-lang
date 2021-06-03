@@ -339,6 +339,12 @@ typedef enum DuskImageDimension {
     DUSK_IMAGE_DIMENSION_CUBE,
 } DuskImageDimension;
 
+typedef enum DuskStructLayout {
+    DUSK_STRUCT_LAYOUT_UNKNOWN,
+    DUSK_STRUCT_LAYOUT_STD140,
+    DUSK_STRUCT_LAYOUT_STD430,
+} DuskStructLayout;
+
 typedef enum DuskTypeKind {
     DUSK_TYPE_VOID,
     DUSK_TYPE_TYPE,
@@ -407,6 +413,7 @@ struct DuskType
             DuskArray(DuskArray(DuskAttribute)) field_attributes;
             DuskArray(DuskArray(DuskIRDecoration)) field_decorations;
             DuskMap *index_map;
+            DuskStructLayout layout;
         } struct_;
         struct
         {
