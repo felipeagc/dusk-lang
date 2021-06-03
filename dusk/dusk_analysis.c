@@ -181,15 +181,135 @@ static bool duskIsExprAssignable(DuskAnalyzerState *state, DuskExpr *expr)
     return false;
 }
 
-static DuskAttribute *
-duskFindAttribute(DuskArray(DuskAttribute) attributes, DuskAttributeKind kind)
+static const char *duskGetAttributeName(DuskAttributeKind kind)
 {
+    switch (kind)
+    {
+    case DUSK_ATTRIBUTE_BINDING: return "binding";
+    case DUSK_ATTRIBUTE_SET: return "set";
+    case DUSK_ATTRIBUTE_BLOCK: return "block";
+    case DUSK_ATTRIBUTE_BUILTIN: return "builtin";
+    case DUSK_ATTRIBUTE_LOCATION: return "location";
+    case DUSK_ATTRIBUTE_OFFSET: return "offset";
+    case DUSK_ATTRIBUTE_PUSH_CONSTANT: return "push_constant";
+    case DUSK_ATTRIBUTE_STAGE: return "stage";
+    case DUSK_ATTRIBUTE_STORAGE: return "storage";
+    case DUSK_ATTRIBUTE_UNIFORM: return "uniform";
+    case DUSK_ATTRIBUTE_UNKNOWN: return "<unknown>";
+    }
+    return "<unknown>";
+}
+
+static void duskCheckTypeAttributes(
+    DuskAnalyzerState *state,
+    DuskCompiler *compiler,
+    DuskExpr *type_expr,
+    DuskArray(DuskAttribute) attributes)
+{
+    (void)state;
+
+    DuskAttribute *block_attribute = NULL;
+
     for (size_t i = 0; i < duskArrayLength(attributes); ++i)
     {
-        if (attributes[i].kind == kind) return &attributes[i];
+        DuskAttribute *attribute = &attributes[i];
+        switch (attribute->kind)
+        {
+        case DUSK_ATTRIBUTE_BLOCK: block_attribute = attribute; break;
+        default: {
+            duskAddError(
+                compiler,
+                type_expr->location,
+                "unexpected attribute: '%s'",
+                duskGetAttributeName(attribute->kind));
+            break;
+        }
+        }
     }
 
-    return NULL;
+    if (!type_expr->as_type) return;
+
+    if (type_expr->as_type->kind != DUSK_TYPE_STRUCT && block_attribute)
+    {
+        duskAddError(
+            compiler,
+            type_expr->location,
+            "'block' attribute is only used for struct types");
+    }
+}
+
+static void duskCheckGlobalVariableAttributes(
+    DuskAnalyzerState *state,
+    DuskCompiler *compiler,
+    DuskDecl *var_decl,
+    DuskArray(DuskAttribute) attributes)
+{
+    if (duskArrayLength(state->function_stack)) return;
+
+    DuskAttribute *set_attribute = NULL;
+    DuskAttribute *binding_attribute = NULL;
+    DuskAttribute *push_constant_attribute = NULL;
+    DuskAttribute *uniform_attribute = NULL;
+    DuskAttribute *storage_attribute = NULL;
+
+    for (size_t i = 0; i < duskArrayLength(attributes); ++i)
+    {
+        DuskAttribute *attribute = &attributes[i];
+        switch (attribute->kind)
+        {
+        case DUSK_ATTRIBUTE_SET: set_attribute = attribute; break;
+        case DUSK_ATTRIBUTE_BINDING: binding_attribute = attribute; break;
+        case DUSK_ATTRIBUTE_PUSH_CONSTANT:
+            push_constant_attribute = attribute;
+            break;
+        case DUSK_ATTRIBUTE_UNIFORM: uniform_attribute = attribute; break;
+        case DUSK_ATTRIBUTE_STORAGE: storage_attribute = attribute; break;
+        default: {
+            duskAddError(
+                compiler,
+                var_decl->location,
+                "unexpected attribute: '%s'",
+                duskGetAttributeName(attribute->kind));
+            break;
+        }
+        }
+    }
+
+    if (!set_attribute && !binding_attribute && !push_constant_attribute)
+    {
+        duskAddError(
+            compiler,
+            var_decl->location,
+            "global variable needs either the 'set' and 'binding' attributes "
+            "or a 'push_constant' attribute");
+    }
+
+    if ((set_attribute || binding_attribute) && push_constant_attribute)
+    {
+        duskAddError(
+            compiler,
+            var_decl->location,
+            "global variable cannot have binding and push constant attributes "
+            "at the same time");
+    }
+
+    if (!push_constant_attribute && ((set_attribute || binding_attribute) &&
+                                     !(set_attribute && binding_attribute)))
+    {
+        duskAddError(
+            compiler,
+            var_decl->location,
+            "global variable needs both 'set' and 'binding' attributes");
+    }
+
+    if (uniform_attribute && storage_attribute)
+    {
+        duskAddError(
+            compiler,
+            var_decl->location,
+            "global variable cannot have both 'uniform' and 'storage' "
+            "attributes");
+    }
 }
 
 static void duskCheckEntryPointInterfaceAttributes(
@@ -198,10 +318,26 @@ static void duskCheckEntryPointInterfaceAttributes(
     DuskLocation location,
     DuskArray(DuskAttribute) attributes)
 {
-    DuskAttribute *location_attribute =
-        duskFindAttribute(attributes, DUSK_ATTRIBUTE_LOCATION);
-    DuskAttribute *builtin_attribute =
-        duskFindAttribute(attributes, DUSK_ATTRIBUTE_BUILTIN);
+    DuskAttribute *location_attribute = NULL;
+    DuskAttribute *builtin_attribute = NULL;
+
+    for (size_t i = 0; i < duskArrayLength(attributes); ++i)
+    {
+        DuskAttribute *attribute = &attributes[i];
+        switch (attribute->kind)
+        {
+        case DUSK_ATTRIBUTE_LOCATION: location_attribute = attribute; break;
+        case DUSK_ATTRIBUTE_BUILTIN: builtin_attribute = attribute; break;
+        default: {
+            duskAddError(
+                compiler,
+                location,
+                "unexpected attribute: '%s'",
+                duskGetAttributeName(attribute->kind));
+            break;
+        }
+        }
+    }
 
     if (location_attribute && builtin_attribute)
     {
@@ -1421,6 +1557,9 @@ static void duskAnalyzeDecl(
         duskAnalyzeExpr(
             compiler, state, decl->typedef_.type_expr, type_type, false);
         decl->type = type_type;
+
+        duskCheckTypeAttributes(
+            state, compiler, decl->typedef_.type_expr, decl->attributes);
         break;
     }
     case DUSK_DECL_VAR: {
@@ -1457,6 +1596,16 @@ static void duskAnalyzeDecl(
         }
 
         decl->type = var_type;
+
+        if (duskArrayLength(state->function_stack) == 0)
+        {
+            duskCheckGlobalVariableAttributes(
+                state, compiler, decl, decl->attributes);
+        }
+
+        // TODO: check if variable has struct type. If yes,
+        // check if it has the proper layout for the given storage class
+
         break;
     }
     }

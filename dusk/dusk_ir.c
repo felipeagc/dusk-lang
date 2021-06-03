@@ -1425,7 +1425,6 @@ DuskArray(uint32_t)
                  j < duskArrayLength(type->struct_.field_decorations);
                  ++j)
             {
-                printf("Field decorations: %zu\n", duskArrayLength(type->struct_.field_decorations[j]));
                 duskEmitMemberDecorations(
                     module, type->id, j, type->struct_.field_decorations[j]);
             }
