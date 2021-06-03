@@ -238,7 +238,7 @@ static void duskCheckTypeAttributes(
     }
     else if (block_attribute)
     {
-        if (duskArrayLength(block_attribute->value_exprs) != 1)
+        if (block_attribute->value_expr_count != 1)
         {
             duskAddError(
                 compiler,
@@ -320,7 +320,7 @@ static void duskCheckGlobalVariableAttributes(
 
     if (set_attribute)
     {
-        if (duskArrayLength(set_attribute->value_exprs) != 1)
+        if (set_attribute->value_expr_count != 1)
         {
             duskAddError(
                 compiler,
@@ -343,7 +343,7 @@ static void duskCheckGlobalVariableAttributes(
 
     if (binding_attribute)
     {
-        if (duskArrayLength(binding_attribute->value_exprs) != 1)
+        if (binding_attribute->value_expr_count != 1)
         {
             duskAddError(
                 compiler,
@@ -366,7 +366,7 @@ static void duskCheckGlobalVariableAttributes(
 
     if (push_constant_attribute)
     {
-        if (duskArrayLength(push_constant_attribute->value_exprs) != 0)
+        if (push_constant_attribute->value_expr_count != 0)
         {
             duskAddError(
                 compiler,
@@ -449,7 +449,7 @@ static void duskCheckEntryPointInterfaceAttributes(
     }
     else if (location_attribute)
     {
-        if (duskArrayLength(location_attribute->value_exprs) != 1)
+        if (location_attribute->value_expr_count != 1)
         {
             duskAddError(
                 compiler,
@@ -471,7 +471,7 @@ static void duskCheckEntryPointInterfaceAttributes(
     }
     else if (builtin_attribute)
     {
-        if (duskArrayLength(builtin_attribute->value_exprs) != 1)
+        if (builtin_attribute->value_expr_count != 1)
         {
             duskAddError(
                 compiler,
@@ -577,8 +577,7 @@ static void duskAnalyzeExpr(
         }
 
         bool *got_fields = duskAllocateZeroed(
-            allocator,
-            sizeof(bool) * duskArrayLength(struct_type->struct_.field_types));
+            allocator, sizeof(bool) * struct_type->struct_.field_count);
 
         for (size_t i = 0;
              i < duskArrayLength(expr->struct_literal.field_names);
@@ -603,9 +602,7 @@ static void duskAnalyzeExpr(
         }
 
         bool got_all_fields = true;
-        for (size_t i = 0;
-             i < duskArrayLength(struct_type->struct_.field_types);
-             ++i)
+        for (size_t i = 0; i < struct_type->struct_.field_count; ++i)
         {
             const char *field_name = struct_type->struct_.field_names[i];
             if (!got_fields[i])
@@ -626,7 +623,7 @@ static void duskAnalyzeExpr(
             break;
         }
 
-        if (duskArrayLength(struct_type->struct_.field_types) !=
+        if (struct_type->struct_.field_count !=
             duskArrayLength(expr->struct_literal.field_values))
         {
             DUSK_ASSERT(duskArrayLength(compiler->errors) > 0);
@@ -752,19 +749,16 @@ static void duskAnalyzeExpr(
         break;
     }
     case DUSK_EXPR_STRUCT_TYPE: {
-        for (size_t i = 0;
-             i < duskArrayLength(expr->struct_type.field_attributes);
-             ++i)
+        for (size_t i = 0; i < expr->struct_type.field_count; ++i)
         {
             DuskArray(DuskAttribute) field_attributes =
-                expr->struct_type.field_attributes[i];
+                expr->struct_type.field_attribute_arrays[i];
 
             for (size_t j = 0; j < duskArrayLength(field_attributes); ++j)
             {
                 DuskAttribute *attribute = &field_attributes[j];
 
-                for (size_t k = 0; k < duskArrayLength(attribute->value_exprs);
-                     ++k)
+                for (size_t k = 0; k < attribute->value_expr_count; ++k)
                 {
                     DuskExpr *value_expr = attribute->value_exprs[k];
                     int64_t resolved_int;
@@ -779,8 +773,7 @@ static void duskAnalyzeExpr(
             }
         }
 
-        size_t field_count =
-            duskArrayLength(expr->struct_type.field_type_exprs);
+        size_t field_count = expr->struct_type.field_count;
 
         bool got_duplicate_field_names = false;
 
@@ -839,9 +832,10 @@ static void duskAnalyzeExpr(
         expr->as_type = duskTypeNewStruct(
             compiler,
             expr->struct_type.name,
+            expr->struct_type.field_count,
             expr->struct_type.field_names,
             field_types,
-            expr->struct_type.field_attributes);
+            expr->struct_type.field_attribute_arrays);
 
         break;
     }
@@ -1414,7 +1408,7 @@ static void duskAnalyzeDecl(
     {
         DuskAttribute *attribute = &decl->attributes[i];
 
-        for (size_t j = 0; j < duskArrayLength(attribute->value_exprs); ++j)
+        for (size_t j = 0; j < attribute->value_expr_count; ++j)
         {
             DuskExpr *value_expr = attribute->value_exprs[j];
             int64_t resolved_int;
@@ -1440,7 +1434,7 @@ static void duskAnalyzeDecl(
             switch (attrib->kind)
             {
             case DUSK_ATTRIBUTE_STAGE: {
-                if (duskArrayLength(attrib->value_exprs) != 1)
+                if (attrib->value_expr_count != 1)
                 {
                     duskAddError(
                         compiler,
@@ -1500,7 +1494,7 @@ static void duskAnalyzeDecl(
             DuskAttribute *attribute =
                 &decl->function.return_type_attributes[i];
 
-            for (size_t j = 0; j < duskArrayLength(attribute->value_exprs); ++j)
+            for (size_t j = 0; j < attribute->value_expr_count; ++j)
             {
                 DuskExpr *value_expr = attribute->value_exprs[j];
                 int64_t resolved_int;
@@ -1574,12 +1568,11 @@ static void duskAnalyzeDecl(
                 else
                 {
                     DuskType *struct_type = param_decl->type;
-                    for (size_t j = 0;
-                         j < duskArrayLength(struct_type->struct_.field_types);
+                    for (size_t j = 0; j < struct_type->struct_.field_count;
                          ++j)
                     {
                         DuskArray(DuskAttribute) field_attributes =
-                            struct_type->struct_.field_attributes[j];
+                            struct_type->struct_.field_attribute_arrays[j];
 
                         duskCheckEntryPointInterfaceAttributes(
                             state,
@@ -1595,12 +1588,10 @@ static void duskAnalyzeDecl(
             case DUSK_TYPE_VOID: break;
             case DUSK_TYPE_STRUCT: {
                 DuskType *struct_type = decl->type->function.return_type;
-                for (size_t j = 0;
-                     j < duskArrayLength(struct_type->struct_.field_types);
-                     ++j)
+                for (size_t j = 0; j < struct_type->struct_.field_count; ++j)
                 {
                     DuskArray(DuskAttribute) field_attributes =
-                        struct_type->struct_.field_attributes[j];
+                        struct_type->struct_.field_attribute_arrays[j];
 
                     duskCheckEntryPointInterfaceAttributes(
                         state, compiler, decl->location, field_attributes);

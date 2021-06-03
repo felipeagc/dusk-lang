@@ -65,7 +65,7 @@ duskTypeAlignOf(DuskIRModule *module, DuskType *type, DuskStructLayout layout)
     }
 
     case DUSK_TYPE_STRUCT: {
-        for (size_t i = 0; i < duskArrayLength(type->struct_.field_types); ++i)
+        for (size_t i = 0; i < type->struct_.field_count; ++i)
         {
             DuskType *field_type = type->struct_.field_types[i];
             uint32_t field_align = duskTypeAlignOf(module, field_type, layout);
@@ -152,31 +152,31 @@ duskTypeSizeOf(DuskIRModule *module, DuskType *type, DuskStructLayout layout)
     case DUSK_TYPE_STRUCT: {
         uint32_t struct_alignment = duskTypeAlignOf(module, type, layout);
 
-        if (!type->struct_.field_decorations)
+        if (!type->struct_.field_decoration_arrays)
         {
-            type->struct_.field_decorations =
-                duskArrayCreate(module->allocator, DuskArray(DuskIRDecoration));
-            duskArrayResize(
-                &type->struct_.field_decorations,
-                duskArrayLength(type->struct_.field_types));
+            type->struct_.field_decoration_arrays = DUSK_NEW_ARRAY(
+                module->allocator,
+                DuskArray(DuskIRDecoration),
+                type->struct_.field_count);
         }
 
-        for (size_t i = 0; i < duskArrayLength(type->struct_.field_types); ++i)
+        for (size_t i = 0; i < type->struct_.field_count; ++i)
         {
             DuskType *field_type = type->struct_.field_types[i];
             uint32_t field_align = duskTypeAlignOf(module, field_type, layout);
             size = DUSK_ROUND_UP(field_align, size);
 
-            if (!type->struct_.field_decorations[i])
+            if (!type->struct_.field_decoration_arrays[i])
             {
-                type->struct_.field_decorations[i] =
+                type->struct_.field_decoration_arrays[i] =
                     duskArrayCreate(module->allocator, DuskIRDecoration);
             }
 
             // Store the field offset
             DuskIRDecoration decoration = duskIRCreateDecoration(
                 module, DUSK_IR_DECORATION_OFFSET, 1, &size);
-            duskArrayPush(&type->struct_.field_decorations[i], decoration);
+            duskArrayPush(
+                &type->struct_.field_decoration_arrays[i], decoration);
 
             uint32_t field_size = duskTypeSizeOf(module, field_type, layout);
             size += field_size;
@@ -224,7 +224,7 @@ static void duskDecorateFromAttributes(
         switch (attribute->kind)
         {
         case DUSK_ATTRIBUTE_LOCATION: {
-            DUSK_ASSERT(duskArrayLength(attribute->value_exprs) == 1);
+            DUSK_ASSERT(attribute->value_expr_count == 1);
             DUSK_ASSERT(attribute->value_exprs[0]->resolved_int);
             uint32_t location =
                 (uint32_t)*attribute->value_exprs[0]->resolved_int;
@@ -235,7 +235,7 @@ static void duskDecorateFromAttributes(
             break;
         }
         case DUSK_ATTRIBUTE_SET: {
-            DUSK_ASSERT(duskArrayLength(attribute->value_exprs) == 1);
+            DUSK_ASSERT(attribute->value_expr_count == 1);
             DUSK_ASSERT(attribute->value_exprs[0]->resolved_int);
             uint32_t descriptor_set =
                 (uint32_t)*attribute->value_exprs[0]->resolved_int;
@@ -246,7 +246,7 @@ static void duskDecorateFromAttributes(
             break;
         }
         case DUSK_ATTRIBUTE_BINDING: {
-            DUSK_ASSERT(duskArrayLength(attribute->value_exprs) == 1);
+            DUSK_ASSERT(attribute->value_expr_count == 1);
             DUSK_ASSERT(attribute->value_exprs[0]->resolved_int);
             uint32_t binding =
                 (uint32_t)*attribute->value_exprs[0]->resolved_int;
@@ -257,7 +257,7 @@ static void duskDecorateFromAttributes(
             break;
         }
         case DUSK_ATTRIBUTE_OFFSET: {
-            DUSK_ASSERT(duskArrayLength(attribute->value_exprs) == 1);
+            DUSK_ASSERT(attribute->value_expr_count == 1);
             DUSK_ASSERT(attribute->value_exprs[0]->resolved_int);
             uint32_t offset =
                 (uint32_t)*attribute->value_exprs[0]->resolved_int;
@@ -268,7 +268,7 @@ static void duskDecorateFromAttributes(
             break;
         }
         case DUSK_ATTRIBUTE_BLOCK: {
-            DUSK_ASSERT(duskArrayLength(attribute->value_exprs) == 1);
+            DUSK_ASSERT(attribute->value_expr_count == 1);
 
             DuskIRDecoration decoration = duskIRCreateDecoration(
                 module, DUSK_IR_DECORATION_BLOCK, 0, NULL);
@@ -276,7 +276,7 @@ static void duskDecorateFromAttributes(
             break;
         }
         case DUSK_ATTRIBUTE_BUILTIN: {
-            DUSK_ASSERT(duskArrayLength(attribute->value_exprs) == 1);
+            DUSK_ASSERT(attribute->value_expr_count == 1);
             DUSK_ASSERT(attribute->value_exprs[0]->kind == DUSK_EXPR_IDENT);
             const char *builtin_name = attribute->value_exprs[0]->string.str;
 
@@ -803,9 +803,7 @@ duskGenerateStmt(DuskIRModule *module, DuskDecl *func_decl, DuskStmt *stmt)
                 break;
             }
             case DUSK_TYPE_STRUCT: {
-                DUSK_ASSERT(
-                    output_count ==
-                    duskArrayLength(return_type->struct_.field_types));
+                DUSK_ASSERT(output_count == return_type->struct_.field_count);
 
                 duskGenerateExpr(module, func_decl, stmt->return_.expr);
                 DuskIRValue *struct_value = stmt->return_.expr->ir_value;
@@ -1003,8 +1001,7 @@ static void duskGenerateGlobalDecl(DuskIRModule *module, DuskDecl *decl)
                 case DUSK_TYPE_STRUCT: {
                     DuskArray(DuskIRValue *) field_values =
                         duskArrayCreate(module->allocator, DuskIRValue *);
-                    size_t field_count =
-                        duskArrayLength(param_decl->type->struct_.field_types);
+                    size_t field_count = param_decl->type->struct_.field_count;
 
                     for (size_t j = 0; j < field_count; ++j)
                     {
@@ -1016,7 +1013,7 @@ static void duskGenerateGlobalDecl(DuskIRModule *module, DuskDecl *decl)
                             &decl->function.entry_point_inputs, input_value);
 
                         DuskArray(DuskAttribute) field_attributes =
-                            param_decl->type->struct_.field_attributes[j];
+                            param_decl->type->struct_.field_attribute_arrays[j];
 
                         duskDecorateFromAttributes(
                             module,
@@ -1073,9 +1070,7 @@ static void duskGenerateGlobalDecl(DuskIRModule *module, DuskDecl *decl)
             {
             case DUSK_TYPE_VOID: break;
             case DUSK_TYPE_STRUCT: {
-                for (size_t i = 0;
-                     i < duskArrayLength(return_type->struct_.field_types);
-                     ++i)
+                for (size_t i = 0; i < return_type->struct_.field_count; ++i)
                 {
                     DuskType *field_type = return_type->struct_.field_types[i];
                     DuskIRValue *output_value = duskIRVariableCreate(
@@ -1084,7 +1079,7 @@ static void duskGenerateGlobalDecl(DuskIRModule *module, DuskDecl *decl)
                         &decl->function.entry_point_outputs, output_value);
 
                     DuskArray(DuskAttribute) field_attributes =
-                        return_type->struct_.field_attributes[i];
+                        return_type->struct_.field_attribute_arrays[i];
 
                     duskDecorateFromAttributes(
                         module,
@@ -1206,28 +1201,26 @@ static void duskGenerateGlobalDecl(DuskIRModule *module, DuskDecl *decl)
                 duskTypeSizeOf(module, type, type->struct_.layout);
             }
 
-            if (!type->struct_.field_decorations)
+            if (!type->struct_.field_decoration_arrays)
             {
-                type->struct_.field_decorations = duskArrayCreate(
-                    module->allocator, DuskArray(DuskIRDecoration));
-                duskArrayResize(
-                    &type->struct_.field_decorations,
-                    duskArrayLength(type->struct_.field_types));
+                type->struct_.field_decoration_arrays = DUSK_NEW_ARRAY(
+                    module->allocator,
+                    DuskArray(DuskIRDecoration),
+                    type->struct_.field_count);
             }
 
-            for (size_t i = 0; i < duskArrayLength(type->struct_.field_types);
-                 ++i)
+            for (size_t i = 0; i < type->struct_.field_count; ++i)
             {
-                if (!type->struct_.field_decorations[i])
+                if (!type->struct_.field_decoration_arrays[i])
                 {
-                    type->struct_.field_decorations[i] =
+                    type->struct_.field_decoration_arrays[i] =
                         duskArrayCreate(module->allocator, DuskIRDecoration);
                 }
                 duskDecorateFromAttributes(
                     module,
-                    &type->struct_.field_decorations[i],
-                    duskArrayLength(type->struct_.field_attributes[i]),
-                    type->struct_.field_attributes[i]);
+                    &type->struct_.field_decoration_arrays[i],
+                    duskArrayLength(type->struct_.field_attribute_arrays[i]),
+                    type->struct_.field_attribute_arrays[i]);
             }
         }
 

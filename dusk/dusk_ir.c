@@ -775,7 +775,7 @@ static void duskEmitType(DuskIRModule *module, DuskType *type)
         break;
     }
     case DUSK_TYPE_STRUCT: {
-        size_t field_count = duskArrayLength(type->struct_.field_types);
+        size_t field_count = type->struct_.field_count;
 
         for (size_t i = 0; i < field_count; ++i)
         {
@@ -1421,12 +1421,13 @@ DuskArray(uint32_t)
 
         if (type->kind == DUSK_TYPE_STRUCT)
         {
-            for (uint32_t j = 0;
-                 j < duskArrayLength(type->struct_.field_decorations);
-                 ++j)
+            for (uint32_t j = 0; j < type->struct_.field_count; ++j)
             {
                 duskEmitMemberDecorations(
-                    module, type->id, j, type->struct_.field_decorations[j]);
+                    module,
+                    type->id,
+                    j,
+                    type->struct_.field_decoration_arrays[j]);
             }
         }
     }

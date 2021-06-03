@@ -102,8 +102,7 @@ const char *duskTypeToPrettyString(DuskAllocator *allocator, DuskType *type)
 
             duskStringBuilderAppend(sb, "struct{");
 
-            for (size_t i = 0; i < duskArrayLength(type->struct_.field_types);
-                 ++i)
+            for (size_t i = 0; i < type->struct_.field_count; ++i)
             {
                 if (i > 0) duskStringBuilderAppend(sb, ", ");
 
@@ -286,8 +285,7 @@ const char *duskTypeToString(DuskAllocator *allocator, DuskType *type)
 
             duskStringBuilderAppend(sb, "@struct(");
 
-            for (size_t i = 0; i < duskArrayLength(type->struct_.field_types);
-                 ++i)
+            for (size_t i = 0; i < type->struct_.field_count; ++i)
             {
                 if (i > 0) duskStringBuilderAppend(sb, ",");
 
@@ -505,19 +503,20 @@ DuskType *duskTypeNewArray(DuskCompiler *compiler, DuskType *sub, size_t size)
 DuskType *duskTypeNewStruct(
     DuskCompiler *compiler,
     const char *name,
-    DuskArray(const char *) field_names,
-    DuskArray(DuskType *) field_types,
-    DuskArray(DuskArray(DuskAttribute)) field_attributes)
+    size_t field_count,
+    const char **field_names,
+    DuskType **field_types,
+    DuskArray(DuskAttribute) * field_attribute_arrays)
 {
     DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
     DuskType *type = DUSK_NEW(allocator, DuskType);
     type->kind = DUSK_TYPE_STRUCT;
     type->struct_.name = name;
+    type->struct_.field_count = field_count;
     type->struct_.field_names = field_names;
     type->struct_.field_types = field_types;
-    type->struct_.field_attributes = field_attributes;
+    type->struct_.field_attribute_arrays = field_attribute_arrays;
 
-    size_t field_count = duskArrayLength(field_names);
     type->struct_.index_map = duskMapCreate(allocator, field_count);
     for (uintptr_t i = 0; i < field_count; ++i)
     {
@@ -606,7 +605,7 @@ void duskTypeMarkNotDead(DuskType *type)
         break;
     }
     case DUSK_TYPE_STRUCT: {
-        for (size_t i = 0; i < duskArrayLength(type->struct_.field_types); ++i)
+        for (size_t i = 0; i < type->struct_.field_count; ++i)
         {
             duskTypeMarkNotDead(type->struct_.field_types[i]);
         }

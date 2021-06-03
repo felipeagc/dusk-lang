@@ -1325,7 +1325,8 @@ static void parseAttributes(
                 attrib.kind = DUSK_ATTRIBUTE_OFFSET;
             }
             attrib.name = attrib_name_token.str;
-            attrib.value_exprs = duskArrayCreate(allocator, DuskExpr *);
+            DuskArray(DuskExpr *) value_exprs =
+                duskArrayCreate(allocator, DuskExpr *);
 
             tokenizerNextToken(allocator, *state, &next_token);
             if (next_token.type == TOKEN_LPAREN)
@@ -1335,7 +1336,7 @@ static void parseAttributes(
                 while (next_token.type != TOKEN_RPAREN)
                 {
                     DuskExpr *value_expr = parseExpr(compiler, state);
-                    duskArrayPush(&attrib.value_exprs, value_expr);
+                    duskArrayPush(&value_exprs, value_expr);
 
                     tokenizerNextToken(allocator, *state, &next_token);
                     if (next_token.type != TOKEN_RPAREN)
@@ -1355,6 +1356,14 @@ static void parseAttributes(
                 consumeToken(compiler, state, TOKEN_COMMA);
                 tokenizerNextToken(allocator, *state, &next_token);
             }
+
+            attrib.value_expr_count = duskArrayLength(value_exprs);
+            attrib.value_exprs =
+                DUSK_NEW_ARRAY(allocator, DuskExpr *, attrib.value_expr_count);
+            memcpy(
+                attrib.value_exprs,
+                value_exprs,
+                attrib.value_expr_count * sizeof(DuskExpr *));
 
             duskArrayPush(attributes, attrib);
         }
@@ -1455,11 +1464,12 @@ static DuskExpr *parsePrimaryExpr(DuskCompiler *compiler, TokenizerState *state)
     }
     case TOKEN_STRUCT: {
         expr->kind = DUSK_EXPR_STRUCT_TYPE;
-        expr->struct_type.field_type_exprs =
+
+        DuskArray(DuskExpr *) field_type_exprs =
             duskArrayCreate(allocator, DuskExpr *);
-        expr->struct_type.field_names =
+        DuskArray(const char *) field_names =
             duskArrayCreate(allocator, const char *);
-        expr->struct_type.field_attributes =
+        DuskArray(DuskArray(DuskAttribute)) field_attribute_arrays =
             duskArrayCreate(allocator, DuskArray(DuskAttribute));
 
         consumeToken(compiler, state, TOKEN_LCURLY);
@@ -1477,10 +1487,9 @@ static DuskExpr *parsePrimaryExpr(DuskCompiler *compiler, TokenizerState *state)
 
             DuskExpr *type_expr = parseExpr(compiler, state);
 
-            duskArrayPush(&expr->struct_type.field_type_exprs, type_expr);
-            duskArrayPush(&expr->struct_type.field_names, field_name_token.str);
-            duskArrayPush(
-                &expr->struct_type.field_attributes, field_attributes);
+            duskArrayPush(&field_type_exprs, type_expr);
+            duskArrayPush(&field_names, field_name_token.str);
+            duskArrayPush(&field_attribute_arrays, field_attributes);
 
             tokenizerNextToken(allocator, *state, &next_token);
             if (next_token.type != TOKEN_RCURLY)
@@ -1489,6 +1498,30 @@ static DuskExpr *parsePrimaryExpr(DuskCompiler *compiler, TokenizerState *state)
                 tokenizerNextToken(allocator, *state, &next_token);
             }
         }
+
+        expr->struct_type.field_count = duskArrayLength(field_type_exprs);
+
+        expr->struct_type.field_names = DUSK_NEW_ARRAY(
+            allocator, const char *, expr->struct_type.field_count);
+        expr->struct_type.field_type_exprs = DUSK_NEW_ARRAY(
+            allocator, DuskExpr *, expr->struct_type.field_count);
+        expr->struct_type.field_attribute_arrays = DUSK_NEW_ARRAY(
+            allocator, DuskArray(DuskAttribute), expr->struct_type.field_count);
+
+        memcpy(
+            expr->struct_type.field_names,
+            field_names,
+            expr->struct_type.field_count * sizeof(const char *));
+
+        memcpy(
+            expr->struct_type.field_type_exprs,
+            field_type_exprs,
+            expr->struct_type.field_count * sizeof(DuskExpr *));
+
+        memcpy(
+            expr->struct_type.field_attribute_arrays,
+            field_attribute_arrays,
+            expr->struct_type.field_count * sizeof(DuskArray(DuskAttribute)));
 
         consumeToken(compiler, state, TOKEN_RCURLY);
         break;

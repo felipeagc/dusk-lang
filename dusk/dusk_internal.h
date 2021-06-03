@@ -328,7 +328,8 @@ typedef struct DuskAttribute
 {
     DuskAttributeKind kind;
     const char *name;
-    DuskArray(DuskExpr *) value_exprs;
+    size_t value_expr_count;
+    DuskExpr **value_exprs;
 } DuskAttribute;
 
 typedef enum DuskImageDimension {
@@ -409,10 +410,11 @@ struct DuskType
         struct
         {
             const char *name;
-            DuskArray(DuskType *) field_types;
-            DuskArray(const char *) field_names;
-            DuskArray(DuskArray(DuskAttribute)) field_attributes;
-            DuskArray(DuskArray(DuskIRDecoration)) field_decorations;
+            size_t field_count;
+            DuskType **field_types;
+            const char **field_names;
+            DuskArray(DuskAttribute) * field_attribute_arrays;
+            DuskArray(DuskIRDecoration) * field_decoration_arrays;
             DuskMap *index_map;
             DuskStructLayout layout;
         } struct_;
@@ -462,9 +464,10 @@ DuskType *duskTypeNewArray(DuskCompiler *compiler, DuskType *sub, size_t size);
 DuskType *duskTypeNewStruct(
     DuskCompiler *compiler,
     const char *name,
-    DuskArray(const char *) field_names,
-    DuskArray(DuskType *) field_types,
-    DuskArray(DuskArray(DuskAttribute)) field_attributes);
+    size_t field_count,
+    const char **field_names,
+    DuskType **field_types,
+    DuskArray(DuskAttribute) * field_attribute_arrays);
 DuskType *duskTypeNewFunction(
     DuskCompiler *compiler,
     DuskType *return_type,
@@ -861,9 +864,10 @@ struct DuskExpr
         struct
         {
             const char *name;
-            DuskArray(const char *) field_names;
-            DuskArray(DuskExpr *) field_type_exprs;
-            DuskArray(DuskArray(DuskAttribute)) field_attributes;
+            size_t field_count;
+            const char **field_names;
+            DuskExpr **field_type_exprs;
+            DuskArray(DuskAttribute) * field_attribute_arrays;
         } struct_type;
         struct
         {
