@@ -3,23 +3,24 @@ type Hello struct {
     b: float,
 };
 
-[block(std140)]
-type HelloUniform struct {
+[push_constant]
+let pc : struct (std140) {
+    a: float3,
+};
+
+[uniform, set(0), binding(0)]
+let uniform : struct (std140) {
     a: int,
     b: float,
     c: float3,
 };
 
-[block(std430)]
-type HelloStorage struct {
+[storage, set(0), binding(1)]
+let storage : struct (std430) {
     a: int,
     b: float3,
 };
 
-[push_constant] let pc : HelloUniform;
-
-[uniform, set(0), binding(0)] let uniform : HelloUniform; 
-[storage, set(0), binding(1)] let storage : HelloStorage; 
 [set(0), binding(2)] let image : @Image2D(float);
 [set(0), binding(3)] let image2 : @Image3DSampler(float);
 [set(0), binding(4)] let sampler : @Sampler();

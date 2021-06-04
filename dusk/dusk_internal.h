@@ -318,7 +318,6 @@ typedef enum DuskAttributeKind {
     DUSK_ATTRIBUTE_SET,
     DUSK_ATTRIBUTE_BINDING,
     DUSK_ATTRIBUTE_BUILTIN,
-    DUSK_ATTRIBUTE_BLOCK,
     DUSK_ATTRIBUTE_UNIFORM,
     DUSK_ATTRIBUTE_STORAGE,
     DUSK_ATTRIBUTE_PUSH_CONSTANT,
@@ -373,8 +372,6 @@ struct DuskType
 {
     DuskTypeKind kind;
     uint32_t id;
-    uint32_t size;
-    uint32_t alignment;
     bool emit; // This flag is set before SPIRV emission in order to emit the
                // type. Once the type is emitted, the flag is set to false.
     const char *string;
@@ -455,6 +452,11 @@ const char *duskTypeToPrettyString(DuskAllocator *allocator, DuskType *type);
 // hash tables
 const char *duskTypeToString(DuskAllocator *allocator, DuskType *type);
 
+uint32_t duskTypeAlignOf(
+    DuskAllocator *allocator, DuskType *type, DuskStructLayout layout);
+uint32_t duskTypeSizeOf(
+    DuskAllocator *allocator, DuskType *type, DuskStructLayout layout);
+
 DuskType *duskTypeNewBasic(DuskCompiler *compiler, DuskTypeKind kind);
 DuskType *duskTypeNewScalar(DuskCompiler *compiler, DuskScalarType scalar_type);
 DuskType *
@@ -466,6 +468,7 @@ DuskType *duskTypeNewArray(DuskCompiler *compiler, DuskType *sub, size_t size);
 DuskType *duskTypeNewStruct(
     DuskCompiler *compiler,
     const char *name,
+    DuskStructLayout layout,
     size_t field_count,
     const char **field_names,
     DuskType **field_types,
@@ -646,7 +649,7 @@ DuskIRValue *duskIRConstCompositeCreate(
     DuskIRValue **values);
 
 DuskIRDecoration duskIRCreateDecoration(
-    DuskIRModule *module,
+    DuskAllocator *allocator,
     DuskIRDecorationKind kind,
     size_t literal_count,
     uint32_t *literals);
@@ -866,6 +869,7 @@ struct DuskExpr
         } string;
         struct
         {
+            DuskStructLayout layout;
             const char *name;
             size_t field_count;
             const char **field_names;

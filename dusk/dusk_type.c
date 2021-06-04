@@ -283,7 +283,22 @@ const char *duskTypeToString(DuskAllocator *allocator, DuskType *type)
         {
             DuskStringBuilder *sb = duskStringBuilderCreate(NULL, 0);
 
-            duskStringBuilderAppend(sb, "@struct(");
+            duskStringBuilderAppend(sb, "@struct[");
+
+            switch (type->struct_.layout)
+            {
+            case DUSK_STRUCT_LAYOUT_STD140:
+                duskStringBuilderAppend(sb, "std140");
+                break;
+            case DUSK_STRUCT_LAYOUT_STD430:
+                duskStringBuilderAppend(sb, "std430");
+                break;
+            case DUSK_STRUCT_LAYOUT_UNKNOWN:
+                duskStringBuilderAppend(sb, "unknown");
+                break;
+            }
+
+            duskStringBuilderAppend(sb, "](");
 
             for (size_t i = 0; i < type->struct_.field_count; ++i)
             {
@@ -398,6 +413,8 @@ static DuskType *duskTypeGetCached(DuskCompiler *compiler, DuskType *type)
     duskMapSet(compiler->type_cache, type_str, type);
     duskArrayPush(&compiler->types_arr, type);
 
+    type->decorations_arr = duskArrayCreate(allocator, DuskIRDecoration);
+
     return type;
 }
 
@@ -503,6 +520,7 @@ DuskType *duskTypeNewArray(DuskCompiler *compiler, DuskType *sub, size_t size)
 DuskType *duskTypeNewStruct(
     DuskCompiler *compiler,
     const char *name,
+    DuskStructLayout layout,
     size_t field_count,
     const char **field_names,
     DuskType **field_types,
@@ -512,6 +530,7 @@ DuskType *duskTypeNewStruct(
     DuskType *type = DUSK_NEW(allocator, DuskType);
     type->kind = DUSK_TYPE_STRUCT;
     type->struct_.name = name;
+    type->struct_.layout = layout;
     type->struct_.field_count = field_count;
     type->struct_.field_names = field_names;
     type->struct_.field_types = field_types;
@@ -522,6 +541,9 @@ DuskType *duskTypeNewStruct(
     {
         duskMapSet(type->struct_.index_map, field_names[i], (void *)i);
     }
+
+    duskTypeSizeOf(allocator, type, DUSK_STRUCT_LAYOUT_UNKNOWN);
+    duskTypeAlignOf(allocator, type, DUSK_STRUCT_LAYOUT_UNKNOWN);
 
     return duskTypeGetCached(compiler, type);
 }

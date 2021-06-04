@@ -187,7 +187,6 @@ static const char *duskGetAttributeName(DuskAttributeKind kind)
     {
     case DUSK_ATTRIBUTE_BINDING: return "binding";
     case DUSK_ATTRIBUTE_SET: return "set";
-    case DUSK_ATTRIBUTE_BLOCK: return "block";
     case DUSK_ATTRIBUTE_BUILTIN: return "builtin";
     case DUSK_ATTRIBUTE_LOCATION: return "location";
     case DUSK_ATTRIBUTE_OFFSET: return "offset";
@@ -198,87 +197,6 @@ static const char *duskGetAttributeName(DuskAttributeKind kind)
     case DUSK_ATTRIBUTE_UNKNOWN: return "<unknown>";
     }
     return "<unknown>";
-}
-
-static void duskCheckTypeAttributes(
-    DuskAnalyzerState *state,
-    DuskCompiler *compiler,
-    DuskExpr *type_expr,
-    DuskArray(DuskAttribute) attributes_arr)
-{
-    (void)state;
-
-    DuskAttribute *block_attribute = NULL;
-
-    for (size_t i = 0; i < duskArrayLength(attributes_arr); ++i)
-    {
-        DuskAttribute *attribute = &attributes_arr[i];
-        switch (attribute->kind)
-        {
-        case DUSK_ATTRIBUTE_BLOCK: block_attribute = attribute; break;
-        default: {
-            duskAddError(
-                compiler,
-                type_expr->location,
-                "unexpected attribute: '%s'",
-                duskGetAttributeName(attribute->kind));
-            break;
-        }
-        }
-    }
-
-    if (!type_expr->as_type) return;
-
-    if (type_expr->as_type->kind != DUSK_TYPE_STRUCT && block_attribute)
-    {
-        duskAddError(
-            compiler,
-            type_expr->location,
-            "'block' attribute is only used for struct types");
-    }
-    else if (block_attribute)
-    {
-        if (block_attribute->value_expr_count != 1)
-        {
-            duskAddError(
-                compiler,
-                type_expr->location,
-                "'block' attribute requires exactly 1 parameter");
-        }
-        else if (block_attribute->value_exprs[0]->kind != DUSK_EXPR_IDENT)
-        {
-            duskAddError(
-                compiler,
-                type_expr->location,
-                "'block' attribute requires an identifier parameter "
-                "representing a structure layout");
-        }
-        else if (
-            strcmp(block_attribute->value_exprs[0]->string.str, "std140") !=
-                0 &&
-            strcmp(block_attribute->value_exprs[0]->string.str, "std430") != 0)
-        {
-            duskAddError(
-                compiler,
-                type_expr->location,
-                "'block' attribute only accepts the 'std140' and 'std430' "
-                "structure layouts");
-        }
-        else
-        {
-            if (strcmp(block_attribute->value_exprs[0]->string.str, "std140") ==
-                0)
-            {
-                type_expr->as_type->struct_.layout = DUSK_STRUCT_LAYOUT_STD140;
-            }
-            else if (
-                strcmp(block_attribute->value_exprs[0]->string.str, "std430") ==
-                0)
-            {
-                type_expr->as_type->struct_.layout = DUSK_STRUCT_LAYOUT_STD430;
-            }
-        }
-    }
 }
 
 static void duskCheckGlobalVariableAttributes(
@@ -830,6 +748,7 @@ static void duskAnalyzeExpr(
         expr->as_type = duskTypeNewStruct(
             compiler,
             expr->struct_type.name,
+            expr->struct_type.layout,
             expr->struct_type.field_count,
             expr->struct_type.field_names,
             field_types,
@@ -1646,9 +1565,6 @@ static void duskAnalyzeDecl(
         duskAnalyzeExpr(
             compiler, state, decl->typedef_.type_expr, type_type, false);
         decl->type = type_type;
-
-        duskCheckTypeAttributes(
-            state, compiler, decl->typedef_.type_expr, decl->attributes_arr);
 
         break;
     }

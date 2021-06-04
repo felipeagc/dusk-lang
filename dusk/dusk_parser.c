@@ -1304,10 +1304,6 @@ static void parseAttributes(
             {
                 attrib.kind = DUSK_ATTRIBUTE_BUILTIN;
             }
-            else if (strcmp(attrib_name_token.str, "block") == 0)
-            {
-                attrib.kind = DUSK_ATTRIBUTE_BLOCK;
-            }
             else if (strcmp(attrib_name_token.str, "uniform") == 0)
             {
                 attrib.kind = DUSK_ATTRIBUTE_UNIFORM;
@@ -1471,10 +1467,35 @@ static DuskExpr *parsePrimaryExpr(DuskCompiler *compiler, TokenizerState *state)
             duskArrayCreate(allocator, const char *);
         DuskArray(DuskArray(DuskAttribute)) field_attribute_arrays =
             duskArrayCreate(allocator, DuskArray(DuskAttribute));
+        expr->struct_type.layout = DUSK_STRUCT_LAYOUT_UNKNOWN;
+
+        Token next_token = {0};
+        tokenizerNextToken(allocator, *state, &next_token);
+        if (next_token.type == TOKEN_LPAREN)
+        {
+            consumeToken(compiler, state, TOKEN_LPAREN);
+            Token layout_ident = consumeToken(compiler, state, TOKEN_IDENT);
+            if (strcmp(layout_ident.str, "std140") == 0)
+            {
+                expr->struct_type.layout = DUSK_STRUCT_LAYOUT_STD140;
+            }
+            else if (strcmp(layout_ident.str, "std430") == 0)
+            {
+                expr->struct_type.layout = DUSK_STRUCT_LAYOUT_STD430;
+            }
+            else
+            {
+                duskAddError(
+                    compiler,
+                    layout_ident.location,
+                    "expected either 'std140' or 'std430' struct layouts");
+            }
+
+            consumeToken(compiler, state, TOKEN_RPAREN);
+        }
 
         consumeToken(compiler, state, TOKEN_LCURLY);
 
-        Token next_token = {0};
         tokenizerNextToken(allocator, *state, &next_token);
         while (next_token.type != TOKEN_RCURLY)
         {
@@ -1905,7 +1926,8 @@ parseTopLevelDecl(DuskCompiler *compiler, TokenizerState *state)
 
         decl->kind = DUSK_DECL_FUNCTION;
         decl->name = name_token.str;
-        decl->function.parameter_decls_arr = duskArrayCreate(allocator, DuskDecl *);
+        decl->function.parameter_decls_arr =
+            duskArrayCreate(allocator, DuskDecl *);
         decl->function.stmts_arr = duskArrayCreate(allocator, DuskStmt *);
 
         consumeToken(compiler, state, TOKEN_LPAREN);
