@@ -1,0 +1,258 @@
+= Dusk shading language
+:sectnums:
+:sectanchors:
+:toc:
+
+== Specification
+
+=== Function definition
+[source]
+----
+fn add1(param: int) int {
+	return param + 1;
+}
+----
+
+=== Entry point definition
+[source]
+----
+type VsOutput struct {
+	[builtin(position)] pos: float4,
+	[location(0)] uv: float2,
+};
+
+[stage(vertex)]
+fn vs_main(
+	[location(0)] pos: float3,
+	[location(1)] uv: float2,
+) VsOutput {
+	let out: VsOutput;
+	out.pos = pos;
+	out.uv = uv;
+	return out;
+}
+
+[stage(fragment)]
+fn fs_main(input: VsOutput) [location(0)] float4 {
+	return float4(input.uv, 0.0, 1.0);
+}
+----
+
+=== Builtin types
+
+[horizontal]
+`void`:: void type
+`bool`:: boolean type
+`int`:: 32-bit integer type
+`float`:: 32-bit IEEE-754 floating point type
+`scalarN`:: Vector type with `N` elements of type `scalar`
+`scalarNxM`:: Matrix type with `N` columns and `M` rows of elements of type `scalar`
+`[N]T`:: An array with constant size
+`[]T`:: Runtime-sized array
+`@Sampler`:: Sampler type
+
+Image types::
+* `@Image1D`
+* `@Image2D`
+* `@Image2DArray`
+* `@Image3D`
+* `@ImageCube`
+* `@ImageCubeArray`
+
+Sampled image types::
+Represents an image combined with a sampler
+* `@Image1DSampler`
+* `@Image2DSampler`
+* `@Image2DArraySampler`
+* `@Image3DSampler`
+* `@ImageCubeSampler`
+* `@ImageCubeArraySampler`
+
+
+=== Builtin functions
+[cols=3*,options=header]
+|===
+|Function
+|Precondition
+|Description
+
+|`@arrayLength(x: T): uint`
+|`T` is a runtime array type
+|Gets the length of the runtime array
+
+|`@distance(v1: scalarN, v2: scalarN): scalar`
+|`scalarN` is a vector type
+|Gets the distance between two vectors
+
+|`@length(v: scalarN): scalar`
+|`scalarN` is a vector type
+|Gets the length of a vector
+
+|`@normalize(v: scalarN): scalarN`
+|
+|
+
+|`@cross(v1: scalar3, v2: scalar3): scalar3`
+|
+|
+
+|`@sqrt(v: T): T`
+|
+|
+
+|`@inverseSqrt(v: T): T`
+|
+|
+
+|`@log(v: T): T`
+|
+|
+
+|`@log2(v: T): T`
+|
+|
+
+|`@exp(v: T): T`
+|
+|
+
+|`@exp2(v: T): T`
+|
+|
+
+|`@determinant(v: scalarNxM): scalar`
+|
+|
+
+|`@inverse(v: scalarNxM): scalarNxM`
+|
+|
+
+|`@reflect(i: scalarN, n: scalarN): scalarN`
+|
+|
+
+|`@refract(i: scalarN, n: scalarN, eta: float): scalarN`
+|
+|
+
+|`@modf()`
+|
+|
+
+|`@abs(x: T): T`
+|
+|
+
+|`@min(a: T, b: T): T`
+|
+|
+
+|`@max(a: T, b: T): T`
+|
+|
+
+|`@clamp(x: T, min: T, max: T): T`
+|
+|
+
+|`@mix(x: T, y: T, a: T): T`
+|
+|
+
+|`@step(edge: T, x: T): T`
+|
+|
+
+|`@smoothstep(edge0: T, edge1: T, x: T): T`
+|
+|
+
+|`@fma(a: T, b: T, c: T): T`
+|
+|
+
+|`@sin(v: T): T`
+|
+|
+
+|`@cos(v: T): T`
+|
+|
+
+|`@tan(v: T): T`
+|
+|
+
+|`@asin(v: T): T`
+|
+|
+
+|`@acos(v: T): T`
+|
+|
+
+|`@atan(v: T): T`
+|
+|
+
+|`@sinh(v: T): T`
+|
+|
+
+|`@cosh(v: T): T`
+|
+|
+
+|`@tanh(v: T): T`
+|
+|
+
+|`@asinh(v: T): T`
+|
+|
+
+|`@acosh(v: T): T`
+|
+|
+
+|`@atanh(v: T): T`
+|
+|
+
+|`@atan2(v: T): T`
+|
+|
+
+|`@pow(x: T, y: T): T`
+|
+|
+
+|`@round(v: T): T`
+|
+|
+
+|`@trunc(v: T): T`
+|
+|
+
+|`@floor(v: T): T`
+|
+|
+
+|`@ceil(v: T): T`
+|
+|
+
+|`@fract(v: T): T`
+|
+|
+
+|`@radians(v: T): T`
+|
+|
+
+|`@degrees(v: T): T`
+|
+|
+|===
