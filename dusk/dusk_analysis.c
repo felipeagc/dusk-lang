@@ -95,6 +95,35 @@ static DuskScope *duskCurrentScope(DuskAnalyzerState *state)
     return state->scope_stack_arr[duskArrayLength(state->scope_stack_arr) - 1];
 }
 
+static void duskConcretizeExprType(DuskExpr *expr, DuskType *expected_type)
+{
+    if (!expr->type) return;
+
+    switch (expr->kind)
+    {
+    case DUSK_EXPR_INT_LITERAL: {
+        if (expr->type->kind == DUSK_TYPE_UNTYPED_INT &&
+            (expected_type->kind == DUSK_TYPE_INT ||
+             expected_type->kind == DUSK_TYPE_FLOAT))
+        {
+
+            expr->type = expected_type;
+        }
+        break;
+    }
+    case DUSK_EXPR_FLOAT_LITERAL: {
+        if (expr->type->kind == DUSK_TYPE_UNTYPED_FLOAT &&
+            expected_type->kind == DUSK_TYPE_FLOAT)
+        {
+            expr->type = expected_type;
+        }
+        break;
+    }
+
+    default: break;
+    }
+}
+
 static bool duskExprResolveInteger(
     DuskAnalyzerState *state, DuskExpr *expr, int64_t *out_int)
 {
@@ -724,7 +753,8 @@ static void duskAnalyzeExpr(
 
         bool got_all_field_types = true;
 
-        DuskType ** field_types = DUSK_NEW_ARRAY(allocator, DuskType *, field_count);
+        DuskType **field_types =
+            DUSK_NEW_ARRAY(allocator, DuskType *, field_count);
 
         for (size_t i = 0; i < field_count; ++i)
         {
@@ -785,7 +815,8 @@ static void duskAnalyzeExpr(
                 break;
             }
 
-            for (size_t i = 0; i < duskArrayLength(expr->function_call.params_arr);
+            for (size_t i = 0;
+                 i < duskArrayLength(expr->function_call.params_arr);
                  ++i)
             {
                 DuskExpr *param = expr->function_call.params_arr[i];
@@ -801,13 +832,57 @@ static void duskAnalyzeExpr(
             DUSK_ASSERT(constructed_type);
             expr->type = constructed_type;
 
-            size_t param_count = duskArrayLength(expr->function_call.params_arr);
+            size_t param_count =
+                duskArrayLength(expr->function_call.params_arr);
 
             switch (constructed_type->kind)
             {
             case DUSK_TYPE_VECTOR: {
-                if (!(param_count == 1 ||
-                      param_count == constructed_type->vector.size))
+                DuskType *elem_type = constructed_type->vector.sub;
+
+                size_t elem_count = 0;
+                bool analyzed_all_params = true;
+
+                for (size_t i = 0; i < param_count; ++i)
+                {
+                    DuskExpr *param = expr->function_call.params_arr[i];
+                    duskAnalyzeExpr(compiler, state, param, NULL, false);
+
+                    if (!param->type)
+                    {
+                        analyzed_all_params = false;
+                        continue;
+                    }
+
+                    duskConcretizeExprType(param, elem_type);
+
+                    if (param->type == elem_type)
+                    {
+                        elem_count += 1;
+                    }
+                    else if (
+                        param->type->kind == DUSK_TYPE_VECTOR &&
+                        param->type->vector.sub == elem_type)
+                    {
+                        elem_count += param->type->vector.size;
+                    }
+                    else
+                    {
+                        duskAddError(
+                            compiler,
+                            param->location,
+                            "unexpected type for vector constructor: '%s'",
+                            duskTypeToPrettyString(allocator, param->type));
+                    }
+                }
+
+                if (!analyzed_all_params)
+                {
+                    break;
+                }
+
+                if (!(elem_count == 1 ||
+                      elem_count == constructed_type->vector.size))
                 {
                     duskAddError(
                         compiler,
@@ -816,17 +891,8 @@ static void duskAnalyzeExpr(
                         "%u, instead got %zu",
                         duskTypeToPrettyString(allocator, constructed_type),
                         constructed_type->vector.size,
-                        param_count);
+                        elem_count);
                     break;
-                }
-
-                for (size_t i = 0; i < param_count; ++i)
-                {
-                    DuskExpr *param = expr->function_call.params_arr[i];
-                    DuskType *expected_param_type =
-                        constructed_type->vector.sub;
-                    duskAnalyzeExpr(
-                        compiler, state, param, expected_param_type, false);
                 }
 
                 break;
@@ -886,7 +952,8 @@ static void duskAnalyzeExpr(
     case DUSK_EXPR_BUILTIN_FUNCTION_CALL: {
         size_t required_param_count =
             DUSK_BUILTIN_FUNCTION_PARAM_COUNTS[expr->builtin_call.kind];
-        if (required_param_count != duskArrayLength(expr->builtin_call.params_arr))
+        if (required_param_count !=
+            duskArrayLength(expr->builtin_call.params_arr))
         {
             duskAddError(
                 compiler,
@@ -1127,7 +1194,8 @@ static void duskAnalyzeExpr(
                     break;
                 }
 
-                right_expr->identifier.shuffle_indices_arr = shuffle_indices_arr;
+                right_expr->identifier.shuffle_indices_arr =
+                    shuffle_indices_arr;
 
                 if (new_vec_dim == 1)
                 {
@@ -1234,8 +1302,8 @@ static void duskAnalyzeStmt(
     }
     case DUSK_STMT_RETURN: {
         DUSK_ASSERT(duskArrayLength(state->function_stack_arr) > 0);
-        DuskDecl *func =
-            state->function_stack_arr[duskArrayLength(state->function_stack_arr) - 1];
+        DuskDecl *func = state->function_stack_arr
+                             [duskArrayLength(state->function_stack_arr) - 1];
 
         DUSK_ASSERT(func->type);
 
@@ -1261,8 +1329,8 @@ static void duskAnalyzeStmt(
     }
     case DUSK_STMT_DISCARD: {
         DUSK_ASSERT(duskArrayLength(state->function_stack_arr) > 0);
-        DuskDecl *func =
-            state->function_stack_arr[duskArrayLength(state->function_stack_arr) - 1];
+        DuskDecl *func = state->function_stack_arr
+                             [duskArrayLength(state->function_stack_arr) - 1];
 
         DUSK_ASSERT(func->type);
         break;
@@ -1432,7 +1500,8 @@ static void duskAnalyzeDecl(
 
         DuskType *type_type = duskTypeNewBasic(compiler, DUSK_TYPE_TYPE);
 
-        size_t param_count = duskArrayLength(decl->function.parameter_decls_arr);
+        size_t param_count =
+            duskArrayLength(decl->function.parameter_decls_arr);
 
         bool got_all_param_types = true;
         DuskType *return_type = NULL;

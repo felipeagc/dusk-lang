@@ -89,5 +89,6 @@ fn fs_main([location(0)] in_pos: float3) [location(0)] float4 {
 
     // let a: float3 = in_pos;
 
-    return float4(1);
+    let other: float3 = float3(1);
+    return float4(float3(1, 2, 3), 1);
 }
