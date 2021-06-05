@@ -621,6 +621,23 @@ DuskIRValue *duskIRCreateCompositeConstruct(
     return inst;
 }
 
+DuskIRValue *duskIRCreateCast(
+    DuskIRModule *module,
+    DuskIRValue *block,
+    DuskType *destination_type,
+    DuskIRValue *value)
+{
+    DuskIRValue *inst = DUSK_NEW(module->allocator, DuskIRValue);
+    inst->kind = DUSK_IR_VALUE_CAST;
+    inst->cast.value = value;
+
+    inst->type = destination_type;
+    duskTypeMarkNotDead(inst->type);
+
+    duskIRBlockAppendInst(block, inst);
+    return inst;
+}
+
 bool duskIRValueIsConstant(DuskIRValue *value)
 {
     return value->kind == DUSK_IR_VALUE_CONSTANT ||
@@ -1240,6 +1257,85 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
         };
         duskEncodeInst(
             module, SpvOpFunctionParameter, params, DUSK_CARRAY_LENGTH(params));
+        break;
+    }
+    case DUSK_IR_VALUE_CAST: {
+        SpvOp op = 0;
+
+        uint32_t params[3] = {
+            value->type->id,
+            value->id,
+            value->cast.value->id,
+        };
+
+        DuskType *source_type = value->cast.value->type;
+        DuskType *dest_type = value->type;
+
+        if (source_type->kind == DUSK_TYPE_FLOAT &&
+            dest_type->kind == DUSK_TYPE_INT)
+        {
+            if (dest_type->int_.is_signed)
+            {
+                op = SpvOpConvertFToS;
+            }
+            else
+            {
+                op = SpvOpConvertFToU;
+            }
+        }
+        else if (
+            source_type->kind == DUSK_TYPE_INT &&
+            dest_type->kind == DUSK_TYPE_FLOAT)
+        {
+            if (source_type->int_.is_signed)
+            {
+                op = SpvOpConvertSToF;
+            }
+            else
+            {
+                op = SpvOpConvertUToF;
+            }
+        }
+        else if (
+            source_type->kind == DUSK_TYPE_INT &&
+            dest_type->kind == DUSK_TYPE_INT)
+        {
+            if (source_type->int_.is_signed)
+            {
+                if (dest_type->int_.is_signed)
+                {
+                    op = SpvOpSConvert;
+                }
+                else
+                {
+                    op = SpvOpBitcast;
+                }
+            }
+            else
+            {
+                if (dest_type->int_.is_signed)
+                {
+                    op = SpvOpBitcast;
+                }
+                else
+                {
+                    op = SpvOpUConvert;
+                }
+            }
+        }
+        else if (
+            source_type->kind == DUSK_TYPE_FLOAT &&
+            dest_type->kind == DUSK_TYPE_FLOAT)
+        {
+            op = SpvOpFConvert;
+        }
+        else
+        {
+            DUSK_ASSERT(0);
+        }
+
+        duskEncodeInst(module, op, params, DUSK_CARRAY_LENGTH(params));
+
         break;
     }
     }

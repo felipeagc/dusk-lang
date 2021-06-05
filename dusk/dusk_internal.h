@@ -519,6 +519,7 @@ typedef enum DuskIRValueKind {
     DUSK_IR_VALUE_COMPOSITE_EXTRACT,
     DUSK_IR_VALUE_VECTOR_SHUFFLE,
     DUSK_IR_VALUE_COMPOSITE_CONSTRUCT,
+    DUSK_IR_VALUE_CAST,
 } DuskIRValueKind;
 
 struct DuskIRValue
@@ -599,6 +600,10 @@ struct DuskIRValue
         {
             DuskArray(DuskIRValue *) values_arr;
         } composite_construct;
+        struct
+        {
+            DuskIRValue *value;
+        } cast;
     };
 };
 
@@ -697,6 +702,11 @@ DuskIRValue *duskIRCreateCompositeConstruct(
     DuskType *composite_type,
     size_t value_count,
     DuskIRValue **values);
+DuskIRValue *duskIRCreateCast(
+    DuskIRModule *module,
+    DuskIRValue *block,
+    DuskType *destination_type,
+    DuskIRValue *value);
 
 bool duskIRValueIsConstant(DuskIRValue *value);
 bool duskIRIsLvalue(DuskIRValue *value);

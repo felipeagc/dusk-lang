@@ -475,155 +475,286 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
             size_t param_count =
                 duskArrayLength(expr->function_call.params_arr);
 
-            size_t value_count = 0;
-
             switch (constructed_type->kind)
             {
-            case DUSK_TYPE_VECTOR: {
-                value_count = constructed_type->vector.size;
-                break;
-            }
-            case DUSK_TYPE_MATRIX: {
-                value_count = constructed_type->matrix.cols;
-                break;
-            }
-            default: DUSK_ASSERT(0); break;
-            }
+            case DUSK_TYPE_INT:
+            case DUSK_TYPE_FLOAT: {
+                DUSK_ASSERT(param_count == 1);
+                DuskExpr *param = expr->function_call.params_arr[0];
 
-            DUSK_ASSERT(value_count > 0);
-            DuskIRValue **values = duskAllocateZeroed(
-                module->allocator, sizeof(DuskIRValue *) * value_count);
-
-            if (func_decl)
-            {
-                DuskIRValue *function = func_decl->ir_value;
-                DUSK_ASSERT(duskArrayLength(function->function.blocks_arr) > 0);
-                DuskIRValue *block =
-                    function->function.blocks_arr
-                        [duskArrayLength(function->function.blocks_arr) - 1];
-
-                bool all_constants = true;
-                if (param_count == 1 && value_count != param_count)
+                duskGenerateExpr(module, func_decl, param);
+                DuskIRValue *value = param->ir_value;
+                if (duskIRIsLvalue(value))
                 {
-                    DuskExpr *param = expr->function_call.params_arr[0];
-                    duskGenerateExpr(module, func_decl, param);
-                    DuskIRValue *param_value = param->ir_value;
-                    if (!duskIRValueIsConstant(param_value))
-                    {
-                        param_value =
-                            duskIRLoadLvalue(module, block, param->ir_value);
-                        all_constants = false;
-                    }
+                    DUSK_ASSERT(func_decl);
+                    DuskIRValue *function = func_decl->ir_value;
+                    DUSK_ASSERT(
+                        duskArrayLength(function->function.blocks_arr) > 0);
+                    DuskIRValue *block =
+                        function->function.blocks_arr
+                            [duskArrayLength(function->function.blocks_arr) -
+                             1];
 
-                    for (size_t i = 0; i < value_count; ++i)
-                    {
-                        values[i] = param_value;
-                    }
+                    value = duskIRLoadLvalue(module, block, value);
                 }
-                else if (param_count == value_count)
+
+                if (constructed_type != param->type)
                 {
-                    for (size_t i = 0; i < param_count; ++i)
-                    {
-                        DuskExpr *param = expr->function_call.params_arr[i];
-                        duskGenerateExpr(module, func_decl, param);
-                        values[i] = param->ir_value;
-                        if (!duskIRValueIsConstant(values[i]))
-                        {
-                            values[i] =
-                                duskIRLoadLvalue(module, block, values[i]);
-                            all_constants = false;
-                        }
-                    }
+                    DUSK_ASSERT(func_decl);
+                    DuskIRValue *function = func_decl->ir_value;
+                    DUSK_ASSERT(
+                        duskArrayLength(function->function.blocks_arr) > 0);
+                    DuskIRValue *block =
+                        function->function.blocks_arr
+                            [duskArrayLength(function->function.blocks_arr) -
+                             1];
+
+                    expr->ir_value = duskIRCreateCast(module, block, constructed_type, value);
                 }
                 else
                 {
-                    // Mixed vector constructor
-                    DUSK_ASSERT(constructed_type->kind == DUSK_TYPE_VECTOR);
-                    all_constants = false;
+                    expr->ir_value = value;
+                }
 
-                    size_t elem_index = 0;
-                    for (size_t i = 0; i < param_count; ++i)
+                break;
+            }
+            case DUSK_TYPE_VECTOR: {
+                size_t value_count = constructed_type->vector.size;
+                DuskIRValue **values = duskAllocateZeroed(
+                    module->allocator, sizeof(DuskIRValue *) * value_count);
+
+                if (func_decl)
+                {
+                    DuskIRValue *function = func_decl->ir_value;
+                    DUSK_ASSERT(
+                        duskArrayLength(function->function.blocks_arr) > 0);
+                    DuskIRValue *block =
+                        function->function.blocks_arr
+                            [duskArrayLength(function->function.blocks_arr) -
+                             1];
+
+                    bool all_constants = true;
+                    if (param_count == 1 && value_count != param_count)
                     {
-                        DuskExpr *param = expr->function_call.params_arr[i];
+                        DuskExpr *param = expr->function_call.params_arr[0];
                         duskGenerateExpr(module, func_decl, param);
-
-                        if (param->type->kind == DUSK_TYPE_VECTOR)
+                        DuskIRValue *param_value = param->ir_value;
+                        if (!duskIRValueIsConstant(param_value))
                         {
-                            DuskIRValue *loaded_composite = duskIRLoadLvalue(
+                            param_value = duskIRLoadLvalue(
                                 module, block, param->ir_value);
-                            for (uint32_t j = 0; j < param->type->vector.size;
-                                 ++j)
+                            all_constants = false;
+                        }
+
+                        for (size_t i = 0; i < value_count; ++i)
+                        {
+                            values[i] = param_value;
+                        }
+                    }
+                    else
+                    {
+                        // Mixed vector constructor
+                        DUSK_ASSERT(constructed_type->kind == DUSK_TYPE_VECTOR);
+
+                        size_t elem_index = 0;
+                        for (size_t i = 0; i < param_count; ++i)
+                        {
+                            DuskExpr *param = expr->function_call.params_arr[i];
+                            duskGenerateExpr(module, func_decl, param);
+
+                            if (param->type->kind == DUSK_TYPE_VECTOR)
                             {
-                                values[elem_index] =
-                                    duskIRCreateCompositeExtract(
-                                        module,
-                                        block,
-                                        param->type->vector.sub,
-                                        loaded_composite,
-                                        1,
-                                        &j);
+                                all_constants = false;
+                                DuskIRValue *loaded_composite =
+                                    duskIRLoadLvalue(
+                                        module, block, param->ir_value);
+                                for (uint32_t j = 0;
+                                     j < param->type->vector.size;
+                                     ++j)
+                                {
+                                    values[elem_index] =
+                                        duskIRCreateCompositeExtract(
+                                            module,
+                                            block,
+                                            param->type->vector.sub,
+                                            loaded_composite,
+                                            1,
+                                            &j);
+
+                                    elem_index++;
+                                }
+                            }
+                            else
+                            {
+                                values[elem_index] = param->ir_value;
+                                if (!duskIRValueIsConstant(values[elem_index]))
+                                {
+                                    values[elem_index] = duskIRLoadLvalue(
+                                        module, block, values[elem_index]);
+                                    all_constants = false;
+                                }
 
                                 elem_index++;
                             }
                         }
-                        else
-                        {
-                            values[elem_index] = param->ir_value;
-                            if (!duskIRValueIsConstant(values[elem_index]))
-                            {
-                                values[elem_index] = duskIRLoadLvalue(
-                                    module, block, values[elem_index]);
-                            }
+                    }
 
-                            elem_index++;
-                        }
+                    if (all_constants)
+                    {
+                        expr->ir_value = duskIRConstCompositeCreate(
+                            module, constructed_type, value_count, values);
+                    }
+                    else
+                    {
+                        expr->ir_value = duskIRCreateCompositeConstruct(
+                            module,
+                            block,
+                            constructed_type,
+                            value_count,
+                            values);
                     }
                 }
-
-                if (all_constants)
+                else
                 {
+                    // Not inside a function, must be a constant
+
+                    if (param_count == value_count)
+                    {
+                        for (size_t i = 0; i < value_count; ++i)
+                        {
+                            DuskExpr *param = expr->function_call.params_arr[i];
+                            duskGenerateExpr(module, func_decl, param);
+                            values[i] = param->ir_value;
+                            DUSK_ASSERT(duskIRValueIsConstant(values[i]));
+                        }
+                    }
+                    else if (param_count == 1)
+                    {
+                        DuskExpr *param = expr->function_call.params_arr[0];
+                        duskGenerateExpr(module, func_decl, param);
+                        DuskIRValue *param_value = param->ir_value;
+                        DUSK_ASSERT(duskIRValueIsConstant(param_value));
+
+                        for (size_t i = 0; i < value_count; ++i)
+                        {
+                            values[i] = param_value;
+                        }
+                    }
+                    else
+                    {
+                        DUSK_ASSERT(0);
+                    }
+
                     expr->ir_value = duskIRConstCompositeCreate(
                         module, constructed_type, value_count, values);
                 }
-                else
-                {
-                    expr->ir_value = duskIRCreateCompositeConstruct(
-                        module, block, constructed_type, value_count, values);
-                }
+                break;
             }
-            else
-            {
-                // Not inside a function, must be a constant
+            case DUSK_TYPE_MATRIX: {
+                size_t value_count = constructed_type->matrix.cols;
+                DuskIRValue **values = duskAllocateZeroed(
+                    module->allocator, sizeof(DuskIRValue *) * value_count);
 
-                if (param_count == value_count)
+                if (func_decl)
                 {
-                    for (size_t i = 0; i < value_count; ++i)
+                    DuskIRValue *function = func_decl->ir_value;
+                    DUSK_ASSERT(
+                        duskArrayLength(function->function.blocks_arr) > 0);
+                    DuskIRValue *block =
+                        function->function.blocks_arr
+                            [duskArrayLength(function->function.blocks_arr) -
+                             1];
+
+                    bool all_constants = true;
+                    if (param_count == 1 && value_count != param_count)
                     {
-                        DuskExpr *param = expr->function_call.params_arr[i];
+                        DuskExpr *param = expr->function_call.params_arr[0];
                         duskGenerateExpr(module, func_decl, param);
-                        values[i] = param->ir_value;
-                        DUSK_ASSERT(duskIRValueIsConstant(values[i]));
-                    }
-                }
-                else if (param_count == 1)
-                {
-                    DuskExpr *param = expr->function_call.params_arr[0];
-                    duskGenerateExpr(module, func_decl, param);
-                    DuskIRValue *param_value = param->ir_value;
-                    DUSK_ASSERT(duskIRValueIsConstant(param_value));
+                        DuskIRValue *param_value = param->ir_value;
+                        if (!duskIRValueIsConstant(param_value))
+                        {
+                            param_value = duskIRLoadLvalue(
+                                module, block, param->ir_value);
+                            all_constants = false;
+                        }
 
-                    for (size_t i = 0; i < value_count; ++i)
+                        for (size_t i = 0; i < value_count; ++i)
+                        {
+                            values[i] = param_value;
+                        }
+                    }
+                    else if (param_count == value_count)
                     {
-                        values[i] = param_value;
+                        for (size_t i = 0; i < param_count; ++i)
+                        {
+                            DuskExpr *param = expr->function_call.params_arr[i];
+                            duskGenerateExpr(module, func_decl, param);
+                            values[i] = param->ir_value;
+                            if (!duskIRValueIsConstant(values[i]))
+                            {
+                                values[i] =
+                                    duskIRLoadLvalue(module, block, values[i]);
+                                all_constants = false;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        DUSK_ASSERT(0);
+                    }
+
+                    if (all_constants)
+                    {
+                        expr->ir_value = duskIRConstCompositeCreate(
+                            module, constructed_type, value_count, values);
+                    }
+                    else
+                    {
+                        expr->ir_value = duskIRCreateCompositeConstruct(
+                            module,
+                            block,
+                            constructed_type,
+                            value_count,
+                            values);
                     }
                 }
                 else
                 {
-                    DUSK_ASSERT(0);
-                }
+                    // Not inside a function, must be a constant
 
-                expr->ir_value = duskIRConstCompositeCreate(
-                    module, constructed_type, value_count, values);
+                    if (param_count == value_count)
+                    {
+                        for (size_t i = 0; i < value_count; ++i)
+                        {
+                            DuskExpr *param = expr->function_call.params_arr[i];
+                            duskGenerateExpr(module, func_decl, param);
+                            values[i] = param->ir_value;
+                            DUSK_ASSERT(duskIRValueIsConstant(values[i]));
+                        }
+                    }
+                    else if (param_count == 1)
+                    {
+                        DuskExpr *param = expr->function_call.params_arr[0];
+                        duskGenerateExpr(module, func_decl, param);
+                        DuskIRValue *param_value = param->ir_value;
+                        DUSK_ASSERT(duskIRValueIsConstant(param_value));
+
+                        for (size_t i = 0; i < value_count; ++i)
+                        {
+                            values[i] = param_value;
+                        }
+                    }
+                    else
+                    {
+                        DUSK_ASSERT(0);
+                    }
+
+                    expr->ir_value = duskIRConstCompositeCreate(
+                        module, constructed_type, value_count, values);
+                }
+                break;
+            }
+            default: DUSK_ASSERT(0); break;
             }
 
             break;

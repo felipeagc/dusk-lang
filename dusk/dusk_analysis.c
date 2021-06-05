@@ -837,6 +837,43 @@ static void duskAnalyzeExpr(
 
             switch (constructed_type->kind)
             {
+            case DUSK_TYPE_INT:
+            case DUSK_TYPE_FLOAT: {
+                if (param_count != 1)
+                {
+                    duskAddError(
+                        compiler,
+                        expr->location,
+                        "wrong parameter count for '%s' constructor, expected "
+                        "1, instead got %zu",
+                        duskTypeToPrettyString(allocator, constructed_type),
+                        param_count);
+                    break;
+                }
+
+                DuskExpr *param = expr->function_call.params_arr[0];
+                duskAnalyzeExpr(compiler, state, param, NULL, false);
+                duskConcretizeExprType(param, constructed_type);
+
+                if (!param->type)
+                {
+                    DUSK_ASSERT(duskArrayLength(compiler->errors_arr) > 0);
+                    break;
+                }
+
+                if (param->type->kind != DUSK_TYPE_FLOAT &&
+                    param->type->kind != DUSK_TYPE_INT)
+                {
+                    duskAddError(
+                        compiler,
+                        param->location,
+                        "expected a scalar parameter for '%s' constructor",
+                        duskTypeToPrettyString(allocator, constructed_type));
+                    break;
+                }
+
+                break;
+            }
             case DUSK_TYPE_VECTOR: {
                 DuskType *elem_type = constructed_type->vector.sub;
 
