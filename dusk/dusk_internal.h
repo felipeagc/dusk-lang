@@ -612,6 +612,7 @@ typedef struct DuskIRModule
     DuskCompiler *compiler;
     DuskAllocator *allocator;
     DuskArray(uint32_t) stream_arr;
+    DuskArray(const char*) extensions_arr;
     uint32_t last_id;
 
     DuskMap *const_cache;
@@ -736,6 +737,7 @@ typedef enum DuskDeclKind {
     DUSK_DECL_FUNCTION,
     DUSK_DECL_VAR,
     DUSK_DECL_TYPE,
+    DUSK_DECL_EXTENSION,
 } DuskDeclKind;
 
 struct DuskDecl
@@ -777,6 +779,10 @@ struct DuskDecl
         {
             DuskExpr *type_expr;
         } typedef_;
+        struct
+        {
+            const char *name;
+        } extension;
     };
 };
 

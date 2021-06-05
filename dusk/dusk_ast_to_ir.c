@@ -509,7 +509,8 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
                             [duskArrayLength(function->function.blocks_arr) -
                              1];
 
-                    expr->ir_value = duskIRCreateCast(module, block, constructed_type, value);
+                    expr->ir_value = duskIRCreateCast(
+                        module, block, constructed_type, value);
                 }
                 else
                 {
@@ -1142,6 +1143,7 @@ duskGenerateLocalDecl(DuskIRModule *module, DuskDecl *func_decl, DuskDecl *decl)
         break;
     }
     case DUSK_DECL_FUNCTION:
+    case DUSK_DECL_EXTENSION:
     case DUSK_DECL_TYPE: DUSK_ASSERT(0); break;
     }
 }
@@ -1377,6 +1379,10 @@ static void duskGenerateGlobalDecl(DuskIRModule *module, DuskDecl *decl)
             duskArrayLength(decl->attributes_arr),
             decl->attributes_arr);
 
+        break;
+    }
+    case DUSK_DECL_EXTENSION: {
+        duskArrayPush(&module->extensions_arr, decl->extension.name);
         break;
     }
     case DUSK_DECL_TYPE: break;
