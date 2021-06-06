@@ -302,6 +302,7 @@ typedef enum DuskIRDecorationKind {
     DUSK_IR_DECORATION_BINDING,
     DUSK_IR_DECORATION_BLOCK,
     DUSK_IR_DECORATION_OFFSET,
+    DUSK_IR_DECORATION_ARRAY_STRIDE,
 } DuskIRDecorationKind;
 
 typedef struct DuskIRDecoration
@@ -404,6 +405,7 @@ struct DuskType
             DuskType *sub;
             size_t size;
             DuskIRValue *size_ir_value;
+            DuskStructLayout layout;
         } array;
         struct
         {
@@ -463,8 +465,13 @@ DuskType *
 duskTypeNewVector(DuskCompiler *compiler, DuskType *sub, uint32_t size);
 DuskType *
 duskTypeNewMatrix(DuskCompiler *compiler, DuskType *col_type, uint32_t cols);
-DuskType *duskTypeNewRuntimeArray(DuskCompiler *compiler, DuskType *sub);
-DuskType *duskTypeNewArray(DuskCompiler *compiler, DuskType *sub, size_t size);
+DuskType *duskTypeNewRuntimeArray(
+    DuskCompiler *compiler, DuskStructLayout layout, DuskType *sub);
+DuskType *duskTypeNewArray(
+    DuskCompiler *compiler,
+    DuskStructLayout layout,
+    DuskType *sub,
+    size_t size);
 DuskType *duskTypeNewStruct(
     DuskCompiler *compiler,
     const char *name,
@@ -612,7 +619,7 @@ typedef struct DuskIRModule
     DuskCompiler *compiler;
     DuskAllocator *allocator;
     DuskArray(uint32_t) stream_arr;
-    DuskArray(const char*) extensions_arr;
+    DuskArray(const char *) extensions_arr;
     uint32_t last_id;
 
     DuskMap *const_cache;

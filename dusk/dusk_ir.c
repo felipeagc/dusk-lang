@@ -897,6 +897,9 @@ static void duskEmitDecorations(
             params[1] = SpvDecorationBinding;
             break;
         case DUSK_IR_DECORATION_BLOCK: params[1] = SpvDecorationBlock; break;
+        case DUSK_IR_DECORATION_ARRAY_STRIDE:
+            params[1] = SpvDecorationArrayStride;
+            break;
 
         case DUSK_IR_DECORATION_OFFSET: continue;
         }
@@ -933,6 +936,7 @@ static void duskEmitMemberDecorations(
         switch (decoration->kind)
         {
         case DUSK_IR_DECORATION_OFFSET: params[2] = SpvDecorationOffset; break;
+        case DUSK_IR_DECORATION_ARRAY_STRIDE:
         case DUSK_IR_DECORATION_LOCATION:
         case DUSK_IR_DECORATION_BUILTIN:
         case DUSK_IR_DECORATION_SET:
@@ -1545,6 +1549,22 @@ DuskArray(uint32_t)
         {
             DuskIRDecoration decoration = duskIRCreateDecoration(
                 allocator, DUSK_IR_DECORATION_BLOCK, 0, NULL);
+            duskArrayPush(&type->decorations_arr, decoration);
+        }
+
+        if ((type->kind == DUSK_TYPE_ARRAY ||
+             type->kind == DUSK_TYPE_RUNTIME_ARRAY) &&
+            type->array.layout != DUSK_STRUCT_LAYOUT_UNKNOWN)
+        {
+            uint32_t stride =
+                duskTypeSizeOf(allocator, type->array.sub, type->array.layout);
+            if (type->array.layout == DUSK_STRUCT_LAYOUT_STD140)
+            {
+                stride = DUSK_ROUND_UP(16, stride);
+            }
+
+            DuskIRDecoration decoration = duskIRCreateDecoration(
+                allocator, DUSK_IR_DECORATION_ARRAY_STRIDE, 1, &stride);
             duskArrayPush(&type->decorations_arr, decoration);
         }
 

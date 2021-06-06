@@ -21,6 +21,7 @@ let uniform : struct (std140) {
 let storage : struct (std430) {
     a: int,
     b: float3,
+    some_arr: []float,
 };
 
 [set(0), binding(2)] let image : @Image2D(float);

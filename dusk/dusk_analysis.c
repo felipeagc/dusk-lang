@@ -22,6 +22,7 @@ typedef struct DuskAnalyzerState
     DuskArray(DuskStmt *) break_stack_arr;
     DuskArray(DuskStmt *) continue_stack_arr;
     DuskArray(DuskDecl *) function_stack_arr;
+    DuskArray(DuskStructLayout) struct_layout_stack_arr;
 } DuskAnalyzerState;
 
 static void duskAnalyzeDecl(
@@ -674,9 +675,16 @@ static void duskAnalyzeExpr(
             break;
         }
 
+        DuskStructLayout layout = DUSK_STRUCT_LAYOUT_UNKNOWN;
+        if (duskArrayLength(state->struct_layout_stack_arr) > 0)
+        {
+            layout = state->struct_layout_stack_arr
+                         [duskArrayLength(state->struct_layout_stack_arr) - 1];
+        }
+
         expr->type = type_type;
         expr->as_type =
-            duskTypeNewArray(compiler, sub_type, (size_t)array_size);
+            duskTypeNewArray(compiler, layout, sub_type, (size_t)array_size);
         break;
     }
     case DUSK_EXPR_RUNTIME_ARRAY_TYPE: {
@@ -691,8 +699,15 @@ static void duskAnalyzeExpr(
             break;
         }
 
+        DuskStructLayout layout = DUSK_STRUCT_LAYOUT_UNKNOWN;
+        if (duskArrayLength(state->struct_layout_stack_arr) > 0)
+        {
+            layout = state->struct_layout_stack_arr
+                         [duskArrayLength(state->struct_layout_stack_arr) - 1];
+        }
+
         expr->type = type_type;
-        expr->as_type = duskTypeNewRuntimeArray(compiler, sub_type);
+        expr->as_type = duskTypeNewRuntimeArray(compiler, layout, sub_type);
         break;
     }
     case DUSK_EXPR_STRUCT_TYPE: {
@@ -756,6 +771,9 @@ static void duskAnalyzeExpr(
         DuskType **field_types =
             DUSK_NEW_ARRAY(allocator, DuskType *, field_count);
 
+        duskArrayPush(
+            &state->struct_layout_stack_arr, expr->struct_type.layout);
+
         for (size_t i = 0; i < field_count; ++i)
         {
             DuskExpr *field_type_expr = expr->struct_type.field_type_exprs[i];
@@ -767,6 +785,8 @@ static void duskAnalyzeExpr(
             }
             field_types[i] = field_type_expr->as_type;
         }
+
+        duskArrayPop(&state->struct_layout_stack_arr);
 
         if (!got_all_field_types)
         {
@@ -1814,6 +1834,7 @@ void duskAnalyzeFile(DuskCompiler *compiler, DuskFile *file)
         .break_stack_arr = duskArrayCreate(allocator, DuskStmt *),
         .continue_stack_arr = duskArrayCreate(allocator, DuskStmt *),
         .function_stack_arr = duskArrayCreate(allocator, DuskDecl *),
+        .struct_layout_stack_arr = duskArrayCreate(allocator, DuskStructLayout),
     };
 
     duskArrayPush(&state->scope_stack_arr, file->scope);

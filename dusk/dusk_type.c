@@ -264,13 +264,38 @@ const char *duskTypeToString(DuskAllocator *allocator, DuskType *type)
     }
     case DUSK_TYPE_RUNTIME_ARRAY: {
         const char *sub_str = duskTypeToString(allocator, type->array.sub);
-        type->string = duskSprintf(allocator, "@rArray(%s)", sub_str);
+
+        const char *layout_str = "";
+
+        switch (type->array.layout)
+        {
+        case DUSK_STRUCT_LAYOUT_STD140: layout_str = "std140"; break;
+        case DUSK_STRUCT_LAYOUT_STD430: layout_str = "std430"; break;
+        case DUSK_STRUCT_LAYOUT_UNKNOWN: layout_str = "unknown"; break;
+        }
+
+        type->string =
+            duskSprintf(allocator, "@rArray[%s](%s)", layout_str, sub_str);
         break;
     }
     case DUSK_TYPE_ARRAY: {
         const char *sub_str = duskTypeToString(allocator, type->array.sub);
-        type->string =
-            duskSprintf(allocator, "@array(%s,%zu)", sub_str, type->array.size);
+
+        const char *layout_str = "";
+
+        switch (type->array.layout)
+        {
+        case DUSK_STRUCT_LAYOUT_STD140: layout_str = "std140"; break;
+        case DUSK_STRUCT_LAYOUT_STD430: layout_str = "std430"; break;
+        case DUSK_STRUCT_LAYOUT_UNKNOWN: layout_str = "unknown"; break;
+        }
+
+        type->string = duskSprintf(
+            allocator,
+            "@array[%s](%s,%zu)",
+            layout_str,
+            sub_str,
+            type->array.size);
         break;
     }
     case DUSK_TYPE_STRUCT: {
@@ -497,22 +522,26 @@ duskTypeNewMatrix(DuskCompiler *compiler, DuskType *col_type, uint32_t cols)
     return duskTypeGetCached(compiler, type);
 }
 
-DuskType *duskTypeNewRuntimeArray(DuskCompiler *compiler, DuskType *sub)
+DuskType *duskTypeNewRuntimeArray(
+    DuskCompiler *compiler, DuskStructLayout layout, DuskType *sub)
 {
     DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
     DuskType *type = DUSK_NEW(allocator, DuskType);
     type->kind = DUSK_TYPE_RUNTIME_ARRAY;
     type->array.sub = sub;
+    type->array.layout = layout;
     return duskTypeGetCached(compiler, type);
 }
 
-DuskType *duskTypeNewArray(DuskCompiler *compiler, DuskType *sub, size_t size)
+DuskType *duskTypeNewArray(
+    DuskCompiler *compiler, DuskStructLayout layout, DuskType *sub, size_t size)
 {
     DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
     DuskType *type = DUSK_NEW(allocator, DuskType);
     type->kind = DUSK_TYPE_ARRAY;
     type->array.sub = sub;
     type->array.size = size;
+    type->array.layout = layout;
 
     return duskTypeGetCached(compiler, type);
 }
