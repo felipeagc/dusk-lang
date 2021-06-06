@@ -722,6 +722,145 @@ DuskIRValue *
 duskIRLoadLvalue(DuskIRModule *module, DuskIRValue *block, DuskIRValue *value);
 // }}}
 
+// Token {{{
+typedef enum {
+    DUSK_TOKEN_ERROR = 0,
+
+    DUSK_TOKEN_IDENT,
+    DUSK_TOKEN_BUILTIN_IDENT,
+    DUSK_TOKEN_STRING_LITERAL,
+    DUSK_TOKEN_INT_LITERAL,
+    DUSK_TOKEN_FLOAT_LITERAL,
+
+    DUSK_TOKEN_FN,
+    DUSK_TOKEN_LET,
+    DUSK_TOKEN_CONST,
+    DUSK_TOKEN_STRUCT,
+    DUSK_TOKEN_TYPE,
+    DUSK_TOKEN_IMPORT,
+    DUSK_TOKEN_BREAK,
+    DUSK_TOKEN_CONTINUE,
+    DUSK_TOKEN_RETURN,
+    DUSK_TOKEN_DISCARD,
+    DUSK_TOKEN_WHILE,
+    DUSK_TOKEN_IF,
+    DUSK_TOKEN_ELSE,
+    DUSK_TOKEN_SWITCH,
+    DUSK_TOKEN_TRUE,
+    DUSK_TOKEN_FALSE,
+    DUSK_TOKEN_EXTENSION,
+
+    DUSK_TOKEN_VOID,
+    DUSK_TOKEN_BOOL,
+    DUSK_TOKEN_FLOAT,
+    DUSK_TOKEN_INT,
+    DUSK_TOKEN_UINT,
+    DUSK_TOKEN_FLOAT2,
+    DUSK_TOKEN_FLOAT2X2,
+    DUSK_TOKEN_FLOAT3,
+    DUSK_TOKEN_FLOAT3X3,
+    DUSK_TOKEN_FLOAT4,
+    DUSK_TOKEN_FLOAT4X4,
+    DUSK_TOKEN_INT2,
+    DUSK_TOKEN_INT2X2,
+    DUSK_TOKEN_INT3,
+    DUSK_TOKEN_INT3X3,
+    DUSK_TOKEN_INT4,
+    DUSK_TOKEN_INT4X4,
+    DUSK_TOKEN_UINT2,
+    DUSK_TOKEN_UINT2X2,
+    DUSK_TOKEN_UINT3,
+    DUSK_TOKEN_UINT3X3,
+    DUSK_TOKEN_UINT4,
+    DUSK_TOKEN_UINT4X4,
+
+    DUSK_TOKEN_LCURLY,   // {
+    DUSK_TOKEN_RCURLY,   // }
+    DUSK_TOKEN_LBRACKET, // [
+    DUSK_TOKEN_RBRACKET, // ]
+    DUSK_TOKEN_LPAREN,   // (
+    DUSK_TOKEN_RPAREN,   // )
+
+    DUSK_TOKEN_ADD, // +
+    DUSK_TOKEN_SUB, // -
+    DUSK_TOKEN_MUL, // *
+    DUSK_TOKEN_DIV, // /
+    DUSK_TOKEN_MOD, // %
+
+    DUSK_TOKEN_ADDADD, // ++
+    DUSK_TOKEN_SUBSUB, // --
+
+    DUSK_TOKEN_BITOR,  // |
+    DUSK_TOKEN_BITXOR, // ^
+    DUSK_TOKEN_BITAND, // &
+    DUSK_TOKEN_BITNOT, // ~
+
+    DUSK_TOKEN_LSHIFT, // <<
+    DUSK_TOKEN_RSHIFT, // >>
+
+    DUSK_TOKEN_DOT,      // .
+    DUSK_TOKEN_COMMA,    // ,
+    DUSK_TOKEN_QUESTION, // ?
+
+    DUSK_TOKEN_COLON,     // :
+    DUSK_TOKEN_SEMICOLON, // ;
+
+    DUSK_TOKEN_NOT,    // !
+    DUSK_TOKEN_ASSIGN, // =
+
+    DUSK_TOKEN_EQ,        // ==
+    DUSK_TOKEN_NOTEQ,     // !=
+    DUSK_TOKEN_LESS,      // <
+    DUSK_TOKEN_LESSEQ,    // <=
+    DUSK_TOKEN_GREATER,   // >
+    DUSK_TOKEN_GREATEREQ, // >=
+
+    DUSK_TOKEN_ADD_ASSIGN, // +=
+    DUSK_TOKEN_SUB_ASSIGN, // -=
+    DUSK_TOKEN_MUL_ASSIGN, // *=
+    DUSK_TOKEN_DIV_ASSIGN, // /=
+    DUSK_TOKEN_MOD_ASSIGN, // %=
+
+    DUSK_TOKEN_BITAND_ASSIGN, // &=
+    DUSK_TOKEN_BITOR_ASSIGN,  // |=
+    DUSK_TOKEN_BITXOR_ASSIGN, // ^=
+    DUSK_TOKEN_BITNOT_ASSIGN, // ~=
+
+    DUSK_TOKEN_LSHIFT_ASSIGN, // <<=
+    DUSK_TOKEN_RSHIFT_ASSIGN, // >>=
+
+    DUSK_TOKEN_AND, // &&
+    DUSK_TOKEN_OR,  // ||
+
+    DUSK_TOKEN_EOF,
+} DuskTokenType;
+
+typedef struct
+{
+    DuskTokenType type;
+    DuskLocation location;
+    union
+    {
+        const char *str;
+        int64_t int_;
+        double float_;
+        DuskScalarType scalar_type;
+        struct
+        {
+            DuskScalarType scalar_type;
+            uint32_t length;
+        } vector_type;
+        struct
+        {
+            DuskScalarType scalar_type;
+            uint32_t rows;
+            uint32_t cols;
+        } matrix_type;
+    };
+} DuskToken;
+// }}}
+
+
 // AST {{{
 typedef enum DuskBuiltinFunctionKind {
     DUSK_BUILTIN_FUNCTION_SAMPLER_TYPE,
@@ -948,6 +1087,9 @@ typedef struct DuskCompiler
     DuskMap *type_cache;
     DuskArray(DuskType *) types_arr;
     jmp_buf jump_buffer;
+
+    DuskMap *keyword_map;
+    DuskMap *builtin_function_map;
 } DuskCompiler;
 // }}}
 
