@@ -665,7 +665,18 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
 
     case DUSK_EXPR_BUILTIN_FUNCTION_CALL: {
         switch (expr->builtin_call.kind) {
-        case DUSK_BUILTIN_FUNCTION_SIN: {
+        case DUSK_BUILTIN_FUNCTION_SIN:
+        case DUSK_BUILTIN_FUNCTION_COS:
+        case DUSK_BUILTIN_FUNCTION_TAN:
+        case DUSK_BUILTIN_FUNCTION_ASIN:
+        case DUSK_BUILTIN_FUNCTION_ACOS:
+        case DUSK_BUILTIN_FUNCTION_ATAN:
+        case DUSK_BUILTIN_FUNCTION_SINH:
+        case DUSK_BUILTIN_FUNCTION_COSH:
+        case DUSK_BUILTIN_FUNCTION_TANH:
+        case DUSK_BUILTIN_FUNCTION_ASINH:
+        case DUSK_BUILTIN_FUNCTION_ACOSH:
+        case DUSK_BUILTIN_FUNCTION_ATANH: {
             DUSK_ASSERT(func_decl);
             DuskIRValue *function = func_decl->ir_value;
             DUSK_ASSERT(duskArrayLength(function->function.blocks_arr) > 0);

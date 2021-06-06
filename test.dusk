@@ -99,6 +99,8 @@ fn fs_main([location(0)] in_pos: float3) [location(0)] float4 {
     let f: float = float(i);
 
     let s: float2 = @sin(float2(123,123));
+    s = @tan(s);
+    s = @atanh(s);
 
     let other: float3 = float3(1);
     other.x = 123;

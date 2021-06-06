@@ -1304,6 +1304,17 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
 
         switch (value->builtin_call.builtin_kind) {
         case DUSK_BUILTIN_FUNCTION_SIN: glsl_inst = GLSLstd450Sin; break;
+        case DUSK_BUILTIN_FUNCTION_COS: glsl_inst = GLSLstd450Cos; break;
+        case DUSK_BUILTIN_FUNCTION_TAN: glsl_inst = GLSLstd450Tan; break;
+        case DUSK_BUILTIN_FUNCTION_ASIN: glsl_inst = GLSLstd450Asin; break;
+        case DUSK_BUILTIN_FUNCTION_ACOS: glsl_inst = GLSLstd450Acos; break;
+        case DUSK_BUILTIN_FUNCTION_ATAN: glsl_inst = GLSLstd450Atan; break;
+        case DUSK_BUILTIN_FUNCTION_SINH: glsl_inst = GLSLstd450Sinh; break;
+        case DUSK_BUILTIN_FUNCTION_COSH: glsl_inst = GLSLstd450Cosh; break;
+        case DUSK_BUILTIN_FUNCTION_TANH: glsl_inst = GLSLstd450Tanh; break;
+        case DUSK_BUILTIN_FUNCTION_ASINH: glsl_inst = GLSLstd450Asinh; break;
+        case DUSK_BUILTIN_FUNCTION_ACOSH: glsl_inst = GLSLstd450Acosh; break;
+        case DUSK_BUILTIN_FUNCTION_ATANH: glsl_inst = GLSLstd450Atanh; break;
 
         case DUSK_BUILTIN_FUNCTION_SAMPLER_TYPE:
         case DUSK_BUILTIN_FUNCTION_IMAGE_1D_TYPE:

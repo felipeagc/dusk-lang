@@ -3,6 +3,35 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+static const char *DUSK_BUILTIN_FUNCTION_NAMES[DUSK_BUILTIN_FUNCTION_MAX] = {
+    [DUSK_BUILTIN_FUNCTION_SAMPLER_TYPE] = "Sampler",
+    [DUSK_BUILTIN_FUNCTION_IMAGE_1D_TYPE] = "Image1D",
+    [DUSK_BUILTIN_FUNCTION_IMAGE_2D_TYPE] = "Image2D",
+    [DUSK_BUILTIN_FUNCTION_IMAGE_2D_ARRAY_TYPE] = "Image2DArray",
+    [DUSK_BUILTIN_FUNCTION_IMAGE_3D_TYPE] = "Image3D",
+    [DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_TYPE] = "ImageCube",
+    [DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_TYPE] = "ImageCubeArray",
+    [DUSK_BUILTIN_FUNCTION_IMAGE_1D_SAMPLER_TYPE] = "Image1DSampler",
+    [DUSK_BUILTIN_FUNCTION_IMAGE_2D_SAMPLER_TYPE] = "Image2DSampler",
+    [DUSK_BUILTIN_FUNCTION_IMAGE_2D_ARRAY_SAMPLER_TYPE] = "Image2DArraySampler",
+    [DUSK_BUILTIN_FUNCTION_IMAGE_3D_SAMPLER_TYPE] = "Image3DSampler",
+    [DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_SAMPLER_TYPE] = "ImageCubeSampler",
+    [DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_SAMPLER_TYPE] =
+        "ImageCubeArraySampler",
+    [DUSK_BUILTIN_FUNCTION_SIN] = "sin",
+    [DUSK_BUILTIN_FUNCTION_COS] = "cos",
+    [DUSK_BUILTIN_FUNCTION_TAN] = "tan",
+    [DUSK_BUILTIN_FUNCTION_ASIN] = "asin",
+    [DUSK_BUILTIN_FUNCTION_ACOS] = "acos",
+    [DUSK_BUILTIN_FUNCTION_ATAN] = "atan",
+    [DUSK_BUILTIN_FUNCTION_SINH] = "sinh",
+    [DUSK_BUILTIN_FUNCTION_COSH] = "cosh",
+    [DUSK_BUILTIN_FUNCTION_TANH] = "tanh",
+    [DUSK_BUILTIN_FUNCTION_ASINH] = "asinh",
+    [DUSK_BUILTIN_FUNCTION_ACOSH] = "acosh",
+    [DUSK_BUILTIN_FUNCTION_ATANH] = "atanh",
+};
+
 DuskCompiler *duskCompilerCreate(void)
 {
     DuskCompiler *compiler = malloc(sizeof(*compiler));
@@ -65,64 +94,12 @@ DuskCompiler *duskCompilerCreate(void)
     duskMapSet(compiler->keyword_map, "uint3x3", (void *)DUSK_TOKEN_UINT3X3);
     duskMapSet(compiler->keyword_map, "uint4x4", (void *)DUSK_TOKEN_UINT4X4);
 
-    duskMapSet(
-        compiler->builtin_function_map,
-        "Sampler",
-        (void *)DUSK_BUILTIN_FUNCTION_SAMPLER_TYPE);
-    duskMapSet(
-        compiler->builtin_function_map,
-        "Image1D",
-        (void *)DUSK_BUILTIN_FUNCTION_IMAGE_1D_TYPE);
-    duskMapSet(
-        compiler->builtin_function_map,
-        "Image2D",
-        (void *)DUSK_BUILTIN_FUNCTION_IMAGE_2D_TYPE);
-    duskMapSet(
-        compiler->builtin_function_map,
-        "Image2DArray",
-        (void *)DUSK_BUILTIN_FUNCTION_IMAGE_2D_ARRAY_TYPE);
-    duskMapSet(
-        compiler->builtin_function_map,
-        "Image3D",
-        (void *)DUSK_BUILTIN_FUNCTION_IMAGE_3D_TYPE);
-    duskMapSet(
-        compiler->builtin_function_map,
-        "ImageCube",
-        (void *)DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_TYPE);
-    duskMapSet(
-        compiler->builtin_function_map,
-        "ImageCubeArray",
-        (void *)DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_TYPE);
-
-    duskMapSet(
-        compiler->builtin_function_map,
-        "Image1DSampler",
-        (void *)DUSK_BUILTIN_FUNCTION_IMAGE_1D_SAMPLER_TYPE);
-    duskMapSet(
-        compiler->builtin_function_map,
-        "Image2DSampler",
-        (void *)DUSK_BUILTIN_FUNCTION_IMAGE_2D_SAMPLER_TYPE);
-    duskMapSet(
-        compiler->builtin_function_map,
-        "Image2DArraySampler",
-        (void *)DUSK_BUILTIN_FUNCTION_IMAGE_2D_ARRAY_SAMPLER_TYPE);
-    duskMapSet(
-        compiler->builtin_function_map,
-        "Image3DSampler",
-        (void *)DUSK_BUILTIN_FUNCTION_IMAGE_3D_SAMPLER_TYPE);
-    duskMapSet(
-        compiler->builtin_function_map,
-        "ImageCubeSampler",
-        (void *)DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_SAMPLER_TYPE);
-    duskMapSet(
-        compiler->builtin_function_map,
-        "ImageCubeArraySampler",
-        (void *)DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_SAMPLER_TYPE);
-
-    duskMapSet(
-        compiler->builtin_function_map,
-        "sin",
-        (void *)DUSK_BUILTIN_FUNCTION_SIN);
+    for (size_t i = 0; i < DUSK_BUILTIN_FUNCTION_MAX; ++i) {
+        duskMapSet(
+            compiler->builtin_function_map,
+            duskGetBuiltinFunctionName((DuskBuiltinFunctionKind)i),
+            (void *)i);
+    }
 
     return compiler;
 }
@@ -201,4 +178,10 @@ uint8_t *duskCompile(
 
     *spirv_byte_size = duskArrayLength(spirv) * 4;
     return (uint8_t *)spirv;
+}
+
+const char *duskGetBuiltinFunctionName(DuskBuiltinFunctionKind kind)
+{
+    if (kind >= DUSK_BUILTIN_FUNCTION_MAX) return NULL;
+    return DUSK_BUILTIN_FUNCTION_NAMES[kind];
 }
