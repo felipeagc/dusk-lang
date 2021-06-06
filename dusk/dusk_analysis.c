@@ -794,6 +794,21 @@ static void duskAnalyzeExpr(
             break;
         }
 
+        for (size_t i = 0; i < field_count; ++i)
+        {
+            DuskType *field_type = field_types[i];
+            if (field_type->kind == DUSK_TYPE_RUNTIME_ARRAY &&
+                (i != (field_count - 1)))
+            {
+                // Runtime array cannot be in the middle of a struct, only at
+                // the end
+                duskAddError(
+                    compiler,
+                    expr->struct_type.field_type_exprs[i]->location,
+                    "runtime-sized arrays can only be at the end of a struct");
+            }
+        }
+
         expr->type = type_type;
         expr->as_type = duskTypeNewStruct(
             compiler,
