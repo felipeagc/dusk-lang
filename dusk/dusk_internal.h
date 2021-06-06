@@ -484,6 +484,24 @@ typedef struct DuskIREntryPoint {
     DuskArray(DuskIRValue *) referenced_globals_arr;
 } DuskIREntryPoint;
 
+typedef enum DuskBuiltinFunctionKind {
+    DUSK_BUILTIN_FUNCTION_SAMPLER_TYPE,
+    DUSK_BUILTIN_FUNCTION_IMAGE_1D_TYPE,
+    DUSK_BUILTIN_FUNCTION_IMAGE_2D_TYPE,
+    DUSK_BUILTIN_FUNCTION_IMAGE_2D_ARRAY_TYPE,
+    DUSK_BUILTIN_FUNCTION_IMAGE_3D_TYPE,
+    DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_TYPE,
+    DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_TYPE,
+    DUSK_BUILTIN_FUNCTION_IMAGE_1D_SAMPLER_TYPE,
+    DUSK_BUILTIN_FUNCTION_IMAGE_2D_SAMPLER_TYPE,
+    DUSK_BUILTIN_FUNCTION_IMAGE_2D_ARRAY_SAMPLER_TYPE,
+    DUSK_BUILTIN_FUNCTION_IMAGE_3D_SAMPLER_TYPE,
+    DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_SAMPLER_TYPE,
+    DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_SAMPLER_TYPE,
+    DUSK_BUILTIN_FUNCTION_SIN,
+    DUSK_BUILTIN_FUNCTION_MAX,
+} DuskBuiltinFunctionKind;
+
 typedef enum DuskIRValueKind {
     DUSK_IR_VALUE_CONSTANT_BOOL,
     DUSK_IR_VALUE_CONSTANT,
@@ -502,6 +520,7 @@ typedef enum DuskIRValueKind {
     DUSK_IR_VALUE_VECTOR_SHUFFLE,
     DUSK_IR_VALUE_COMPOSITE_CONSTRUCT,
     DUSK_IR_VALUE_CAST,
+    DUSK_IR_VALUE_BUILTIN_CALL,
 } DuskIRValueKind;
 
 struct DuskIRValue {
@@ -569,6 +588,11 @@ struct DuskIRValue {
         struct {
             DuskIRValue *value;
         } cast;
+        struct {
+            DuskBuiltinFunctionKind builtin_kind;
+            DuskIRValue **params;
+            size_t param_count;
+        } builtin_call;
     };
 };
 
@@ -672,6 +696,13 @@ DuskIRValue *duskIRCreateCast(
     DuskIRValue *block,
     DuskType *destination_type,
     DuskIRValue *value);
+DuskIRValue *duskIRCreateBuiltinCall(
+    DuskIRModule *module,
+    DuskIRValue *block,
+    DuskBuiltinFunctionKind builtin_kind,
+    DuskType *destination_type,
+    size_t param_count,
+    DuskIRValue **params);
 
 bool duskIRValueIsConstant(DuskIRValue *value);
 bool duskIRIsLvalue(DuskIRValue *value);
@@ -814,23 +845,6 @@ typedef struct {
 // }}}
 
 // AST {{{
-typedef enum DuskBuiltinFunctionKind {
-    DUSK_BUILTIN_FUNCTION_SAMPLER_TYPE,
-    DUSK_BUILTIN_FUNCTION_IMAGE_1D_TYPE,
-    DUSK_BUILTIN_FUNCTION_IMAGE_2D_TYPE,
-    DUSK_BUILTIN_FUNCTION_IMAGE_2D_ARRAY_TYPE,
-    DUSK_BUILTIN_FUNCTION_IMAGE_3D_TYPE,
-    DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_TYPE,
-    DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_TYPE,
-    DUSK_BUILTIN_FUNCTION_IMAGE_1D_SAMPLER_TYPE,
-    DUSK_BUILTIN_FUNCTION_IMAGE_2D_SAMPLER_TYPE,
-    DUSK_BUILTIN_FUNCTION_IMAGE_2D_ARRAY_SAMPLER_TYPE,
-    DUSK_BUILTIN_FUNCTION_IMAGE_3D_SAMPLER_TYPE,
-    DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_SAMPLER_TYPE,
-    DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_SAMPLER_TYPE,
-    DUSK_BUILTIN_FUNCTION_MAX,
-} DuskBuiltinFunctionKind;
-
 typedef enum DuskDeclKind {
     DUSK_DECL_FUNCTION,
     DUSK_DECL_VAR,

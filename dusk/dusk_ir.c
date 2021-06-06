@@ -1,5 +1,6 @@
 #include "dusk_internal.h"
 #include "spirv.h"
+#include "GLSL.std.450.h"
 
 static void duskEmitType(DuskIRModule *module, DuskType *type);
 static void duskEmitValue(DuskIRModule *module, DuskIRValue *value);
@@ -611,6 +612,31 @@ DuskIRValue *duskIRCreateCast(
     DuskIRValue *inst = DUSK_NEW(module->allocator, DuskIRValue);
     inst->kind = DUSK_IR_VALUE_CAST;
     inst->cast.value = value;
+
+    inst->type = destination_type;
+    duskTypeMarkNotDead(inst->type);
+
+    duskIRBlockAppendInst(block, inst);
+    return inst;
+}
+
+DuskIRValue *duskIRCreateBuiltinCall(
+    DuskIRModule *module,
+    DuskIRValue *block,
+    DuskBuiltinFunctionKind builtin_kind,
+    DuskType *destination_type,
+    size_t param_count,
+    DuskIRValue **params)
+{
+    DuskIRValue *inst = DUSK_NEW(module->allocator, DuskIRValue);
+    inst->kind = DUSK_IR_VALUE_BUILTIN_CALL;
+    inst->builtin_call.builtin_kind = builtin_kind;
+    inst->builtin_call.param_count = param_count;
+    inst->builtin_call.params =
+        DUSK_NEW_ARRAY(module->allocator, DuskIRValue *, param_count);
+
+    memcpy(
+        inst->builtin_call.params, params, sizeof(DuskIRValue *) * param_count);
 
     inst->type = destination_type;
     duskTypeMarkNotDead(inst->type);
@@ -1271,6 +1297,46 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
 
         duskEncodeInst(module, op, params, DUSK_CARRAY_LENGTH(params));
 
+        break;
+    }
+    case DUSK_IR_VALUE_BUILTIN_CALL: {
+        uint32_t glsl_inst = 0;
+
+        switch (value->builtin_call.builtin_kind) {
+        case DUSK_BUILTIN_FUNCTION_SIN: glsl_inst = GLSLstd450Sin; break;
+
+        case DUSK_BUILTIN_FUNCTION_SAMPLER_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_1D_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_2D_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_2D_ARRAY_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_3D_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_1D_SAMPLER_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_2D_SAMPLER_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_2D_ARRAY_SAMPLER_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_3D_SAMPLER_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_SAMPLER_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_SAMPLER_TYPE:
+        case DUSK_BUILTIN_FUNCTION_MAX: {
+            DUSK_ASSERT(0);
+            break;
+        }
+        }
+
+        size_t param_count = 4 + value->builtin_call.param_count;
+        uint32_t *params = DUSK_NEW_ARRAY(allocator, uint32_t, param_count);
+        params[0] = value->type->id;
+        params[1] = value->id;
+        params[2] = module->glsl_ext_inst_id;
+        params[3] = glsl_inst;
+
+        for (size_t i = 0; i < value->builtin_call.param_count; ++i) {
+            params[4 + i] = value->builtin_call.params[i]->id;
+            DUSK_ASSERT(params[4 + i] > 0);
+        }
+
+        duskEncodeInst(module, SpvOpExtInst, params, param_count);
         break;
     }
     }

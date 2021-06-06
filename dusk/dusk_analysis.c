@@ -14,6 +14,25 @@ static size_t DUSK_BUILTIN_FUNCTION_PARAM_COUNTS[DUSK_BUILTIN_FUNCTION_MAX] = {
     [DUSK_BUILTIN_FUNCTION_IMAGE_3D_SAMPLER_TYPE] = 1,
     [DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_SAMPLER_TYPE] = 1,
     [DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_SAMPLER_TYPE] = 1,
+    [DUSK_BUILTIN_FUNCTION_SIN] = 1,
+};
+
+static const char *DUSK_BUILTIN_FUNCTION_NAMES[DUSK_BUILTIN_FUNCTION_MAX] = {
+    [DUSK_BUILTIN_FUNCTION_SAMPLER_TYPE] = "Sampler",
+    [DUSK_BUILTIN_FUNCTION_IMAGE_1D_TYPE] = "Image1D",
+    [DUSK_BUILTIN_FUNCTION_IMAGE_2D_TYPE] = "Image2D",
+    [DUSK_BUILTIN_FUNCTION_IMAGE_2D_ARRAY_TYPE] = "Image2DArray",
+    [DUSK_BUILTIN_FUNCTION_IMAGE_3D_TYPE] = "Image3D",
+    [DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_TYPE] = "ImageCube",
+    [DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_TYPE] = "ImageCubeArray",
+    [DUSK_BUILTIN_FUNCTION_IMAGE_1D_SAMPLER_TYPE] = "Image1DSampler",
+    [DUSK_BUILTIN_FUNCTION_IMAGE_2D_SAMPLER_TYPE] = "Image2DSampler",
+    [DUSK_BUILTIN_FUNCTION_IMAGE_2D_ARRAY_SAMPLER_TYPE] = "Image2DArraySampler",
+    [DUSK_BUILTIN_FUNCTION_IMAGE_3D_SAMPLER_TYPE] = "Image3DSampler",
+    [DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_SAMPLER_TYPE] = "ImageCubeSampler",
+    [DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_SAMPLER_TYPE] =
+        "ImageCubeArraySampler",
+    [DUSK_BUILTIN_FUNCTION_SIN] = "sin",
 };
 
 typedef struct DuskAnalyzerState {
@@ -922,14 +941,43 @@ static void duskAnalyzeExpr(
             duskAddError(
                 compiler,
                 expr->location,
-                "invalid parameter count for builtin call: expected %zu, "
+                "invalid parameter count for '@%s' call: expected %zu, "
                 "instead got %zu",
+                DUSK_BUILTIN_FUNCTION_NAMES[expr->builtin_call.kind],
                 required_param_count,
                 duskArrayLength(expr->builtin_call.params_arr));
             break;
         }
 
         switch (expr->builtin_call.kind) {
+        case DUSK_BUILTIN_FUNCTION_SIN: {
+            DUSK_ASSERT(duskArrayLength(expr->builtin_call.params_arr) == 1);
+            DuskExpr *param = expr->builtin_call.params_arr[0];
+
+            DuskType *float_type =
+                duskTypeNewScalar(compiler, DUSK_SCALAR_TYPE_FLOAT);
+
+            duskAnalyzeExpr(compiler, state, param, NULL, false);
+            duskConcretizeExprType(param, float_type);
+
+            if (param->type->kind != DUSK_TYPE_FLOAT &&
+                !(param->type->kind == DUSK_TYPE_VECTOR &&
+                  param->type->vector.sub->kind == DUSK_TYPE_FLOAT)) {
+                duskAddError(
+                    compiler,
+                    expr->location,
+                    "invalid parameter type for '@%s' call: expected floating "
+                    "point scalar or vector, instead got '%s'",
+                    DUSK_BUILTIN_FUNCTION_NAMES[expr->builtin_call.kind],
+                    duskTypeToPrettyString(allocator, param->type));
+                break;
+            }
+
+            expr->type = param->type;
+
+            break;
+        }
+
         case DUSK_BUILTIN_FUNCTION_SAMPLER_TYPE: {
             expr->type = duskTypeNewBasic(compiler, DUSK_TYPE_TYPE);
             expr->as_type = duskTypeNewBasic(compiler, DUSK_TYPE_SAMPLER);

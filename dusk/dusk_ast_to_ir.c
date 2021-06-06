@@ -665,6 +665,34 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
 
     case DUSK_EXPR_BUILTIN_FUNCTION_CALL: {
         switch (expr->builtin_call.kind) {
+        case DUSK_BUILTIN_FUNCTION_SIN: {
+            DUSK_ASSERT(func_decl);
+            DuskIRValue *function = func_decl->ir_value;
+            DUSK_ASSERT(duskArrayLength(function->function.blocks_arr) > 0);
+            DuskIRValue *block =
+                function->function.blocks_arr
+                    [duskArrayLength(function->function.blocks_arr) - 1];
+
+            size_t param_count = duskArrayLength(expr->builtin_call.params_arr);
+            DuskIRValue **params =
+                DUSK_NEW_ARRAY(module->allocator, DuskIRValue *, param_count);
+
+            for (size_t i = 0; i < param_count; ++i) {
+                duskGenerateExpr(
+                    module, func_decl, expr->builtin_call.params_arr[i]);
+                params[i] = expr->builtin_call.params_arr[i]->ir_value;
+                params[i] = duskIRLoadLvalue(module, block, params[i]);
+            }
+
+            expr->ir_value = duskIRCreateBuiltinCall(
+                module,
+                block,
+                expr->builtin_call.kind,
+                expr->type,
+                param_count,
+                params);
+            break;
+        }
         case DUSK_BUILTIN_FUNCTION_IMAGE_1D_TYPE:
         case DUSK_BUILTIN_FUNCTION_IMAGE_2D_TYPE:
         case DUSK_BUILTIN_FUNCTION_IMAGE_2D_ARRAY_TYPE:

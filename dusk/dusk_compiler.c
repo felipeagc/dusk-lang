@@ -119,6 +119,11 @@ DuskCompiler *duskCompilerCreate(void)
         "ImageCubeArraySampler",
         (void *)DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_SAMPLER_TYPE);
 
+    duskMapSet(
+        compiler->builtin_function_map,
+        "sin",
+        (void *)DUSK_BUILTIN_FUNCTION_SIN);
+
     return compiler;
 }
 
