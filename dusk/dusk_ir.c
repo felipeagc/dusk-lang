@@ -1303,6 +1303,26 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
         uint32_t glsl_inst = 0;
 
         switch (value->builtin_call.builtin_kind) {
+        case DUSK_BUILTIN_FUNCTION_RADIANS:
+            glsl_inst = GLSLstd450Radians;
+            break;
+        case DUSK_BUILTIN_FUNCTION_DEGREES:
+            glsl_inst = GLSLstd450Degrees;
+            break;
+        case DUSK_BUILTIN_FUNCTION_ROUND: glsl_inst = GLSLstd450Round; break;
+        case DUSK_BUILTIN_FUNCTION_TRUNC: glsl_inst = GLSLstd450Trunc; break;
+        case DUSK_BUILTIN_FUNCTION_FLOOR: glsl_inst = GLSLstd450Floor; break;
+        case DUSK_BUILTIN_FUNCTION_CEIL: glsl_inst = GLSLstd450Ceil; break;
+        case DUSK_BUILTIN_FUNCTION_FRACT: glsl_inst = GLSLstd450Fract; break;
+        case DUSK_BUILTIN_FUNCTION_SQRT: glsl_inst = GLSLstd450Sqrt; break;
+        case DUSK_BUILTIN_FUNCTION_INVERSE_SQRT:
+            glsl_inst = GLSLstd450InverseSqrt;
+            break;
+        case DUSK_BUILTIN_FUNCTION_LOG: glsl_inst = GLSLstd450Log; break;
+        case DUSK_BUILTIN_FUNCTION_LOG2: glsl_inst = GLSLstd450Log2; break;
+        case DUSK_BUILTIN_FUNCTION_EXP: glsl_inst = GLSLstd450Exp; break;
+        case DUSK_BUILTIN_FUNCTION_EXP2: glsl_inst = GLSLstd450Exp2; break;
+
         case DUSK_BUILTIN_FUNCTION_SIN: glsl_inst = GLSLstd450Sin; break;
         case DUSK_BUILTIN_FUNCTION_COS: glsl_inst = GLSLstd450Cos; break;
         case DUSK_BUILTIN_FUNCTION_TAN: glsl_inst = GLSLstd450Tan; break;

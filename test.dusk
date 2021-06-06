@@ -101,6 +101,14 @@ fn fs_main([location(0)] in_pos: float3) [location(0)] float4 {
     let s: float2 = @sin(float2(123,123));
     s = @tan(s);
     s = @atanh(s);
+    s = @sqrt(s);
+    s = @inverseSqrt(s);
+    s = @log(s);
+    s = @fract(s);
+    s = @ceil(s);
+    s = @floor(s);
+    s = @trunc(s);
+    s = @exp2(s);
 
     let other: float3 = float3(1);
     other.x = 123;

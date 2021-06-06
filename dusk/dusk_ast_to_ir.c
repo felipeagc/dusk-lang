@@ -665,6 +665,20 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
 
     case DUSK_EXPR_BUILTIN_FUNCTION_CALL: {
         switch (expr->builtin_call.kind) {
+        case DUSK_BUILTIN_FUNCTION_RADIANS:
+        case DUSK_BUILTIN_FUNCTION_DEGREES:
+        case DUSK_BUILTIN_FUNCTION_ROUND:
+        case DUSK_BUILTIN_FUNCTION_TRUNC:
+        case DUSK_BUILTIN_FUNCTION_FLOOR:
+        case DUSK_BUILTIN_FUNCTION_CEIL:
+        case DUSK_BUILTIN_FUNCTION_FRACT:
+        case DUSK_BUILTIN_FUNCTION_SQRT:
+        case DUSK_BUILTIN_FUNCTION_INVERSE_SQRT:
+        case DUSK_BUILTIN_FUNCTION_LOG:
+        case DUSK_BUILTIN_FUNCTION_LOG2:
+        case DUSK_BUILTIN_FUNCTION_EXP:
+        case DUSK_BUILTIN_FUNCTION_EXP2:
+
         case DUSK_BUILTIN_FUNCTION_SIN:
         case DUSK_BUILTIN_FUNCTION_COS:
         case DUSK_BUILTIN_FUNCTION_TAN:
