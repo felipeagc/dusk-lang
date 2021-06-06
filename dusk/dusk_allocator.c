@@ -24,24 +24,21 @@ void *duskReallocate(DuskAllocator *allocator, void *ptr, size_t size)
 
 void duskFree(DuskAllocator *allocator, void *ptr)
 {
-    if (!allocator)
-    {
+    if (!allocator) {
         free(ptr);
         return;
     }
     allocator->free(allocator, ptr);
 }
 
-typedef struct DuskArenaChunk
-{
+typedef struct DuskArenaChunk {
     struct DuskArenaChunk *prev;
     uint8_t *data;
     size_t offset;
     size_t size;
 } DuskArenaChunk;
 
-struct DuskArena
-{
+struct DuskArena {
     DuskAllocator allocator;
     DuskAllocator *parent_allocator;
     DuskArenaChunk *last_chunk;
@@ -49,9 +46,11 @@ struct DuskArena
 
 #define ARENA_PTR_SIZE(ptr) *(((uint64_t *)ptr) - 1)
 
-static DuskArenaChunk *_duskArenaNewChunk(DuskArena *arena, DuskArenaChunk *prev, size_t size)
+static DuskArenaChunk *
+_duskArenaNewChunk(DuskArena *arena, DuskArenaChunk *prev, size_t size)
 {
-    DuskArenaChunk *chunk = (DuskArenaChunk *)duskAllocate(arena->parent_allocator, sizeof(*chunk));
+    DuskArenaChunk *chunk =
+        (DuskArenaChunk *)duskAllocate(arena->parent_allocator, sizeof(*chunk));
     memset(chunk, 0, sizeof(*chunk));
 
     chunk->prev = prev;
@@ -75,8 +74,7 @@ static void *_duskArenaAllocate(DuskAllocator *allocator, size_t size)
     size_t data_offset = new_offset;
     new_offset += size;
 
-    if (chunk->size <= new_offset)
-    {
+    if (chunk->size <= new_offset) {
         size_t new_chunk_size = chunk->size * 2;
         while (new_chunk_size <= (size + 16))
             new_chunk_size *= 2;
@@ -92,7 +90,8 @@ static void *_duskArenaAllocate(DuskAllocator *allocator, size_t size)
     return (void *)ptr;
 }
 
-static void *_duskArenaReallocate(DuskAllocator *allocator, void *ptr, size_t size)
+static void *
+_duskArenaReallocate(DuskAllocator *allocator, void *ptr, size_t size)
 {
     uint64_t old_size = ARENA_PTR_SIZE(ptr);
 
@@ -110,7 +109,8 @@ static void _duskArenaFree(DuskAllocator *allocator, void *ptr)
 
 DuskArena *duskArenaCreate(DuskAllocator *parent_allocator, size_t default_size)
 {
-    DuskArena *arena = (DuskArena *)duskAllocate(parent_allocator, sizeof(*arena));
+    DuskArena *arena =
+        (DuskArena *)duskAllocate(parent_allocator, sizeof(*arena));
     memset(arena, 0, sizeof(*arena));
 
     arena->allocator.allocate = _duskArenaAllocate;
@@ -131,8 +131,7 @@ DuskAllocator *duskArenaGetAllocator(DuskArena *arena)
 void duskArenaDestroy(DuskArena *arena)
 {
     DuskArenaChunk *chunk = arena->last_chunk;
-    while (chunk)
-    {
+    while (chunk) {
         duskFree(arena->parent_allocator, chunk->data);
         DuskArenaChunk *chunk_to_free = chunk;
         chunk = chunk->prev;
@@ -150,7 +149,8 @@ const char *duskStrdup(DuskAllocator *allocator, const char *str)
     return new_str;
 }
 
-const char *duskNullTerminate(DuskAllocator *allocator, const char *str, size_t length)
+const char *
+duskNullTerminate(DuskAllocator *allocator, const char *str, size_t length)
 {
 
     char *new_str = (char *)duskAllocate(allocator, length + 1);
@@ -160,7 +160,7 @@ const char *duskNullTerminate(DuskAllocator *allocator, const char *str, size_t 
 }
 
 DUSK_PRINTF_FORMATTING(2, 3)
-const char* duskSprintf(DuskAllocator *allocator, const char *format, ...)
+const char *duskSprintf(DuskAllocator *allocator, const char *format, ...)
 {
     va_list args;
 
@@ -168,29 +168,30 @@ const char* duskSprintf(DuskAllocator *allocator, const char *format, ...)
     size_t str_size = vsnprintf(NULL, 0, format, args) + 1;
     va_end(args);
 
-    char *str = (char*)duskAllocate(allocator, str_size);
+    char *str = (char *)duskAllocate(allocator, str_size);
 
     va_start(args, format);
     vsnprintf(str, str_size, format, args);
     va_end(args);
 
-    str[str_size-1] = '\0';
+    str[str_size - 1] = '\0';
 
     return str;
 }
 
-const char* duskVsprintf(DuskAllocator *allocator, const char *format, va_list args)
+const char *
+duskVsprintf(DuskAllocator *allocator, const char *format, va_list args)
 {
     va_list va1;
     va_copy(va1, args);
     size_t str_size = vsnprintf(NULL, 0, format, va1) + 1;
     va_end(va1);
 
-    char *str = (char*)duskAllocate(allocator, str_size);
+    char *str = (char *)duskAllocate(allocator, str_size);
 
     vsnprintf(str, str_size, format, args);
 
-    str[str_size-1] = '\0';
+    str[str_size - 1] = '\0';
 
     return str;
 }

@@ -160,10 +160,8 @@ uint8_t *duskCompile(
 {
     DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
 
-    if (setjmp(compiler->jump_buffer) != 0)
-    {
-        for (size_t i = 0; i < duskArrayLength(compiler->errors_arr); ++i)
-        {
+    if (setjmp(compiler->jump_buffer) != 0) {
+        for (size_t i = 0; i < duskArrayLength(compiler->errors_arr); ++i) {
             DuskError err = compiler->errors_arr[i];
             fprintf(
                 stderr,
@@ -189,8 +187,7 @@ uint8_t *duskCompile(
     duskParse(compiler, file);
 
     duskAnalyzeFile(compiler, file);
-    if (duskArrayLength(compiler->errors_arr) > 0)
-    {
+    if (duskArrayLength(compiler->errors_arr) > 0) {
         duskThrow(compiler);
     }
 

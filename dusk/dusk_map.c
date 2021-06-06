@@ -6,13 +6,12 @@ static void _duskMapGrow(DuskMap *map)
     DuskMapSlot *old_slots = map->slots;
 
     map->size = old_size * 2;
-    map->slots = (DuskMapSlot*)duskAllocate(map->allocator, sizeof(*map->slots) * map->size);
+    map->slots = (DuskMapSlot *)duskAllocate(
+        map->allocator, sizeof(*map->slots) * map->size);
     memset(map->slots, 0, sizeof(*map->slots) * map->size);
 
-    for (uint64_t i = 0; i < old_size; i++)
-    {
-        if (old_slots[i].hash != 0)
-        {
+    for (uint64_t i = 0; i < old_size; i++) {
+        if (old_slots[i].hash != 0) {
             duskMapSet(map, old_slots[i].key, old_slots[i].value);
         }
     }
@@ -35,7 +34,8 @@ DuskMap *duskMapCreate(DuskAllocator *allocator, size_t size)
     map->size |= map->size >> 32;
     map->size += 1;
 
-    map->slots = (DuskMapSlot*)duskAllocate(map->allocator, sizeof(*map->slots) * map->size);
+    map->slots = (DuskMapSlot *)duskAllocate(
+        map->allocator, sizeof(*map->slots) * map->size);
     memset(map->slots, 0, sizeof(*map->slots) * map->size);
 
     return map;
@@ -53,15 +53,14 @@ void duskMapSet(DuskMap *map, const char *key, void *value)
     uint64_t i = hash & (map->size - 1);
     uint64_t iters = 0;
 
-    while ((map->slots[i].hash != hash || strcmp(map->slots[i].key, key) != 0) &&
-           map->slots[i].hash != 0 && iters < map->size)
-    {
+    while (
+        (map->slots[i].hash != hash || strcmp(map->slots[i].key, key) != 0) &&
+        map->slots[i].hash != 0 && iters < map->size) {
         i = (i + 1) & (map->size - 1);
         iters++;
     }
 
-    if (iters >= map->size)
-    {
+    if (iters >= map->size) {
         _duskMapGrow(map);
         return duskMapSet(map, key, value);
     }
@@ -77,20 +76,18 @@ bool duskMapGet(DuskMap *map, const char *key, void **value_ptr)
     uint64_t i = hash & (map->size - 1);
     uint64_t iters = 0;
 
-    while ((map->slots[i].hash != hash || strcmp(map->slots[i].key, key) != 0) &&
-           map->slots[i].hash != 0 && iters < map->size)
-    {
+    while (
+        (map->slots[i].hash != hash || strcmp(map->slots[i].key, key) != 0) &&
+        map->slots[i].hash != 0 && iters < map->size) {
         i = (i + 1) & (map->size - 1);
         iters++;
     }
 
-    if (iters >= map->size)
-    {
+    if (iters >= map->size) {
         return false;
     }
 
-    if (map->slots[i].hash != 0)
-    {
+    if (map->slots[i].hash != 0) {
         if (value_ptr) *value_ptr = map->slots[i].value;
         return true;
     }
@@ -104,15 +101,14 @@ void duskMapRemove(DuskMap *map, const char *key)
     uint64_t i = hash & (map->size - 1);
     uint64_t iters = 0;
 
-    while ((map->slots[i].hash != hash || strcmp(map->slots[i].key, key) != 0) &&
-           map->slots[i].hash != 0 && iters < map->size)
-    {
+    while (
+        (map->slots[i].hash != hash || strcmp(map->slots[i].key, key) != 0) &&
+        map->slots[i].hash != 0 && iters < map->size) {
         i = (i + 1) & (map->size - 1);
         iters++;
     }
 
-    if (iters >= map->size)
-    {
+    if (iters >= map->size) {
         return;
     }
 

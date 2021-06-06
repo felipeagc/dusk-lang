@@ -7,14 +7,8 @@ ColumnLimit: 80
 IndentCaseLabels: false
 BreakBeforeBraces: Custom
 BraceWrapping:
-  AfterStruct: true
-  SplitEmptyFunction: true
   AfterFunction: true
-  AfterUnion: true
-  BeforeElse: true
-  AfterControlStatement: true
-  AfterEnum: false
-  AfterExternBlock: false
+  SplitEmptyFunction: true
 
 BinPackParameters: false
 BinPackArguments: false 

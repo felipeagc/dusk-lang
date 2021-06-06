@@ -4,8 +4,7 @@ const char *duskTypeToPrettyString(DuskAllocator *allocator, DuskType *type)
 {
     if (type->pretty_string) return type->pretty_string;
 
-    switch (type->kind)
-    {
+    switch (type->kind) {
     case DUSK_TYPE_VOID: {
         type->pretty_string = "void";
         break;
@@ -31,18 +30,13 @@ const char *duskTypeToPrettyString(DuskAllocator *allocator, DuskType *type)
         break;
     }
     case DUSK_TYPE_INT: {
-        if (type->int_.is_signed)
-        {
-            switch (type->int_.bits)
-            {
+        if (type->int_.is_signed) {
+            switch (type->int_.bits) {
             case 32: type->pretty_string = "int"; break;
             default: DUSK_ASSERT(0); break;
             }
-        }
-        else
-        {
-            switch (type->int_.bits)
-            {
+        } else {
+            switch (type->int_.bits) {
             case 32: type->pretty_string = "uint"; break;
             default: DUSK_ASSERT(0); break;
             }
@@ -50,8 +44,7 @@ const char *duskTypeToPrettyString(DuskAllocator *allocator, DuskType *type)
         break;
     }
     case DUSK_TYPE_FLOAT: {
-        switch (type->float_.bits)
-        {
+        switch (type->float_.bits) {
         case 32: type->pretty_string = "float"; break;
         case 64: type->pretty_string = "double"; break;
         default: DUSK_ASSERT(0); break;
@@ -92,18 +85,14 @@ const char *duskTypeToPrettyString(DuskAllocator *allocator, DuskType *type)
         break;
     }
     case DUSK_TYPE_STRUCT: {
-        if (type->struct_.name)
-        {
+        if (type->struct_.name) {
             type->pretty_string = type->struct_.name;
-        }
-        else
-        {
+        } else {
             DuskStringBuilder *sb = duskStringBuilderCreate(NULL, 0);
 
             duskStringBuilderAppend(sb, "struct{");
 
-            for (size_t i = 0; i < type->struct_.field_count; ++i)
-            {
+            for (size_t i = 0; i < type->struct_.field_count; ++i) {
                 if (i > 0) duskStringBuilderAppend(sb, ", ");
 
                 DuskType *field_type = type->struct_.field_types[i];
@@ -124,8 +113,7 @@ const char *duskTypeToPrettyString(DuskAllocator *allocator, DuskType *type)
 
         duskStringBuilderAppend(sb, "fn (");
 
-        for (size_t i = 0; i < type->function.param_type_count; ++i)
-        {
+        for (size_t i = 0; i < type->function.param_type_count; ++i) {
             if (i > 0) duskStringBuilderAppend(sb, ", ");
 
             DuskType *field_type = type->function.param_types[i];
@@ -155,8 +143,7 @@ const char *duskTypeToPrettyString(DuskAllocator *allocator, DuskType *type)
     }
     case DUSK_TYPE_SAMPLED_IMAGE: {
         const char *image_str = "";
-        switch (type->sampled_image.image_type->image.dim)
-        {
+        switch (type->sampled_image.image_type->image.dim) {
         case DUSK_IMAGE_DIMENSION_1D: image_str = "@SampledImage1D"; break;
         case DUSK_IMAGE_DIMENSION_2D: image_str = "@SampledImage2D"; break;
         case DUSK_IMAGE_DIMENSION_3D: image_str = "@SampledImage3D"; break;
@@ -171,8 +158,7 @@ const char *duskTypeToPrettyString(DuskAllocator *allocator, DuskType *type)
     }
     case DUSK_TYPE_IMAGE: {
         const char *image_str = "";
-        switch (type->image.dim)
-        {
+        switch (type->image.dim) {
         case DUSK_IMAGE_DIMENSION_1D: image_str = "@Image1D"; break;
         case DUSK_IMAGE_DIMENSION_2D: {
             if (type->image.arrayed)
@@ -208,8 +194,7 @@ const char *duskTypeToString(DuskAllocator *allocator, DuskType *type)
 {
     if (type->string) return type->string;
 
-    switch (type->kind)
-    {
+    switch (type->kind) {
     case DUSK_TYPE_VOID: {
         type->string = "@void";
         break;
@@ -235,12 +220,9 @@ const char *duskTypeToString(DuskAllocator *allocator, DuskType *type)
         break;
     }
     case DUSK_TYPE_INT: {
-        if (type->int_.is_signed)
-        {
+        if (type->int_.is_signed) {
             type->string = duskSprintf(allocator, "@int%u", type->int_.bits);
-        }
-        else
-        {
+        } else {
             type->string = duskSprintf(allocator, "@uint%u", type->int_.bits);
         }
         break;
@@ -267,8 +249,7 @@ const char *duskTypeToString(DuskAllocator *allocator, DuskType *type)
 
         const char *layout_str = "";
 
-        switch (type->array.layout)
-        {
+        switch (type->array.layout) {
         case DUSK_STRUCT_LAYOUT_STD140: layout_str = "std140"; break;
         case DUSK_STRUCT_LAYOUT_STD430: layout_str = "std430"; break;
         case DUSK_STRUCT_LAYOUT_UNKNOWN: layout_str = "unknown"; break;
@@ -283,8 +264,7 @@ const char *duskTypeToString(DuskAllocator *allocator, DuskType *type)
 
         const char *layout_str = "";
 
-        switch (type->array.layout)
-        {
+        switch (type->array.layout) {
         case DUSK_STRUCT_LAYOUT_STD140: layout_str = "std140"; break;
         case DUSK_STRUCT_LAYOUT_STD430: layout_str = "std430"; break;
         case DUSK_STRUCT_LAYOUT_UNKNOWN: layout_str = "unknown"; break;
@@ -299,19 +279,15 @@ const char *duskTypeToString(DuskAllocator *allocator, DuskType *type)
         break;
     }
     case DUSK_TYPE_STRUCT: {
-        if (type->struct_.name)
-        {
+        if (type->struct_.name) {
             type->string =
                 duskSprintf(allocator, "@named_struct(%s)", type->struct_.name);
-        }
-        else
-        {
+        } else {
             DuskStringBuilder *sb = duskStringBuilderCreate(NULL, 0);
 
             duskStringBuilderAppend(sb, "@struct[");
 
-            switch (type->struct_.layout)
-            {
+            switch (type->struct_.layout) {
             case DUSK_STRUCT_LAYOUT_STD140:
                 duskStringBuilderAppend(sb, "std140");
                 break;
@@ -325,8 +301,7 @@ const char *duskTypeToString(DuskAllocator *allocator, DuskType *type)
 
             duskStringBuilderAppend(sb, "](");
 
-            for (size_t i = 0; i < type->struct_.field_count; ++i)
-            {
+            for (size_t i = 0; i < type->struct_.field_count; ++i) {
                 if (i > 0) duskStringBuilderAppend(sb, ",");
 
                 DuskType *field_type = type->struct_.field_types[i];
@@ -347,8 +322,7 @@ const char *duskTypeToString(DuskAllocator *allocator, DuskType *type)
 
         duskStringBuilderAppend(sb, "@fn((");
 
-        for (size_t i = 0; i < type->function.param_type_count; ++i)
-        {
+        for (size_t i = 0; i < type->function.param_type_count; ++i) {
             if (i > 0) duskStringBuilderAppend(sb, ",");
 
             DuskType *field_type = type->function.param_types[i];
@@ -372,8 +346,7 @@ const char *duskTypeToString(DuskAllocator *allocator, DuskType *type)
         const char *storage_class = "default";
         const char *sub_str = duskTypeToString(allocator, type->pointer.sub);
 
-        switch (type->pointer.storage_class)
-        {
+        switch (type->pointer.storage_class) {
         case DUSK_STORAGE_CLASS_UNIFORM: storage_class = "uniform"; break;
         case DUSK_STORAGE_CLASS_UNIFORM_CONSTANT:
             storage_class = "uniform_constant";
@@ -429,8 +402,7 @@ static DuskType *duskTypeGetCached(DuskCompiler *compiler, DuskType *type)
     const char *type_str = duskTypeToString(allocator, type);
 
     DuskType *existing_type = NULL;
-    if (duskMapGet(compiler->type_cache, type_str, (void **)&existing_type))
-    {
+    if (duskMapGet(compiler->type_cache, type_str, (void **)&existing_type)) {
         DUSK_ASSERT(existing_type != NULL);
         return existing_type;
     }
@@ -445,8 +417,7 @@ static DuskType *duskTypeGetCached(DuskCompiler *compiler, DuskType *type)
 
 bool duskTypeIsRuntime(DuskType *type)
 {
-    switch (type->kind)
-    {
+    switch (type->kind) {
     case DUSK_TYPE_FUNCTION:
     case DUSK_TYPE_TYPE:
     case DUSK_TYPE_STRING:
@@ -471,8 +442,7 @@ DuskType *duskTypeNewScalar(DuskCompiler *compiler, DuskScalarType scalar_type)
     DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
     DuskType *type = DUSK_NEW(allocator, DuskType);
 
-    switch (scalar_type)
-    {
+    switch (scalar_type) {
     case DUSK_SCALAR_TYPE_INT: {
         type->kind = DUSK_TYPE_INT;
         type->int_.is_signed = true;
@@ -566,8 +536,7 @@ DuskType *duskTypeNewStruct(
     type->struct_.field_attribute_arrays = field_attribute_arrays;
 
     type->struct_.index_map = duskMapCreate(allocator, field_count);
-    for (uintptr_t i = 0; i < field_count; ++i)
-    {
+    for (uintptr_t i = 0; i < field_count; ++i) {
         duskMapSet(type->struct_.index_map, field_names[i], (void *)i);
     }
 
@@ -590,8 +559,7 @@ DuskType *duskTypeNewFunction(
     type->function.param_type_count = param_type_count;
     type->function.param_types =
         DUSK_NEW_ARRAY(allocator, DuskType *, param_type_count);
-    if (param_type_count > 0)
-    {
+    if (param_type_count > 0) {
         memcpy(
             type->function.param_types,
             param_types,
@@ -647,8 +615,7 @@ void duskTypeMarkNotDead(DuskType *type)
     DUSK_ASSERT(type);
     type->emit = true;
 
-    switch (type->kind)
-    {
+    switch (type->kind) {
     case DUSK_TYPE_POINTER: {
         duskTypeMarkNotDead(type->pointer.sub);
         break;
@@ -667,16 +634,15 @@ void duskTypeMarkNotDead(DuskType *type)
         break;
     }
     case DUSK_TYPE_STRUCT: {
-        for (size_t i = 0; i < type->struct_.field_count; ++i)
-        {
+        for (size_t i = 0; i < type->struct_.field_count; ++i) {
             duskTypeMarkNotDead(type->struct_.field_types[i]);
         }
         break;
     }
     case DUSK_TYPE_FUNCTION: {
         duskTypeMarkNotDead(type->function.return_type);
-        for (size_t i = 0; i < duskArrayLength(type->function.param_types); ++i)
-        {
+        for (size_t i = 0; i < duskArrayLength(type->function.param_types);
+             ++i) {
             duskTypeMarkNotDead(type->function.param_types[i]);
         }
         break;

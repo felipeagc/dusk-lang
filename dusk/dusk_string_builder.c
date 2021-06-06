@@ -1,7 +1,6 @@
 #include "dusk_internal.h"
 
-struct DuskStringBuilder
-{
+struct DuskStringBuilder {
     DuskAllocator *allocator;
     DuskArray(char) arr;
 };
@@ -15,8 +14,7 @@ duskStringBuilderCreate(DuskAllocator *allocator, size_t initial_length)
         .arr = duskArrayCreate(allocator, char),
     };
 
-    if (initial_length == 0)
-    {
+    if (initial_length == 0) {
         initial_length = 1 << 13;
     }
     duskArrayEnsure(&sb->arr, initial_length);
@@ -33,22 +31,22 @@ void duskStringBuilderDestroy(DuskStringBuilder *sb)
 void duskStringBuilderAppend(DuskStringBuilder *sb, const char *str)
 {
     char c;
-    while ((c = *str))
-    {
+    while ((c = *str)) {
         duskArrayPush(&sb->arr, c);
         ++str;
     }
 }
 
-void duskStringBuilderAppendLen(DuskStringBuilder *sb, const char *str, size_t length)
+void duskStringBuilderAppendLen(
+    DuskStringBuilder *sb, const char *str, size_t length)
 {
-    for (const char *s = str; s != str + length; ++s)
-    {
+    for (const char *s = str; s != str + length; ++s) {
         duskArrayPush(&sb->arr, *s);
     }
 }
 
-void duskStringBuilderAppendFormat(DuskStringBuilder *sb, const char *format, ...)
+void duskStringBuilderAppendFormat(
+    DuskStringBuilder *sb, const char *format, ...)
 {
     va_list args;
     va_start(args, format);
@@ -60,9 +58,11 @@ void duskStringBuilderAppendFormat(DuskStringBuilder *sb, const char *format, ..
     duskFree(sb->allocator, (void *)string);
 }
 
-const char *duskStringBuilderBuild(DuskStringBuilder *sb, DuskAllocator *allocator)
+const char *
+duskStringBuilderBuild(DuskStringBuilder *sb, DuskAllocator *allocator)
 {
-    char *new_str = (char *)duskAllocate(allocator, duskArrayLength(sb->arr) + 1);
+    char *new_str =
+        (char *)duskAllocate(allocator, duskArrayLength(sb->arr) + 1);
     memcpy(new_str, sb->arr, duskArrayLength(sb->arr));
     new_str[duskArrayLength(sb->arr)] = '\0';
     return new_str;

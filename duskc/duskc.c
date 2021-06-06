@@ -38,10 +38,8 @@ int main(int argc, char *argv[])
     struct optparse options;
 
     optparse_init(&options, argv);
-    while ((option = optparse_long(&options, longopts, NULL)) != -1)
-    {
-        switch (option)
-        {
+    while ((option = optparse_long(&options, longopts, NULL)) != -1) {
+        switch (option) {
         case 'o': {
             if (!options.optarg) {
                 printf("wtf\n");
@@ -60,13 +58,11 @@ int main(int argc, char *argv[])
     }
 
     char *arg;
-    while ((arg = optparse_arg(&options)))
-    {
+    while ((arg = optparse_arg(&options))) {
         in_path = arg;
     }
 
-    if (!in_path)
-    {
+    if (!in_path) {
         fprintf(stderr, "Usage: %s [-o <output path>] <filename>\n", argv[0]);
         exit(EXIT_FAILURE);
     }
@@ -77,17 +73,16 @@ int main(int argc, char *argv[])
     const char *text = loadFile(in_path, &text_size);
 
     size_t spirv_size = 0;
-    uint8_t *spirv = duskCompile(compiler, in_path, text, text_size, &spirv_size);
+    uint8_t *spirv =
+        duskCompile(compiler, in_path, text, text_size, &spirv_size);
 
-    if (!spirv)
-    {
+    if (!spirv) {
         fprintf(stderr, "Compilation failed!\n");
         exit(1);
     }
 
     FILE *f = fopen(out_path ? out_path : "a.spv", "wb");
-    if (!f)
-    {
+    if (!f) {
         fprintf(stderr, "Failed to open output file\n");
         exit(1);
     }
@@ -97,8 +92,7 @@ int main(int argc, char *argv[])
     fclose(f);
 
     duskCompilerDestroy(compiler);
-    if (out_path)
-    {
+    if (out_path) {
         free(out_path);
     }
 

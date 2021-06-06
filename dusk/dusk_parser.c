@@ -3,8 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef struct TokenizerState
-{
+typedef struct TokenizerState {
     DuskFile *file;
     size_t pos;
     size_t line;
@@ -13,8 +12,7 @@ typedef struct TokenizerState
 
 static const char *tokenTypeToString(DuskTokenType token_type)
 {
-    switch (token_type)
-    {
+    switch (token_type) {
     case DUSK_TOKEN_ERROR: return "<error>";
 
     case DUSK_TOKEN_IDENT: return "identifier";
@@ -135,8 +133,7 @@ static const char *tokenTypeToString(DuskTokenType token_type)
 static const char *
 tokenToString(DuskAllocator *allocator, const DuskToken *token)
 {
-    switch (token->type)
-    {
+    switch (token->type) {
     case DUSK_TOKEN_ERROR: return "<error>";
 
     case DUSK_TOKEN_IDENT:
@@ -311,19 +308,15 @@ begin:
     *token = (DuskToken){0};
 
     // Skip whitespace
-    for (size_t i = state.pos; i < state.file->text_length; ++i)
-    {
-        if (isWhitespace(state.file->text[i]))
-        {
+    for (size_t i = state.pos; i < state.file->text_length; ++i) {
+        if (isWhitespace(state.file->text[i])) {
             state.pos++;
             state.col++;
-            if (state.file->text[i] == '\n')
-            {
+            if (state.file->text[i] == '\n') {
                 state.line++;
                 state.col = 1;
             }
-        }
-        else
+        } else
             break;
     }
 
@@ -333,15 +326,13 @@ begin:
     token->location.length = 1;
     token->location.file = state.file;
 
-    if (tokenizerLengthLeft(state, 0) <= 0)
-    {
+    if (tokenizerLengthLeft(state, 0) <= 0) {
         token->type = DUSK_TOKEN_EOF;
         return state;
     }
 
     char c = state.file->text[state.pos];
-    switch (c)
-    {
+    switch (c) {
     case '\"': {
         // String
         state.pos++;
@@ -350,20 +341,16 @@ begin:
 
         size_t content_length = 0;
         while (tokenizerLengthLeft(state, content_length) > 0 &&
-               state.file->text[state.pos + content_length] != '\"')
-        {
+               state.file->text[state.pos + content_length] != '\"') {
             content_length++;
         }
 
         state.pos += content_length;
 
         if (tokenizerLengthLeft(state, 0) > 0 &&
-            state.file->text[state.pos] == '\"')
-        {
+            state.file->text[state.pos] == '\"') {
             state.pos++;
-        }
-        else
-        {
+        } else {
             token->type = DUSK_TOKEN_ERROR;
             token->str = duskStrdup(allocator, "unclosed string");
             break;
@@ -404,8 +391,7 @@ begin:
         state.pos++;
         token->type = DUSK_TOKEN_ASSIGN;
         if (tokenizerLengthLeft(state, 0) > 0 &&
-            state.file->text[state.pos] == '=')
-        {
+            state.file->text[state.pos] == '=') {
             state.pos++;
             token->type = DUSK_TOKEN_EQ;
         }
@@ -415,10 +401,8 @@ begin:
     case '+': {
         state.pos++;
         token->type = DUSK_TOKEN_ADD;
-        if (tokenizerLengthLeft(state, 0) > 0)
-        {
-            switch (state.file->text[state.pos])
-            {
+        if (tokenizerLengthLeft(state, 0) > 0) {
+            switch (state.file->text[state.pos]) {
             case '=':
                 state.pos++;
                 token->type = DUSK_TOKEN_ADD_ASSIGN;
@@ -436,10 +420,8 @@ begin:
     case '-': {
         state.pos++;
         token->type = DUSK_TOKEN_SUB;
-        if (tokenizerLengthLeft(state, 0) > 0)
-        {
-            switch (state.file->text[state.pos])
-            {
+        if (tokenizerLengthLeft(state, 0) > 0) {
+            switch (state.file->text[state.pos]) {
             case '=':
                 state.pos++;
                 token->type = DUSK_TOKEN_SUB_ASSIGN;
@@ -458,8 +440,7 @@ begin:
         state.pos++;
         token->type = DUSK_TOKEN_MUL;
         if (tokenizerLengthLeft(state, 0) > 0 &&
-            state.file->text[state.pos] == '=')
-        {
+            state.file->text[state.pos] == '=') {
             state.pos++;
             token->type = DUSK_TOKEN_MUL_ASSIGN;
         }
@@ -469,10 +450,8 @@ begin:
     case '/': {
         state.pos++;
         token->type = DUSK_TOKEN_DIV;
-        if (tokenizerLengthLeft(state, 0) > 0)
-        {
-            switch (state.file->text[state.pos])
-            {
+        if (tokenizerLengthLeft(state, 0) > 0) {
+            switch (state.file->text[state.pos]) {
             case '=':
                 state.pos++;
                 token->type = DUSK_TOKEN_DIV_ASSIGN;
@@ -480,8 +459,7 @@ begin:
             case '/':
                 state.pos++;
                 while (tokenizerLengthLeft(state, 0) > 0 &&
-                       state.file->text[state.pos] != '\n')
-                {
+                       state.file->text[state.pos] != '\n') {
                     state.pos++;
                 }
                 goto begin;
@@ -496,8 +474,7 @@ begin:
         state.pos++;
         token->type = DUSK_TOKEN_MOD;
         if (tokenizerLengthLeft(state, 0) > 0 &&
-            state.file->text[state.pos] == '=')
-        {
+            state.file->text[state.pos] == '=') {
             state.pos++;
             token->type = DUSK_TOKEN_MOD_ASSIGN;
         }
@@ -507,10 +484,8 @@ begin:
     case '|': {
         state.pos++;
         token->type = DUSK_TOKEN_BITOR;
-        if (tokenizerLengthLeft(state, 0) > 0)
-        {
-            switch (state.file->text[state.pos])
-            {
+        if (tokenizerLengthLeft(state, 0) > 0) {
+            switch (state.file->text[state.pos]) {
             case '=':
                 state.pos++;
                 token->type = DUSK_TOKEN_BITOR_ASSIGN;
@@ -528,10 +503,8 @@ begin:
     case '&': {
         state.pos++;
         token->type = DUSK_TOKEN_BITAND;
-        if (tokenizerLengthLeft(state, 0) > 0)
-        {
-            switch (state.file->text[state.pos])
-            {
+        if (tokenizerLengthLeft(state, 0) > 0) {
+            switch (state.file->text[state.pos]) {
             case '=':
                 state.pos++;
                 token->type = DUSK_TOKEN_BITAND_ASSIGN;
@@ -550,8 +523,7 @@ begin:
         state.pos++;
         token->type = DUSK_TOKEN_BITXOR;
         if (tokenizerLengthLeft(state, 0) > 0 &&
-            state.file->text[state.pos] == '=')
-        {
+            state.file->text[state.pos] == '=') {
             state.pos++;
             token->type = DUSK_TOKEN_BITXOR_ASSIGN;
         }
@@ -562,8 +534,7 @@ begin:
         state.pos++;
         token->type = DUSK_TOKEN_BITNOT;
         if (tokenizerLengthLeft(state, 0) > 0 &&
-            state.file->text[state.pos] == '=')
-        {
+            state.file->text[state.pos] == '=') {
             state.pos++;
             token->type = DUSK_TOKEN_BITNOT_ASSIGN;
         }
@@ -574,8 +545,7 @@ begin:
         state.pos++;
         token->type = DUSK_TOKEN_NOT;
         if (tokenizerLengthLeft(state, 0) > 0 &&
-            state.file->text[state.pos] == '=')
-        {
+            state.file->text[state.pos] == '=') {
             state.pos++;
             token->type = DUSK_TOKEN_NOTEQ;
         }
@@ -585,10 +555,8 @@ begin:
     case '<': {
         state.pos++;
         token->type = DUSK_TOKEN_LESS;
-        if (tokenizerLengthLeft(state, 0) > 0)
-        {
-            switch (state.file->text[state.pos])
-            {
+        if (tokenizerLengthLeft(state, 0) > 0) {
+            switch (state.file->text[state.pos]) {
             case '=':
                 state.pos++;
                 token->type = DUSK_TOKEN_LESSEQ;
@@ -597,8 +565,7 @@ begin:
                 state.pos++;
                 token->type = DUSK_TOKEN_LSHIFT;
                 if (tokenizerLengthLeft(state, 0) > 0 &&
-                    state.file->text[state.pos] == '=')
-                {
+                    state.file->text[state.pos] == '=') {
                     token->type = DUSK_TOKEN_LSHIFT_ASSIGN;
                 }
                 break;
@@ -611,10 +578,8 @@ begin:
     case '>': {
         state.pos++;
         token->type = DUSK_TOKEN_GREATER;
-        if (tokenizerLengthLeft(state, 0) > 0)
-        {
-            switch (state.file->text[state.pos])
-            {
+        if (tokenizerLengthLeft(state, 0) > 0) {
+            switch (state.file->text[state.pos]) {
             case '=':
                 state.pos++;
                 token->type = DUSK_TOKEN_GREATEREQ;
@@ -623,8 +588,7 @@ begin:
                 state.pos++;
                 token->type = DUSK_TOKEN_RSHIFT;
                 if (tokenizerLengthLeft(state, 0) > 0 &&
-                    state.file->text[state.pos] == '=')
-                {
+                    state.file->text[state.pos] == '=') {
                     token->type = DUSK_TOKEN_RSHIFT_ASSIGN;
                 }
                 break;
@@ -656,13 +620,11 @@ begin:
         break;
 
     default: {
-        if (isAlpha(c))
-        {
+        if (isAlpha(c)) {
             // Identifier
             size_t ident_length = 0;
             while (tokenizerLengthLeft(state, ident_length) > 0 &&
-                   isAlphaNum(state.file->text[state.pos + ident_length]))
-            {
+                   isAlphaNum(state.file->text[state.pos + ident_length])) {
                 ident_length++;
             }
 
@@ -674,27 +636,21 @@ begin:
 
             uintptr_t token_type = 0;
             if (duskMapGet(
-                    compiler->keyword_map, ident_zstr, (void **)&token_type))
-            {
+                    compiler->keyword_map, ident_zstr, (void **)&token_type)) {
                 token->type = (DuskTokenType)token_type;
-            }
-            else
-            {
+            } else {
                 token->type = DUSK_TOKEN_IDENT;
                 token->str =
                     duskNullTerminate(allocator, ident_start, ident_length);
             }
 
             state.pos += ident_length;
-        }
-        else if (c == '@' && isAlpha(state.file->text[state.pos + 1]))
-        {
+        } else if (c == '@' && isAlpha(state.file->text[state.pos + 1])) {
             // Builtin Identifier
             state.pos++;
             size_t ident_length = 0;
             while (tokenizerLengthLeft(state, ident_length) > 0 &&
-                   isAlphaNum(state.file->text[state.pos + ident_length]))
-            {
+                   isAlphaNum(state.file->text[state.pos + ident_length])) {
                 ident_length++;
             }
 
@@ -704,21 +660,17 @@ begin:
             token->str =
                 duskNullTerminate(allocator, ident_start, ident_length);
             state.pos += ident_length;
-        }
-        else if (isNum(c))
-        {
+        } else if (isNum(c)) {
             if (tokenizerLengthLeft(state, 0) >= 3 &&
                 state.file->text[state.pos] == '0' &&
                 state.file->text[state.pos + 1] == 'x' &&
-                isHex(state.file->text[state.pos + 2]))
-            {
+                isHex(state.file->text[state.pos + 2])) {
                 token->type = DUSK_TOKEN_INT_LITERAL;
                 state.pos += 2;
 
                 size_t number_length = 0;
                 while (tokenizerLengthLeft(state, number_length) > 0 &&
-                       isHex(state.file->text[state.pos + number_length]))
-                {
+                       isHex(state.file->text[state.pos + number_length])) {
                     number_length++;
                 }
 
@@ -726,34 +678,28 @@ begin:
                     allocator, &state.file->text[state.pos], number_length);
                 state.pos += number_length;
                 token->int_ = strtol(int_str, NULL, 16);
-            }
-            else
-            {
+            } else {
                 token->type = DUSK_TOKEN_INT_LITERAL;
 
                 size_t number_length = 0;
                 while (tokenizerLengthLeft(state, number_length) > 0 &&
-                       isNum(state.file->text[state.pos + number_length]))
-                {
+                       isNum(state.file->text[state.pos + number_length])) {
                     number_length++;
                 }
 
                 if (tokenizerLengthLeft(state, number_length) > 1 &&
                     state.file->text[state.pos + number_length] == '.' &&
-                    isNum(state.file->text[state.pos + number_length + 1]))
-                {
+                    isNum(state.file->text[state.pos + number_length + 1])) {
                     token->type = DUSK_TOKEN_FLOAT_LITERAL;
                     number_length++;
                 }
 
                 while (tokenizerLengthLeft(state, number_length) > 0 &&
-                       isNum(state.file->text[state.pos + number_length]))
-                {
+                       isNum(state.file->text[state.pos + number_length])) {
                     number_length++;
                 }
 
-                switch (token->type)
-                {
+                switch (token->type) {
                 case DUSK_TOKEN_INT_LITERAL: {
                     const char *int_str = duskNullTerminate(
                         allocator, &state.file->text[state.pos], number_length);
@@ -771,9 +717,7 @@ begin:
 
                 state.pos += number_length;
             }
-        }
-        else
-        {
+        } else {
             token->type = DUSK_TOKEN_ERROR;
             token->str = duskSprintf(
                 allocator, "unknown token: '%c'", state.file->text[state.pos]);
@@ -796,8 +740,7 @@ static DuskToken consumeToken(
 
     DuskToken token = {0};
     *state = tokenizerNextToken(compiler, *state, &token);
-    if (token.type != token_type)
-    {
+    if (token.type != token_type) {
         duskAddError(
             compiler,
             token.location,
@@ -820,51 +763,32 @@ static void parseAttributes(
 
     DuskToken next_token = {0};
     tokenizerNextToken(compiler, *state, &next_token);
-    while (next_token.type == DUSK_TOKEN_LBRACKET)
-    {
+    while (next_token.type == DUSK_TOKEN_LBRACKET) {
         consumeToken(compiler, state, DUSK_TOKEN_LBRACKET);
 
         tokenizerNextToken(compiler, *state, &next_token);
-        while (next_token.type != DUSK_TOKEN_RBRACKET)
-        {
+        while (next_token.type != DUSK_TOKEN_RBRACKET) {
             DuskToken attrib_name_token =
                 consumeToken(compiler, state, DUSK_TOKEN_IDENT);
 
             DuskAttribute attrib = {0};
-            if (strcmp(attrib_name_token.str, "location") == 0)
-            {
+            if (strcmp(attrib_name_token.str, "location") == 0) {
                 attrib.kind = DUSK_ATTRIBUTE_LOCATION;
-            }
-            else if (strcmp(attrib_name_token.str, "set") == 0)
-            {
+            } else if (strcmp(attrib_name_token.str, "set") == 0) {
                 attrib.kind = DUSK_ATTRIBUTE_SET;
-            }
-            else if (strcmp(attrib_name_token.str, "binding") == 0)
-            {
+            } else if (strcmp(attrib_name_token.str, "binding") == 0) {
                 attrib.kind = DUSK_ATTRIBUTE_BINDING;
-            }
-            else if (strcmp(attrib_name_token.str, "stage") == 0)
-            {
+            } else if (strcmp(attrib_name_token.str, "stage") == 0) {
                 attrib.kind = DUSK_ATTRIBUTE_STAGE;
-            }
-            else if (strcmp(attrib_name_token.str, "builtin") == 0)
-            {
+            } else if (strcmp(attrib_name_token.str, "builtin") == 0) {
                 attrib.kind = DUSK_ATTRIBUTE_BUILTIN;
-            }
-            else if (strcmp(attrib_name_token.str, "uniform") == 0)
-            {
+            } else if (strcmp(attrib_name_token.str, "uniform") == 0) {
                 attrib.kind = DUSK_ATTRIBUTE_UNIFORM;
-            }
-            else if (strcmp(attrib_name_token.str, "storage") == 0)
-            {
+            } else if (strcmp(attrib_name_token.str, "storage") == 0) {
                 attrib.kind = DUSK_ATTRIBUTE_STORAGE;
-            }
-            else if (strcmp(attrib_name_token.str, "push_constant") == 0)
-            {
+            } else if (strcmp(attrib_name_token.str, "push_constant") == 0) {
                 attrib.kind = DUSK_ATTRIBUTE_PUSH_CONSTANT;
-            }
-            else if (strcmp(attrib_name_token.str, "offset") == 0)
-            {
+            } else if (strcmp(attrib_name_token.str, "offset") == 0) {
                 attrib.kind = DUSK_ATTRIBUTE_OFFSET;
             }
             attrib.name = attrib_name_token.str;
@@ -872,18 +796,15 @@ static void parseAttributes(
                 duskArrayCreate(allocator, DuskExpr *);
 
             tokenizerNextToken(compiler, *state, &next_token);
-            if (next_token.type == DUSK_TOKEN_LPAREN)
-            {
+            if (next_token.type == DUSK_TOKEN_LPAREN) {
                 consumeToken(compiler, state, DUSK_TOKEN_LPAREN);
 
-                while (next_token.type != DUSK_TOKEN_RPAREN)
-                {
+                while (next_token.type != DUSK_TOKEN_RPAREN) {
                     DuskExpr *value_expr = parseExpr(compiler, state);
                     duskArrayPush(&value_exprs, value_expr);
 
                     tokenizerNextToken(compiler, *state, &next_token);
-                    if (next_token.type != DUSK_TOKEN_RPAREN)
-                    {
+                    if (next_token.type != DUSK_TOKEN_RPAREN) {
                         consumeToken(compiler, state, DUSK_TOKEN_COMMA);
                     }
 
@@ -894,8 +815,7 @@ static void parseAttributes(
             }
 
             tokenizerNextToken(compiler, *state, &next_token);
-            if (next_token.type != DUSK_TOKEN_RBRACKET)
-            {
+            if (next_token.type != DUSK_TOKEN_RBRACKET) {
                 consumeToken(compiler, state, DUSK_TOKEN_COMMA);
                 tokenizerNextToken(compiler, *state, &next_token);
             }
@@ -927,8 +847,7 @@ static DuskExpr *parsePrimaryExpr(DuskCompiler *compiler, TokenizerState *state)
     *state = tokenizerNextToken(compiler, *state, &token);
     expr->location = token.location;
 
-    switch (token.type)
-    {
+    switch (token.type) {
     case DUSK_TOKEN_VOID: {
         expr->kind = DUSK_EXPR_VOID_TYPE;
         break;
@@ -1108,8 +1027,7 @@ static DuskExpr *parsePrimaryExpr(DuskCompiler *compiler, TokenizerState *state)
         expr->kind = DUSK_EXPR_RUNTIME_ARRAY_TYPE;
 
         tokenizerNextToken(compiler, *state, &token);
-        if (token.type != DUSK_TOKEN_RBRACKET)
-        {
+        if (token.type != DUSK_TOKEN_RBRACKET) {
             expr->kind = DUSK_EXPR_ARRAY_TYPE;
             expr->array_type.size_expr = parseExpr(compiler, state);
         }
@@ -1132,21 +1050,15 @@ static DuskExpr *parsePrimaryExpr(DuskCompiler *compiler, TokenizerState *state)
 
         DuskToken next_token = {0};
         tokenizerNextToken(compiler, *state, &next_token);
-        if (next_token.type == DUSK_TOKEN_LPAREN)
-        {
+        if (next_token.type == DUSK_TOKEN_LPAREN) {
             consumeToken(compiler, state, DUSK_TOKEN_LPAREN);
             DuskToken layout_ident =
                 consumeToken(compiler, state, DUSK_TOKEN_IDENT);
-            if (strcmp(layout_ident.str, "std140") == 0)
-            {
+            if (strcmp(layout_ident.str, "std140") == 0) {
                 expr->struct_type.layout = DUSK_STRUCT_LAYOUT_STD140;
-            }
-            else if (strcmp(layout_ident.str, "std430") == 0)
-            {
+            } else if (strcmp(layout_ident.str, "std430") == 0) {
                 expr->struct_type.layout = DUSK_STRUCT_LAYOUT_STD430;
-            }
-            else
-            {
+            } else {
                 duskAddError(
                     compiler,
                     layout_ident.location,
@@ -1159,8 +1071,7 @@ static DuskExpr *parsePrimaryExpr(DuskCompiler *compiler, TokenizerState *state)
         consumeToken(compiler, state, DUSK_TOKEN_LCURLY);
 
         tokenizerNextToken(compiler, *state, &next_token);
-        while (next_token.type != DUSK_TOKEN_RCURLY)
-        {
+        while (next_token.type != DUSK_TOKEN_RCURLY) {
             DuskArray(DuskAttribute) field_attributes =
                 duskArrayCreate(allocator, DuskAttribute);
             parseAttributes(compiler, state, &field_attributes);
@@ -1176,8 +1087,7 @@ static DuskExpr *parsePrimaryExpr(DuskCompiler *compiler, TokenizerState *state)
             duskArrayPush(&field_attribute_arrays, field_attributes);
 
             tokenizerNextToken(compiler, *state, &next_token);
-            if (next_token.type != DUSK_TOKEN_RCURLY)
-            {
+            if (next_token.type != DUSK_TOKEN_RCURLY) {
                 consumeToken(compiler, state, DUSK_TOKEN_COMMA);
                 tokenizerNextToken(compiler, *state, &next_token);
             }
@@ -1218,12 +1128,9 @@ static DuskExpr *parsePrimaryExpr(DuskCompiler *compiler, TokenizerState *state)
         if (duskMapGet(
                 compiler->builtin_function_map,
                 token.str,
-                (void **)&builtin_function_type))
-        {
+                (void **)&builtin_function_type)) {
             expr->builtin_call.kind = builtin_function_type;
-        }
-        else
-        {
+        } else {
             duskAddError(
                 compiler,
                 token.location,
@@ -1236,14 +1143,12 @@ static DuskExpr *parsePrimaryExpr(DuskCompiler *compiler, TokenizerState *state)
 
         DuskToken next_token = {0};
         tokenizerNextToken(compiler, *state, &next_token);
-        while (next_token.type != DUSK_TOKEN_RPAREN)
-        {
+        while (next_token.type != DUSK_TOKEN_RPAREN) {
             DuskExpr *param_expr = parseExpr(compiler, state);
             duskArrayPush(&expr->builtin_call.params_arr, param_expr);
 
             tokenizerNextToken(compiler, *state, &next_token);
-            if (next_token.type != DUSK_TOKEN_RPAREN)
-            {
+            if (next_token.type != DUSK_TOKEN_RPAREN) {
                 consumeToken(compiler, state, DUSK_TOKEN_COMMA);
                 tokenizerNextToken(compiler, *state, &next_token);
             }
@@ -1277,11 +1182,9 @@ static DuskExpr *parseAccessExpr(DuskCompiler *compiler, TokenizerState *state)
     TokenizerState next_state =
         tokenizerNextToken(compiler, *state, &next_token);
 
-    if (next_token.type == DUSK_TOKEN_DOT)
-    {
+    if (next_token.type == DUSK_TOKEN_DOT) {
         tokenizerNextToken(compiler, next_state, &next_token);
-        if (next_token.type == DUSK_TOKEN_LCURLY)
-        {
+        if (next_token.type == DUSK_TOKEN_LCURLY) {
             // Struct literal
             consumeToken(compiler, state, DUSK_TOKEN_DOT);
             consumeToken(compiler, state, DUSK_TOKEN_LCURLY);
@@ -1297,8 +1200,7 @@ static DuskExpr *parseAccessExpr(DuskCompiler *compiler, TokenizerState *state)
                 duskArrayCreate(allocator, DuskExpr *);
 
             tokenizerNextToken(compiler, *state, &next_token);
-            while (next_token.type != DUSK_TOKEN_RCURLY)
-            {
+            while (next_token.type != DUSK_TOKEN_RCURLY) {
                 DuskToken ident_token =
                     consumeToken(compiler, state, DUSK_TOKEN_IDENT);
                 consumeToken(compiler, state, DUSK_TOKEN_COLON);
@@ -1310,17 +1212,14 @@ static DuskExpr *parseAccessExpr(DuskCompiler *compiler, TokenizerState *state)
                     &expr->struct_literal.field_values_arr, field_value_expr);
 
                 tokenizerNextToken(compiler, *state, &next_token);
-                if (next_token.type != DUSK_TOKEN_RCURLY)
-                {
+                if (next_token.type != DUSK_TOKEN_RCURLY) {
                     consumeToken(compiler, state, DUSK_TOKEN_COMMA);
                     tokenizerNextToken(compiler, *state, &next_token);
                 }
             }
 
             consumeToken(compiler, state, DUSK_TOKEN_RCURLY);
-        }
-        else
-        {
+        } else {
             // Access expr
             DuskExpr *base_expr = expr;
             expr = DUSK_NEW(allocator, DuskExpr);
@@ -1330,8 +1229,7 @@ static DuskExpr *parseAccessExpr(DuskCompiler *compiler, TokenizerState *state)
             expr->access.chain_arr = duskArrayCreate(allocator, DuskExpr *);
 
             tokenizerNextToken(compiler, *state, &next_token);
-            while (next_token.type == DUSK_TOKEN_DOT)
-            {
+            while (next_token.type == DUSK_TOKEN_DOT) {
                 consumeToken(compiler, state, DUSK_TOKEN_DOT);
 
                 DuskToken ident_token =
@@ -1363,8 +1261,7 @@ parseFunctionCallExpr(DuskCompiler *compiler, TokenizerState *state)
     DuskToken next_token = {0};
     tokenizerNextToken(compiler, *state, &next_token);
 
-    if (next_token.type == DUSK_TOKEN_LPAREN)
-    {
+    if (next_token.type == DUSK_TOKEN_LPAREN) {
         DuskExpr *func_expr = expr;
         expr = DUSK_NEW(allocator, DuskExpr);
         expr->location = func_expr->location;
@@ -1375,14 +1272,12 @@ parseFunctionCallExpr(DuskCompiler *compiler, TokenizerState *state)
         consumeToken(compiler, state, DUSK_TOKEN_LPAREN);
 
         tokenizerNextToken(compiler, *state, &next_token);
-        while (next_token.type != DUSK_TOKEN_RPAREN)
-        {
+        while (next_token.type != DUSK_TOKEN_RPAREN) {
             DuskExpr *param_expr = parseExpr(compiler, state);
             duskArrayPush(&expr->function_call.params_arr, param_expr);
 
             tokenizerNextToken(compiler, *state, &next_token);
-            if (next_token.type != DUSK_TOKEN_RPAREN)
-            {
+            if (next_token.type != DUSK_TOKEN_RPAREN) {
                 consumeToken(compiler, state, DUSK_TOKEN_COMMA);
                 tokenizerNextToken(compiler, *state, &next_token);
             }
@@ -1409,8 +1304,7 @@ static DuskStmt *parseStmt(DuskCompiler *compiler, TokenizerState *state)
     tokenizerNextToken(compiler, *state, &next_token);
     stmt->location = next_token.location;
 
-    switch (next_token.type)
-    {
+    switch (next_token.type) {
     case DUSK_TOKEN_LET: {
         consumeToken(compiler, state, DUSK_TOKEN_LET);
 
@@ -1424,8 +1318,7 @@ static DuskStmt *parseStmt(DuskCompiler *compiler, TokenizerState *state)
         DuskExpr *type_expr = parseExpr(compiler, state);
 
         tokenizerNextToken(compiler, *state, &next_token);
-        if (next_token.type == DUSK_TOKEN_ASSIGN)
-        {
+        if (next_token.type == DUSK_TOKEN_ASSIGN) {
             consumeToken(compiler, state, DUSK_TOKEN_ASSIGN);
             value_expr = parseExpr(compiler, state);
         }
@@ -1451,8 +1344,7 @@ static DuskStmt *parseStmt(DuskCompiler *compiler, TokenizerState *state)
         consumeToken(compiler, state, DUSK_TOKEN_LCURLY);
 
         tokenizerNextToken(compiler, *state, &next_token);
-        while (next_token.type != DUSK_TOKEN_RCURLY)
-        {
+        while (next_token.type != DUSK_TOKEN_RCURLY) {
             DuskStmt *sub_stmt = parseStmt(compiler, state);
             duskArrayPush(&stmt->block.stmts_arr, sub_stmt);
 
@@ -1470,8 +1362,7 @@ static DuskStmt *parseStmt(DuskCompiler *compiler, TokenizerState *state)
         consumeToken(compiler, state, DUSK_TOKEN_RETURN);
 
         tokenizerNextToken(compiler, *state, &next_token);
-        if (next_token.type != DUSK_TOKEN_SEMICOLON)
-        {
+        if (next_token.type != DUSK_TOKEN_SEMICOLON) {
             stmt->return_.expr = parseExpr(compiler, state);
         }
 
@@ -1490,8 +1381,7 @@ static DuskStmt *parseStmt(DuskCompiler *compiler, TokenizerState *state)
         DuskExpr *expr = parseExpr(compiler, state);
 
         tokenizerNextToken(compiler, *state, &next_token);
-        switch (next_token.type)
-        {
+        switch (next_token.type) {
         case DUSK_TOKEN_ASSIGN: {
             consumeToken(compiler, state, DUSK_TOKEN_ASSIGN);
 
@@ -1531,8 +1421,7 @@ parseTopLevelDecl(DuskCompiler *compiler, TokenizerState *state)
     DuskToken next_token = {0};
     tokenizerNextToken(compiler, *state, &next_token);
     decl->location = next_token.location;
-    switch (next_token.type)
-    {
+    switch (next_token.type) {
     case DUSK_TOKEN_FN: {
         consumeToken(compiler, state, DUSK_TOKEN_FN);
 
@@ -1548,8 +1437,7 @@ parseTopLevelDecl(DuskCompiler *compiler, TokenizerState *state)
 
         DuskToken next_token = {0};
         tokenizerNextToken(compiler, *state, &next_token);
-        while (next_token.type != DUSK_TOKEN_RPAREN)
-        {
+        while (next_token.type != DUSK_TOKEN_RPAREN) {
             DuskArray(DuskAttribute) param_attributes =
                 duskArrayCreate(allocator, DuskAttribute);
             parseAttributes(compiler, state, &param_attributes);
@@ -1572,8 +1460,7 @@ parseTopLevelDecl(DuskCompiler *compiler, TokenizerState *state)
             duskArrayPush(&decl->function.parameter_decls_arr, param_decl);
 
             tokenizerNextToken(compiler, *state, &next_token);
-            if (next_token.type != DUSK_TOKEN_RPAREN)
-            {
+            if (next_token.type != DUSK_TOKEN_RPAREN) {
                 consumeToken(compiler, state, DUSK_TOKEN_COMMA);
                 tokenizerNextToken(compiler, *state, &next_token);
             }
@@ -1591,8 +1478,7 @@ parseTopLevelDecl(DuskCompiler *compiler, TokenizerState *state)
         consumeToken(compiler, state, DUSK_TOKEN_LCURLY);
 
         tokenizerNextToken(compiler, *state, &next_token);
-        while (next_token.type != DUSK_TOKEN_RCURLY)
-        {
+        while (next_token.type != DUSK_TOKEN_RCURLY) {
             DuskStmt *stmt = parseStmt(compiler, state);
             duskArrayPush(&decl->function.stmts_arr, stmt);
 
@@ -1664,19 +1550,16 @@ void duskParse(DuskCompiler *compiler, DuskFile *file)
 {
     TokenizerState state = tokenizerCreate(file);
 
-    while (1)
-    {
+    while (1) {
         DuskToken token = {0};
         tokenizerNextToken(compiler, state, &token);
-        if (token.type == DUSK_TOKEN_ERROR)
-        {
+        if (token.type == DUSK_TOKEN_ERROR) {
             duskAddError(
                 compiler, token.location, "unexpected token: %s", token.str);
             duskThrow(compiler);
         }
 
-        if (token.type == DUSK_TOKEN_EOF)
-        {
+        if (token.type == DUSK_TOKEN_EOF) {
             break;
         }
 

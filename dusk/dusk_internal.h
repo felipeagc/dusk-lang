@@ -31,10 +31,8 @@
 #define DUSK_STR(a) #a
 
 #define DUSK_ASSERT(value)                                                     \
-    do                                                                         \
-    {                                                                          \
-        if (!(value))                                                          \
-        {                                                                      \
+    do {                                                                       \
+        if (!(value)) {                                                        \
             fprintf(                                                           \
                 stderr,                                                        \
                 "Dusk assertion failed: '%s' at %s:%d\n",                      \
@@ -56,8 +54,7 @@
 // Allocator {{{
 typedef struct DuskAllocator DuskAllocator;
 
-struct DuskAllocator
-{
+struct DuskAllocator {
     void *(*allocate)(DuskAllocator *allocator, size_t size);
     void *(*reallocate)(DuskAllocator *allocator, void *ptr, size_t size);
     void (*free)(DuskAllocator *allocator, void *ptr);
@@ -152,8 +149,7 @@ static inline void _duskArrayEnsure(void **arr_ptr, size_t wanted_capacity)
     DuskAllocator *allocator = duskArrayAllocator(arr);
     size_t array_capacity = duskArrayCapacity(arr);
 
-    if (wanted_capacity > array_capacity)
-    {
+    if (wanted_capacity > array_capacity) {
         array_capacity *= 2;
         if (array_capacity < wanted_capacity) array_capacity = wanted_capacity;
 
@@ -173,23 +169,20 @@ static inline void _duskArrayEnsure(void **arr_ptr, size_t wanted_capacity)
 static inline uint64_t duskStringMapHash(const char *string)
 {
     uint64_t hash = 14695981039346656037ULL;
-    while (*string)
-    {
+    while (*string) {
         hash = ((hash)*1099511628211) ^ (*string);
         ++string;
     }
     return hash;
 }
 
-typedef struct DuskMapSlot
-{
+typedef struct DuskMapSlot {
     const char *key;
     uint64_t hash;
     void *value;
 } DuskMapSlot;
 
-typedef struct DuskMap
-{
+typedef struct DuskMap {
     DuskAllocator *allocator;
     DuskMapSlot *slots;
     uint64_t size;
@@ -229,8 +222,7 @@ typedef struct DuskExpr DuskExpr;
 
 typedef struct DuskIRValue DuskIRValue;
 
-typedef struct DuskLocation
-{
+typedef struct DuskLocation {
     DuskFile *file;
     size_t offset;
     size_t length;
@@ -272,13 +264,11 @@ typedef enum DuskScopeOwnerType {
     DUSK_SCOPE_OWNER_TYPE_VARIABLE,
 } DuskScopeOwnerType;
 
-typedef struct DuskScope
-{
+typedef struct DuskScope {
     DuskScopeOwnerType type;
     struct DuskScope *parent;
     DuskMap *map;
-    union
-    {
+    union {
         DuskDecl *decl;
         DuskExpr *expr;
         DuskStmt *stmt;
@@ -305,8 +295,7 @@ typedef enum DuskIRDecorationKind {
     DUSK_IR_DECORATION_ARRAY_STRIDE,
 } DuskIRDecorationKind;
 
-typedef struct DuskIRDecoration
-{
+typedef struct DuskIRDecoration {
     DuskIRDecorationKind kind;
     uint32_t *literals;
     size_t literal_count;
@@ -325,8 +314,7 @@ typedef enum DuskAttributeKind {
     DUSK_ATTRIBUTE_OFFSET,
 } DuskAttributeKind;
 
-typedef struct DuskAttribute
-{
+typedef struct DuskAttribute {
     DuskAttributeKind kind;
     const char *name;
     size_t value_expr_count;
@@ -369,8 +357,7 @@ typedef enum DuskTypeKind {
 
 typedef struct DuskType DuskType;
 
-struct DuskType
-{
+struct DuskType {
     DuskTypeKind kind;
     uint32_t id;
     bool emit; // This flag is set before SPIRV emission in order to emit the
@@ -379,36 +366,29 @@ struct DuskType
     const char *pretty_string;
     DuskArray(DuskIRDecoration) decorations_arr;
 
-    union
-    {
-        struct
-        {
+    union {
+        struct {
             uint32_t bits;
             bool is_signed;
         } int_;
-        struct
-        {
+        struct {
             uint32_t bits;
         } float_;
-        struct
-        {
+        struct {
             DuskType *sub;
             uint32_t size;
         } vector;
-        struct
-        {
+        struct {
             DuskType *col_type;
             uint32_t cols;
         } matrix;
-        struct
-        {
+        struct {
             DuskType *sub;
             size_t size;
             DuskIRValue *size_ir_value;
             DuskStructLayout layout;
         } array;
-        struct
-        {
+        struct {
             const char *name;
             size_t field_count;
             DuskType **field_types;
@@ -418,19 +398,16 @@ struct DuskType
             DuskMap *index_map;
             DuskStructLayout layout;
         } struct_;
-        struct
-        {
+        struct {
             DuskType *return_type;
             size_t param_type_count;
             DuskType **param_types;
         } function;
-        struct
-        {
+        struct {
             DuskType *sub;
             DuskStorageClass storage_class;
         } pointer;
-        struct
-        {
+        struct {
             DuskType *sampled_type;
             DuskImageDimension dim;
             uint32_t depth;
@@ -438,8 +415,7 @@ struct DuskType
             uint32_t multisampled;
             uint32_t sampled;
         } image;
-        struct
-        {
+        struct {
             DuskType *image_type;
         } sampled_image;
     };
@@ -501,8 +477,7 @@ void duskTypeMarkNotDead(DuskType *type);
 // }}}
 
 // IR {{{
-typedef struct DuskIREntryPoint
-{
+typedef struct DuskIREntryPoint {
     DuskShaderStage stage;
     const char *name;
     DuskIRValue *function;
@@ -529,8 +504,7 @@ typedef enum DuskIRValueKind {
     DUSK_IR_VALUE_CAST,
 } DuskIRValueKind;
 
-struct DuskIRValue
-{
+struct DuskIRValue {
     uint32_t id;
     DuskIRValueKind kind;
     const char *name;
@@ -539,83 +513,66 @@ struct DuskIRValue
     bool emitted;
     DuskArray(DuskIRDecoration) decorations_arr;
 
-    union
-    {
-        struct
-        {
+    union {
+        struct {
             bool value;
         } const_bool;
-        struct
-        {
+        struct {
             uint32_t *value_words;
             size_t value_word_count;
         } constant;
-        struct
-        {
+        struct {
             DuskArray(DuskIRValue *) values_arr;
         } constant_composite;
-        struct
-        {
+        struct {
             const char *name;
             DuskArray(DuskIRValue *) params_arr;
             DuskArray(DuskIRValue *) variables_arr;
             DuskArray(DuskIRValue *) blocks_arr;
         } function;
-        struct
-        {
+        struct {
             DuskStorageClass storage_class;
         } var;
-        struct
-        {
+        struct {
             DuskArray(DuskIRValue *) insts_arr;
         } block;
-        struct
-        {
+        struct {
             DuskIRValue *value;
         } return_;
-        struct
-        {
+        struct {
             DuskIRValue *pointer;
             DuskIRValue *value;
         } store;
-        struct
-        {
+        struct {
             DuskIRValue *pointer;
         } load;
-        struct
-        {
+        struct {
             DuskIRValue *function;
             DuskArray(DuskIRValue *) params_arr;
         } function_call;
-        struct
-        {
+        struct {
             DuskIRValue *base;
             DuskArray(DuskIRValue *) indices_arr;
         } access_chain;
-        struct
-        {
+        struct {
             DuskIRValue *composite;
             DuskArray(uint32_t) indices_arr;
         } composite_extract;
-        struct
-        {
+        struct {
             DuskIRValue *vec1;
             DuskIRValue *vec2;
             DuskArray(uint32_t) indices_arr;
         } vector_shuffle;
-        struct
-        {
+        struct {
             DuskArray(DuskIRValue *) values_arr;
         } composite_construct;
-        struct
-        {
+        struct {
             DuskIRValue *value;
         } cast;
     };
 };
 
-typedef struct DuskIRModule
-{
+typedef struct DuskIRModule {
     DuskCompiler *compiler;
     DuskAllocator *allocator;
     DuskArray(uint32_t) stream_arr;
@@ -835,23 +792,19 @@ typedef enum {
     DUSK_TOKEN_EOF,
 } DuskTokenType;
 
-typedef struct
-{
+typedef struct {
     DuskTokenType type;
     DuskLocation location;
-    union
-    {
+    union {
         const char *str;
         int64_t int_;
         double float_;
         DuskScalarType scalar_type;
-        struct
-        {
+        struct {
             DuskScalarType scalar_type;
             uint32_t length;
         } vector_type;
-        struct
-        {
+        struct {
             DuskScalarType scalar_type;
             uint32_t rows;
             uint32_t cols;
@@ -859,7 +812,6 @@ typedef struct
     };
 } DuskToken;
 // }}}
-
 
 // AST {{{
 typedef enum DuskBuiltinFunctionKind {
@@ -886,8 +838,7 @@ typedef enum DuskDeclKind {
     DUSK_DECL_EXTENSION,
 } DuskDeclKind;
 
-struct DuskDecl
-{
+struct DuskDecl {
     DuskDeclKind kind;
     DuskLocation location;
     const char *name;
@@ -895,10 +846,8 @@ struct DuskDecl
     DuskType *type;
     DuskIRValue *ir_value;
 
-    union
-    {
-        struct
-        {
+    union {
+        struct {
             bool is_entry_point;
             DuskShaderStage entry_point_stage;
             DuskArray(DuskIRValue *) entry_point_inputs_arr;
@@ -914,19 +863,16 @@ struct DuskDecl
 
             DuskArray(DuskStmt *) stmts_arr;
         } function;
-        struct
-        {
+        struct {
             DuskScope *scope;
             DuskExpr *type_expr;
             DuskExpr *value_expr;
             DuskStorageClass storage_class;
         } var;
-        struct
-        {
+        struct {
             DuskExpr *type_expr;
         } typedef_;
-        struct
-        {
+        struct {
             const char *name;
         } extension;
     };
@@ -941,27 +887,22 @@ typedef enum DuskStmtKind {
     DUSK_STMT_DISCARD,
 } DuskStmtKind;
 
-struct DuskStmt
-{
+struct DuskStmt {
     DuskStmtKind kind;
     DuskLocation location;
 
-    union
-    {
+    union {
         DuskDecl *decl;
         DuskExpr *expr;
-        struct
-        {
+        struct {
             DuskExpr *assigned_expr;
             DuskExpr *value_expr;
         } assign;
-        struct
-        {
+        struct {
             DuskArray(DuskStmt *) stmts_arr;
             DuskScope *scope;
         } block;
-        struct
-        {
+        struct {
             DuskExpr *expr;
         } return_;
     };
@@ -987,8 +928,7 @@ typedef enum DuskExprKind {
     DUSK_EXPR_ACCESS,
 } DuskExprKind;
 
-struct DuskExpr
-{
+struct DuskExpr {
     DuskExprKind kind;
     DuskLocation location;
     DuskType *type;
@@ -996,16 +936,13 @@ struct DuskExpr
     DuskIRValue *ir_value;
     int64_t *resolved_int; // To be filled after semantic analysis
 
-    union
-    {
+    union {
         DuskScalarType scalar_type;
-        struct
-        {
+        struct {
             DuskScalarType scalar_type;
             uint32_t length;
         } vector_type;
-        struct
-        {
+        struct {
             DuskScalarType scalar_type;
             uint32_t cols;
             uint32_t rows;
@@ -1013,24 +950,20 @@ struct DuskExpr
         int64_t int_literal;
         double float_literal;
         bool bool_literal;
-        struct
-        {
+        struct {
             DuskExpr *type_expr;
             DuskArray(const char *) field_names_arr;
             DuskArray(DuskExpr *) field_values_arr;
         } struct_literal;
-        struct
-        {
+        struct {
             const char *str;
             DuskDecl *decl;
             DuskArray(uint32_t) shuffle_indices_arr;
         } identifier;
-        struct
-        {
+        struct {
             const char *str;
         } string;
-        struct
-        {
+        struct {
             DuskStructLayout layout;
             const char *name;
             size_t field_count;
@@ -1038,23 +971,19 @@ struct DuskExpr
             DuskExpr **field_type_exprs;
             DuskArray(DuskAttribute) * field_attribute_arrays;
         } struct_type;
-        struct
-        {
+        struct {
             DuskExpr *sub_expr;
             DuskExpr *size_expr;
         } array_type;
-        struct
-        {
+        struct {
             DuskExpr *func_expr;
             DuskArray(DuskExpr *) params_arr;
         } function_call;
-        struct
-        {
+        struct {
             DuskBuiltinFunctionKind kind;
             DuskArray(DuskExpr *) params_arr;
         } builtin_call;
-        struct
-        {
+        struct {
             DuskExpr *base_expr;
             DuskArray(DuskExpr *) chain_arr;
         } access;
@@ -1063,8 +992,7 @@ struct DuskExpr
 // }}}
 
 // Compiler {{{
-struct DuskFile
-{
+struct DuskFile {
     const char *path;
 
     const char *text;
@@ -1074,14 +1002,12 @@ struct DuskFile
     DuskArray(DuskDecl *) decls_arr;
 };
 
-typedef struct DuskError
-{
+typedef struct DuskError {
     DuskLocation location;
     const char *message;
 } DuskError;
 
-typedef struct DuskCompiler
-{
+typedef struct DuskCompiler {
     DuskArena *main_arena;
     DuskArray(DuskError) errors_arr;
     DuskMap *type_cache;

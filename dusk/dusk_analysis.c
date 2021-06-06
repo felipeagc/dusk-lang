@@ -16,8 +16,7 @@ static size_t DUSK_BUILTIN_FUNCTION_PARAM_COUNTS[DUSK_BUILTIN_FUNCTION_MAX] = {
     [DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_SAMPLER_TYPE] = 1,
 };
 
-typedef struct DuskAnalyzerState
-{
+typedef struct DuskAnalyzerState {
     DuskArray(DuskScope *) scope_stack_arr;
     DuskArray(DuskStmt *) break_stack_arr;
     DuskArray(DuskStmt *) continue_stack_arr;
@@ -44,13 +43,10 @@ DuskScope *duskScopeCreate(
         .map = map,
         .parent = parent,
     };
-    if (type != DUSK_SCOPE_OWNER_TYPE_NONE)
-    {
+    if (type != DUSK_SCOPE_OWNER_TYPE_NONE) {
         DUSK_ASSERT(owner != NULL);
         memcpy(&owner, &scope->owner, sizeof(void *));
-    }
-    else
-    {
+    } else {
         DUSK_ASSERT(owner == NULL);
     }
     return scope;
@@ -61,8 +57,7 @@ DuskDecl *duskScopeLookupLocal(DuskScope *scope, const char *name)
     DUSK_ASSERT(scope != NULL);
 
     DuskDecl *decl = NULL;
-    if (duskMapGet(scope->map, name, (void **)&decl))
-    {
+    if (duskMapGet(scope->map, name, (void **)&decl)) {
         DUSK_ASSERT(decl != NULL);
         return decl;
     }
@@ -75,8 +70,7 @@ DuskDecl *duskScopeLookup(DuskScope *scope, const char *name)
     DuskDecl *decl = duskScopeLookupLocal(scope, name);
     if (decl) return decl;
 
-    if (scope->parent)
-    {
+    if (scope->parent) {
         DuskDecl *decl = duskScopeLookup(scope->parent, name);
         if (decl) return decl;
     }
@@ -100,13 +94,11 @@ static void duskConcretizeExprType(DuskExpr *expr, DuskType *expected_type)
 {
     if (!expr->type) return;
 
-    switch (expr->kind)
-    {
+    switch (expr->kind) {
     case DUSK_EXPR_INT_LITERAL: {
         if (expr->type->kind == DUSK_TYPE_UNTYPED_INT &&
             (expected_type->kind == DUSK_TYPE_INT ||
-             expected_type->kind == DUSK_TYPE_FLOAT))
-        {
+             expected_type->kind == DUSK_TYPE_FLOAT)) {
 
             expr->type = expected_type;
         }
@@ -114,8 +106,7 @@ static void duskConcretizeExprType(DuskExpr *expr, DuskType *expected_type)
     }
     case DUSK_EXPR_FLOAT_LITERAL: {
         if (expr->type->kind == DUSK_TYPE_UNTYPED_FLOAT &&
-            expected_type->kind == DUSK_TYPE_FLOAT)
-        {
+            expected_type->kind == DUSK_TYPE_FLOAT) {
             expr->type = expected_type;
         }
         break;
@@ -128,8 +119,7 @@ static void duskConcretizeExprType(DuskExpr *expr, DuskType *expected_type)
 static bool duskExprResolveInteger(
     DuskAnalyzerState *state, DuskExpr *expr, int64_t *out_int)
 {
-    switch (expr->kind)
-    {
+    switch (expr->kind) {
     case DUSK_EXPR_INT_LITERAL: {
         *out_int = expr->int_literal;
         return true;
@@ -137,13 +127,11 @@ static bool duskExprResolveInteger(
     case DUSK_EXPR_IDENT: {
         DuskDecl *ident_decl =
             duskScopeLookup(duskCurrentScope(state), expr->identifier.str);
-        if (!ident_decl)
-        {
+        if (!ident_decl) {
             return false;
         }
 
-        switch (ident_decl->kind)
-        {
+        switch (ident_decl->kind) {
         // TODO: add resolve integer for constants
         default: return false;
         }
@@ -175,18 +163,15 @@ static bool duskExprResolveInteger(
 
 static bool duskIsExprAssignable(DuskAnalyzerState *state, DuskExpr *expr)
 {
-    switch (expr->kind)
-    {
+    switch (expr->kind) {
     case DUSK_EXPR_IDENT: {
         DuskScope *scope = duskCurrentScope(state);
 
         DuskDecl *decl = duskScopeLookup(scope, expr->identifier.str);
         if (!decl) return false;
 
-        if (decl->kind == DUSK_DECL_VAR)
-        {
-            switch (decl->var.storage_class)
-            {
+        if (decl->kind == DUSK_DECL_VAR) {
+            switch (decl->var.storage_class) {
             case DUSK_STORAGE_CLASS_FUNCTION:
             case DUSK_STORAGE_CLASS_INPUT:
             case DUSK_STORAGE_CLASS_OUTPUT:
@@ -213,8 +198,7 @@ static bool duskIsExprAssignable(DuskAnalyzerState *state, DuskExpr *expr)
 
 static const char *duskGetAttributeName(DuskAttributeKind kind)
 {
-    switch (kind)
-    {
+    switch (kind) {
     case DUSK_ATTRIBUTE_BINDING: return "binding";
     case DUSK_ATTRIBUTE_SET: return "set";
     case DUSK_ATTRIBUTE_BUILTIN: return "builtin";
@@ -243,11 +227,9 @@ static void duskCheckGlobalVariableAttributes(
     DuskAttribute *uniform_attribute = NULL;
     DuskAttribute *storage_attribute = NULL;
 
-    for (size_t i = 0; i < duskArrayLength(attributes_arr); ++i)
-    {
+    for (size_t i = 0; i < duskArrayLength(attributes_arr); ++i) {
         DuskAttribute *attribute = &attributes_arr[i];
-        switch (attribute->kind)
-        {
+        switch (attribute->kind) {
         case DUSK_ATTRIBUTE_SET: set_attribute = attribute; break;
         case DUSK_ATTRIBUTE_BINDING: binding_attribute = attribute; break;
         case DUSK_ATTRIBUTE_PUSH_CONSTANT:
@@ -266,21 +248,16 @@ static void duskCheckGlobalVariableAttributes(
         }
     }
 
-    if (set_attribute)
-    {
-        if (set_attribute->value_expr_count != 1)
-        {
+    if (set_attribute) {
+        if (set_attribute->value_expr_count != 1) {
             duskAddError(
                 compiler,
                 var_decl->location,
                 "'set' attribute requires 1 parameter");
-        }
-        else
-        {
+        } else {
             int64_t resolved_int;
             if (!duskExprResolveInteger(
-                    state, set_attribute->value_exprs[0], &resolved_int))
-            {
+                    state, set_attribute->value_exprs[0], &resolved_int)) {
                 duskAddError(
                     compiler,
                     var_decl->location,
@@ -289,21 +266,16 @@ static void duskCheckGlobalVariableAttributes(
         }
     }
 
-    if (binding_attribute)
-    {
-        if (binding_attribute->value_expr_count != 1)
-        {
+    if (binding_attribute) {
+        if (binding_attribute->value_expr_count != 1) {
             duskAddError(
                 compiler,
                 var_decl->location,
                 "'binding' attribute requires exactly 1 parameter");
-        }
-        else
-        {
+        } else {
             int64_t resolved_int;
             if (!duskExprResolveInteger(
-                    state, binding_attribute->value_exprs[0], &resolved_int))
-            {
+                    state, binding_attribute->value_exprs[0], &resolved_int)) {
                 duskAddError(
                     compiler,
                     var_decl->location,
@@ -312,10 +284,8 @@ static void duskCheckGlobalVariableAttributes(
         }
     }
 
-    if (push_constant_attribute)
-    {
-        if (push_constant_attribute->value_expr_count != 0)
-        {
+    if (push_constant_attribute) {
+        if (push_constant_attribute->value_expr_count != 0) {
             duskAddError(
                 compiler,
                 var_decl->location,
@@ -323,8 +293,7 @@ static void duskCheckGlobalVariableAttributes(
         }
     }
 
-    if (!set_attribute && !binding_attribute && !push_constant_attribute)
-    {
+    if (!set_attribute && !binding_attribute && !push_constant_attribute) {
         duskAddError(
             compiler,
             var_decl->location,
@@ -332,8 +301,7 @@ static void duskCheckGlobalVariableAttributes(
             "or a 'push_constant' attribute");
     }
 
-    if ((set_attribute || binding_attribute) && push_constant_attribute)
-    {
+    if ((set_attribute || binding_attribute) && push_constant_attribute) {
         duskAddError(
             compiler,
             var_decl->location,
@@ -342,16 +310,14 @@ static void duskCheckGlobalVariableAttributes(
     }
 
     if (!push_constant_attribute && ((set_attribute || binding_attribute) &&
-                                     !(set_attribute && binding_attribute)))
-    {
+                                     !(set_attribute && binding_attribute))) {
         duskAddError(
             compiler,
             var_decl->location,
             "global variable needs both 'set' and 'binding' attributes");
     }
 
-    if (uniform_attribute && storage_attribute)
-    {
+    if (uniform_attribute && storage_attribute) {
         duskAddError(
             compiler,
             var_decl->location,
@@ -369,11 +335,9 @@ static void duskCheckEntryPointInterfaceAttributes(
     DuskAttribute *location_attribute = NULL;
     DuskAttribute *builtin_attribute = NULL;
 
-    for (size_t i = 0; i < duskArrayLength(attributes_arr); ++i)
-    {
+    for (size_t i = 0; i < duskArrayLength(attributes_arr); ++i) {
         DuskAttribute *attribute = &attributes_arr[i];
-        switch (attribute->kind)
-        {
+        switch (attribute->kind) {
         case DUSK_ATTRIBUTE_LOCATION: location_attribute = attribute; break;
         case DUSK_ATTRIBUTE_BUILTIN: builtin_attribute = attribute; break;
         default: {
@@ -387,60 +351,44 @@ static void duskCheckEntryPointInterfaceAttributes(
         }
     }
 
-    if (location_attribute && builtin_attribute)
-    {
+    if (location_attribute && builtin_attribute) {
         duskAddError(
             compiler,
             location,
             "entry point interface needs either a location or builtin "
             "attribute, not both");
-    }
-    else if (location_attribute)
-    {
-        if (location_attribute->value_expr_count != 1)
-        {
+    } else if (location_attribute) {
+        if (location_attribute->value_expr_count != 1) {
             duskAddError(
                 compiler,
                 location,
                 "'location' attribute requires exactly 1 parameter");
-        }
-        else
-        {
+        } else {
             int64_t resolved_int;
             if (!duskExprResolveInteger(
-                    state, location_attribute->value_exprs[0], &resolved_int))
-            {
+                    state, location_attribute->value_exprs[0], &resolved_int)) {
                 duskAddError(
                     compiler,
                     location,
                     "'location' attribute requires an integer parameter");
             }
         }
-    }
-    else if (builtin_attribute)
-    {
-        if (builtin_attribute->value_expr_count != 1)
-        {
+    } else if (builtin_attribute) {
+        if (builtin_attribute->value_expr_count != 1) {
             duskAddError(
                 compiler,
                 location,
                 "'builtin' attribute requires exactly 1 parameter");
-        }
-        else if (builtin_attribute->value_exprs[0]->kind != DUSK_EXPR_IDENT)
-        {
+        } else if (builtin_attribute->value_exprs[0]->kind != DUSK_EXPR_IDENT) {
             duskAddError(
                 compiler,
                 location,
                 "builtin attribute needs a builtin name identifier as a "
                 "parameter");
-        }
-        else
-        {
+        } else {
             // TODO: check if provided builtin identifier is valid
         }
-    }
-    else
-    {
+    } else {
         duskAddError(
             compiler,
             location,
@@ -458,8 +406,7 @@ static void duskAnalyzeExpr(
 {
     DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
 
-    switch (expr->kind)
-    {
+    switch (expr->kind) {
     case DUSK_EXPR_VOID_TYPE: {
         expr->type = duskTypeNewBasic(compiler, DUSK_TYPE_TYPE);
         expr->as_type = duskTypeNewBasic(compiler, DUSK_TYPE_VOID);
@@ -475,24 +422,18 @@ static void duskAnalyzeExpr(
         break;
     }
     case DUSK_EXPR_FLOAT_LITERAL: {
-        if (expected_type && expected_type->kind == DUSK_TYPE_FLOAT)
-        {
+        if (expected_type && expected_type->kind == DUSK_TYPE_FLOAT) {
             expr->type = expected_type;
-        }
-        else
-        {
+        } else {
             expr->type = duskTypeNewBasic(compiler, DUSK_TYPE_UNTYPED_FLOAT);
         }
         break;
     }
     case DUSK_EXPR_INT_LITERAL: {
         if (expected_type && (expected_type->kind == DUSK_TYPE_INT ||
-                              expected_type->kind == DUSK_TYPE_FLOAT))
-        {
+                              expected_type->kind == DUSK_TYPE_FLOAT)) {
             expr->type = expected_type;
-        }
-        else
-        {
+        } else {
             expr->type = duskTypeNewBasic(compiler, DUSK_TYPE_UNTYPED_INT);
         }
         break;
@@ -508,14 +449,12 @@ static void duskAnalyzeExpr(
             compiler, state, expr->struct_literal.type_expr, type_type, false);
 
         DuskType *struct_type = expr->struct_literal.type_expr->as_type;
-        if (!struct_type)
-        {
+        if (!struct_type) {
             DUSK_ASSERT(duskArrayLength(compiler->errors_arr) > 0);
             break;
         }
 
-        if (struct_type->kind != DUSK_TYPE_STRUCT)
-        {
+        if (struct_type->kind != DUSK_TYPE_STRUCT) {
             duskAddError(
                 compiler,
                 expr->location,
@@ -529,17 +468,15 @@ static void duskAnalyzeExpr(
 
         for (size_t i = 0;
              i < duskArrayLength(expr->struct_literal.field_names_arr);
-             ++i)
-        {
+             ++i) {
             const char *field_name = expr->struct_literal.field_names_arr[i];
             uintptr_t index;
             if (duskMapGet(
-                    struct_type->struct_.index_map, field_name, (void *)&index))
-            {
+                    struct_type->struct_.index_map,
+                    field_name,
+                    (void *)&index)) {
                 got_fields[index] = true;
-            }
-            else
-            {
+            } else {
                 duskAddError(
                     compiler,
                     expr->location,
@@ -550,11 +487,9 @@ static void duskAnalyzeExpr(
         }
 
         bool got_all_fields = true;
-        for (size_t i = 0; i < struct_type->struct_.field_count; ++i)
-        {
+        for (size_t i = 0; i < struct_type->struct_.field_count; ++i) {
             const char *field_name = struct_type->struct_.field_names[i];
-            if (!got_fields[i])
-            {
+            if (!got_fields[i]) {
                 duskAddError(
                     compiler,
                     expr->location,
@@ -565,23 +500,20 @@ static void duskAnalyzeExpr(
             }
         }
 
-        if (!got_all_fields)
-        {
+        if (!got_all_fields) {
             DUSK_ASSERT(duskArrayLength(compiler->errors_arr) > 0);
             break;
         }
 
         if (struct_type->struct_.field_count !=
-            duskArrayLength(expr->struct_literal.field_values_arr))
-        {
+            duskArrayLength(expr->struct_literal.field_values_arr)) {
             DUSK_ASSERT(duskArrayLength(compiler->errors_arr) > 0);
             break;
         }
 
         for (size_t i = 0;
              i < duskArrayLength(expr->struct_literal.field_values_arr);
-             ++i)
-        {
+             ++i) {
             duskAnalyzeExpr(
                 compiler,
                 state,
@@ -597,8 +529,7 @@ static void duskAnalyzeExpr(
     case DUSK_EXPR_IDENT: {
         DuskDecl *ident_decl =
             duskScopeLookup(duskCurrentScope(state), expr->identifier.str);
-        if (!ident_decl)
-        {
+        if (!ident_decl) {
             duskAddError(
                 compiler,
                 expr->location,
@@ -610,8 +541,7 @@ static void duskAnalyzeExpr(
         expr->identifier.decl = ident_decl;
 
         expr->type = ident_decl->type;
-        if (ident_decl->kind == DUSK_DECL_TYPE)
-        {
+        if (ident_decl->kind == DUSK_DECL_TYPE) {
             expr->as_type = ident_decl->typedef_.type_expr->as_type;
         }
         break;
@@ -651,8 +581,7 @@ static void duskAnalyzeExpr(
 
         int64_t array_size = 0;
         if (!duskExprResolveInteger(
-                state, expr->array_type.size_expr, &array_size))
-        {
+                state, expr->array_type.size_expr, &array_size)) {
             duskAddError(
                 compiler,
                 expr->array_type.size_expr->location,
@@ -660,8 +589,7 @@ static void duskAnalyzeExpr(
             break;
         }
 
-        if (array_size <= 0)
-        {
+        if (array_size <= 0) {
             duskAddError(
                 compiler,
                 expr->array_type.size_expr->location,
@@ -670,14 +598,12 @@ static void duskAnalyzeExpr(
         }
 
         DuskType *sub_type = expr->array_type.sub_expr->as_type;
-        if (!sub_type)
-        {
+        if (!sub_type) {
             break;
         }
 
         DuskStructLayout layout = DUSK_STRUCT_LAYOUT_UNKNOWN;
-        if (duskArrayLength(state->struct_layout_stack_arr) > 0)
-        {
+        if (duskArrayLength(state->struct_layout_stack_arr) > 0) {
             layout = state->struct_layout_stack_arr
                          [duskArrayLength(state->struct_layout_stack_arr) - 1];
         }
@@ -694,14 +620,12 @@ static void duskAnalyzeExpr(
             compiler, state, expr->array_type.sub_expr, type_type, false);
 
         DuskType *sub_type = expr->array_type.sub_expr->as_type;
-        if (!sub_type)
-        {
+        if (!sub_type) {
             break;
         }
 
         DuskStructLayout layout = DUSK_STRUCT_LAYOUT_UNKNOWN;
-        if (duskArrayLength(state->struct_layout_stack_arr) > 0)
-        {
+        if (duskArrayLength(state->struct_layout_stack_arr) > 0) {
             layout = state->struct_layout_stack_arr
                          [duskArrayLength(state->struct_layout_stack_arr) - 1];
         }
@@ -711,22 +635,18 @@ static void duskAnalyzeExpr(
         break;
     }
     case DUSK_EXPR_STRUCT_TYPE: {
-        for (size_t i = 0; i < expr->struct_type.field_count; ++i)
-        {
+        for (size_t i = 0; i < expr->struct_type.field_count; ++i) {
             DuskArray(DuskAttribute) field_attributes_arr =
                 expr->struct_type.field_attribute_arrays[i];
 
-            for (size_t j = 0; j < duskArrayLength(field_attributes_arr); ++j)
-            {
+            for (size_t j = 0; j < duskArrayLength(field_attributes_arr); ++j) {
                 DuskAttribute *attribute = &field_attributes_arr[j];
 
-                for (size_t k = 0; k < attribute->value_expr_count; ++k)
-                {
+                for (size_t k = 0; k < attribute->value_expr_count; ++k) {
                     DuskExpr *value_expr = attribute->value_exprs[k];
                     int64_t resolved_int;
                     if (duskExprResolveInteger(
-                            state, value_expr, &resolved_int))
-                    {
+                            state, value_expr, &resolved_int)) {
                         value_expr->resolved_int =
                             duskAllocateZeroed(allocator, sizeof(int64_t));
                         *value_expr->resolved_int = resolved_int;
@@ -741,10 +661,8 @@ static void duskAnalyzeExpr(
 
         DuskMap *field_map = duskMapCreate(NULL, field_count);
 
-        for (size_t i = 0; i < field_count; ++i)
-        {
-            if (duskMapGet(field_map, expr->struct_type.field_names[i], NULL))
-            {
+        for (size_t i = 0; i < field_count; ++i) {
+            if (duskMapGet(field_map, expr->struct_type.field_names[i], NULL)) {
                 duskAddError(
                     compiler,
                     expr->location,
@@ -758,8 +676,7 @@ static void duskAnalyzeExpr(
 
         duskMapDestroy(field_map);
 
-        if (got_duplicate_field_names)
-        {
+        if (got_duplicate_field_names) {
             DUSK_ASSERT(duskArrayLength(compiler->errors_arr) > 0);
             break;
         }
@@ -774,12 +691,10 @@ static void duskAnalyzeExpr(
         duskArrayPush(
             &state->struct_layout_stack_arr, expr->struct_type.layout);
 
-        for (size_t i = 0; i < field_count; ++i)
-        {
+        for (size_t i = 0; i < field_count; ++i) {
             DuskExpr *field_type_expr = expr->struct_type.field_type_exprs[i];
             duskAnalyzeExpr(compiler, state, field_type_expr, type_type, false);
-            if (!field_type_expr->as_type)
-            {
+            if (!field_type_expr->as_type) {
                 got_all_field_types = false;
                 break;
             }
@@ -788,18 +703,15 @@ static void duskAnalyzeExpr(
 
         duskArrayPop(&state->struct_layout_stack_arr);
 
-        if (!got_all_field_types)
-        {
+        if (!got_all_field_types) {
             DUSK_ASSERT(duskArrayLength(compiler->errors_arr) > 0);
             break;
         }
 
-        for (size_t i = 0; i < field_count; ++i)
-        {
+        for (size_t i = 0; i < field_count; ++i) {
             DuskType *field_type = field_types[i];
             if (field_type->kind == DUSK_TYPE_RUNTIME_ARRAY &&
-                (i != (field_count - 1)))
-            {
+                (i != (field_count - 1))) {
                 // Runtime array cannot be in the middle of a struct, only at
                 // the end
                 duskAddError(
@@ -824,22 +736,19 @@ static void duskAnalyzeExpr(
     case DUSK_EXPR_FUNCTION_CALL: {
         duskAnalyzeExpr(
             compiler, state, expr->function_call.func_expr, NULL, false);
-        if (!expr->function_call.func_expr->type)
-        {
+        if (!expr->function_call.func_expr->type) {
             DUSK_ASSERT(duskArrayLength(compiler->errors_arr) > 0);
             break;
         }
 
         DuskType *func_type = expr->function_call.func_expr->type;
-        switch (func_type->kind)
-        {
+        switch (func_type->kind) {
         case DUSK_TYPE_FUNCTION: {
             expr->type = func_type->function.return_type;
             DUSK_ASSERT(expr->type);
 
             if (duskArrayLength(expr->function_call.params_arr) !=
-                func_type->function.param_type_count)
-            {
+                func_type->function.param_type_count) {
                 duskAddError(
                     compiler,
                     expr->location,
@@ -852,8 +761,7 @@ static void duskAnalyzeExpr(
 
             for (size_t i = 0;
                  i < duskArrayLength(expr->function_call.params_arr);
-                 ++i)
-            {
+                 ++i) {
                 DuskExpr *param = expr->function_call.params_arr[i];
                 DuskType *expected_param_type =
                     func_type->function.param_types[i];
@@ -870,12 +778,10 @@ static void duskAnalyzeExpr(
             size_t param_count =
                 duskArrayLength(expr->function_call.params_arr);
 
-            switch (constructed_type->kind)
-            {
+            switch (constructed_type->kind) {
             case DUSK_TYPE_INT:
             case DUSK_TYPE_FLOAT: {
-                if (param_count != 1)
-                {
+                if (param_count != 1) {
                     duskAddError(
                         compiler,
                         expr->location,
@@ -890,15 +796,13 @@ static void duskAnalyzeExpr(
                 duskAnalyzeExpr(compiler, state, param, NULL, false);
                 duskConcretizeExprType(param, constructed_type);
 
-                if (!param->type)
-                {
+                if (!param->type) {
                     DUSK_ASSERT(duskArrayLength(compiler->errors_arr) > 0);
                     break;
                 }
 
                 if (param->type->kind != DUSK_TYPE_FLOAT &&
-                    param->type->kind != DUSK_TYPE_INT)
-                {
+                    param->type->kind != DUSK_TYPE_INT) {
                     duskAddError(
                         compiler,
                         param->location,
@@ -915,31 +819,24 @@ static void duskAnalyzeExpr(
                 size_t elem_count = 0;
                 bool analyzed_all_params = true;
 
-                for (size_t i = 0; i < param_count; ++i)
-                {
+                for (size_t i = 0; i < param_count; ++i) {
                     DuskExpr *param = expr->function_call.params_arr[i];
                     duskAnalyzeExpr(compiler, state, param, NULL, false);
 
-                    if (!param->type)
-                    {
+                    if (!param->type) {
                         analyzed_all_params = false;
                         continue;
                     }
 
                     duskConcretizeExprType(param, elem_type);
 
-                    if (param->type == elem_type)
-                    {
+                    if (param->type == elem_type) {
                         elem_count += 1;
-                    }
-                    else if (
+                    } else if (
                         param->type->kind == DUSK_TYPE_VECTOR &&
-                        param->type->vector.sub == elem_type)
-                    {
+                        param->type->vector.sub == elem_type) {
                         elem_count += param->type->vector.size;
-                    }
-                    else
-                    {
+                    } else {
                         duskAddError(
                             compiler,
                             param->location,
@@ -948,14 +845,12 @@ static void duskAnalyzeExpr(
                     }
                 }
 
-                if (!analyzed_all_params)
-                {
+                if (!analyzed_all_params) {
                     break;
                 }
 
                 if (!(elem_count == 1 ||
-                      elem_count == constructed_type->vector.size))
-                {
+                      elem_count == constructed_type->vector.size)) {
                     duskAddError(
                         compiler,
                         expr->location,
@@ -971,8 +866,7 @@ static void duskAnalyzeExpr(
             }
             case DUSK_TYPE_MATRIX: {
                 if (!(param_count == 1 ||
-                      param_count == constructed_type->matrix.cols))
-                {
+                      param_count == constructed_type->matrix.cols)) {
                     duskAddError(
                         compiler,
                         expr->location,
@@ -984,8 +878,7 @@ static void duskAnalyzeExpr(
                     break;
                 }
 
-                for (size_t i = 0; i < param_count; ++i)
-                {
+                for (size_t i = 0; i < param_count; ++i) {
                     DuskExpr *param = expr->function_call.params_arr[i];
                     DuskType *expected_param_type =
                         constructed_type->matrix.col_type;
@@ -1025,8 +918,7 @@ static void duskAnalyzeExpr(
         size_t required_param_count =
             DUSK_BUILTIN_FUNCTION_PARAM_COUNTS[expr->builtin_call.kind];
         if (required_param_count !=
-            duskArrayLength(expr->builtin_call.params_arr))
-        {
+            duskArrayLength(expr->builtin_call.params_arr)) {
             duskAddError(
                 compiler,
                 expr->location,
@@ -1037,8 +929,7 @@ static void duskAnalyzeExpr(
             break;
         }
 
-        switch (expr->builtin_call.kind)
-        {
+        switch (expr->builtin_call.kind) {
         case DUSK_BUILTIN_FUNCTION_SAMPLER_TYPE: {
             expr->type = duskTypeNewBasic(compiler, DUSK_TYPE_TYPE);
             expr->as_type = duskTypeNewBasic(compiler, DUSK_TYPE_SAMPLER);
@@ -1065,15 +956,13 @@ static void duskAnalyzeExpr(
                 false);
             DuskType *sampled_type = expr->builtin_call.params_arr[0]->as_type;
 
-            if (!sampled_type)
-            {
+            if (!sampled_type) {
                 DUSK_ASSERT(duskArrayLength(compiler->errors_arr) > 0);
             }
 
             if (sampled_type->kind != DUSK_TYPE_VOID &&
                 sampled_type->kind != DUSK_TYPE_FLOAT &&
-                sampled_type->kind != DUSK_TYPE_INT)
-            {
+                sampled_type->kind != DUSK_TYPE_INT) {
                 duskAddError(
                     compiler,
                     expr->builtin_call.params_arr[0]->location,
@@ -1088,8 +977,7 @@ static void duskAnalyzeExpr(
             bool multisampled = false;
             bool sampled = false;
 
-            switch (expr->builtin_call.kind)
-            {
+            switch (expr->builtin_call.kind) {
             case DUSK_BUILTIN_FUNCTION_IMAGE_1D_TYPE:
             case DUSK_BUILTIN_FUNCTION_IMAGE_1D_SAMPLER_TYPE: {
                 dim = DUSK_IMAGE_DIMENSION_1D;
@@ -1157,8 +1045,7 @@ static void duskAnalyzeExpr(
                 multisampled,
                 sampled);
 
-            switch (expr->builtin_call.kind)
-            {
+            switch (expr->builtin_call.kind) {
             case DUSK_BUILTIN_FUNCTION_IMAGE_1D_SAMPLER_TYPE:
             case DUSK_BUILTIN_FUNCTION_IMAGE_2D_SAMPLER_TYPE:
             case DUSK_BUILTIN_FUNCTION_IMAGE_2D_ARRAY_SAMPLER_TYPE:
@@ -1181,30 +1068,25 @@ static void duskAnalyzeExpr(
     case DUSK_EXPR_ACCESS: {
         duskAnalyzeExpr(compiler, state, expr->access.base_expr, NULL, false);
         DuskExpr *left_expr = expr->access.base_expr;
-        if (!left_expr)
-        {
+        if (!left_expr) {
             DUSK_ASSERT(duskArrayLength(compiler->errors_arr) > 0);
             break;
         }
 
-        for (size_t i = 0; i < duskArrayLength(expr->access.chain_arr); ++i)
-        {
+        for (size_t i = 0; i < duskArrayLength(expr->access.chain_arr); ++i) {
             DuskExpr *right_expr = expr->access.chain_arr[i];
             DUSK_ASSERT(right_expr->kind == DUSK_EXPR_IDENT);
             const char *accessed_field_name = right_expr->identifier.str;
 
-            if (!left_expr->type)
-            {
+            if (!left_expr->type) {
                 DUSK_ASSERT(duskArrayLength(compiler->errors_arr) > 0);
                 break;
             }
 
-            switch (left_expr->type->kind)
-            {
+            switch (left_expr->type->kind) {
             case DUSK_TYPE_VECTOR: {
                 size_t new_vec_dim = strlen(accessed_field_name);
-                if (new_vec_dim > 4)
-                {
+                if (new_vec_dim > 4) {
                     duskAddError(
                         compiler,
                         right_expr->location,
@@ -1218,11 +1100,9 @@ static void duskAnalyzeExpr(
                 duskArrayResize(&shuffle_indices_arr, new_vec_dim);
 
                 bool valid = true;
-                for (size_t j = 0; j < new_vec_dim; j++)
-                {
+                for (size_t j = 0; j < new_vec_dim; j++) {
                     char c = accessed_field_name[j];
-                    switch (c)
-                    {
+                    switch (c) {
                     case 'x':
                     case 'r': shuffle_indices_arr[j] = 0; break;
                     case 'y':
@@ -1243,8 +1123,8 @@ static void duskAnalyzeExpr(
                     }
                     }
 
-                    if (shuffle_indices_arr[j] >= left_expr->type->vector.size)
-                    {
+                    if (shuffle_indices_arr[j] >=
+                        left_expr->type->vector.size) {
                         duskAddError(
                             compiler,
                             right_expr->location,
@@ -1253,15 +1133,13 @@ static void duskAnalyzeExpr(
                         break;
                     }
 
-                    if (!valid)
-                    {
+                    if (!valid) {
                         DUSK_ASSERT(duskArrayLength(compiler->errors_arr) > 0);
                         break;
                     }
                 }
 
-                if (!valid)
-                {
+                if (!valid) {
                     DUSK_ASSERT(duskArrayLength(compiler->errors_arr) > 0);
                     break;
                 }
@@ -1269,12 +1147,9 @@ static void duskAnalyzeExpr(
                 right_expr->identifier.shuffle_indices_arr =
                     shuffle_indices_arr;
 
-                if (new_vec_dim == 1)
-                {
+                if (new_vec_dim == 1) {
                     right_expr->type = left_expr->type->vector.sub;
-                }
-                else
-                {
+                } else {
                     right_expr->type = duskTypeNewVector(
                         compiler, left_expr->type->vector.sub, new_vec_dim);
                 }
@@ -1286,8 +1161,7 @@ static void duskAnalyzeExpr(
                 if (!duskMapGet(
                         left_expr->type->struct_.index_map,
                         accessed_field_name,
-                        (void *)&field_index))
-                {
+                        (void *)&field_index)) {
                     duskAddError(
                         compiler,
                         right_expr->location,
@@ -1321,25 +1195,21 @@ static void duskAnalyzeExpr(
     }
     }
 
-    if (!expr->type)
-    {
+    if (!expr->type) {
         DUSK_ASSERT(duskArrayLength(compiler->errors_arr) > 0);
     }
 
     {
         int64_t resolved_int;
-        if (duskExprResolveInteger(state, expr, &resolved_int))
-        {
+        if (duskExprResolveInteger(state, expr, &resolved_int)) {
             expr->resolved_int =
                 duskAllocateZeroed(allocator, sizeof(*expr->resolved_int));
             *expr->resolved_int = resolved_int;
         }
     }
 
-    if (expected_type && expr->type)
-    {
-        if (expected_type != expr->type)
-        {
+    if (expected_type && expr->type) {
+        if (expected_type != expr->type) {
             duskAddError(
                 compiler,
                 expr->location,
@@ -1349,8 +1219,7 @@ static void duskAnalyzeExpr(
         }
     }
 
-    if (must_be_assignable && !duskIsExprAssignable(state, expr))
-    {
+    if (must_be_assignable && !duskIsExprAssignable(state, expr)) {
         duskAddError(
             compiler, expr->location, "expected expression to be assignable");
     }
@@ -1361,8 +1230,7 @@ static void duskAnalyzeStmt(
 {
     DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
 
-    switch (stmt->kind)
-    {
+    switch (stmt->kind) {
     case DUSK_STMT_DECL: {
         duskTryRegisterDecl(compiler, state, stmt->decl);
         duskAnalyzeDecl(compiler, state, stmt->decl);
@@ -1380,15 +1248,11 @@ static void duskAnalyzeStmt(
         DUSK_ASSERT(func->type);
 
         DuskType *return_type = func->type->function.return_type;
-        if (stmt->return_.expr)
-        {
+        if (stmt->return_.expr) {
             duskAnalyzeExpr(
                 compiler, state, stmt->return_.expr, return_type, false);
-        }
-        else
-        {
-            if (return_type->kind != DUSK_TYPE_VOID)
-            {
+        } else {
+            if (return_type->kind != DUSK_TYPE_VOID) {
                 duskAddError(
                     compiler,
                     stmt->location,
@@ -1411,8 +1275,7 @@ static void duskAnalyzeStmt(
         duskAnalyzeExpr(
             compiler, state, stmt->assign.assigned_expr, NULL, true);
         DuskType *type = stmt->assign.assigned_expr->type;
-        if (!type)
-        {
+        if (!type) {
             DUSK_ASSERT(duskArrayLength(compiler->errors_arr) > 0);
             break;
         }
@@ -1427,8 +1290,7 @@ static void duskAnalyzeStmt(
             DUSK_SCOPE_OWNER_TYPE_NONE,
             NULL);
 
-        for (size_t i = 0; i < duskArrayLength(stmt->block.stmts_arr); ++i)
-        {
+        for (size_t i = 0; i < duskArrayLength(stmt->block.stmts_arr); ++i) {
             DuskStmt *sub_stmt = stmt->block.stmts_arr[i];
             duskAnalyzeStmt(compiler, state, sub_stmt);
         }
@@ -1440,14 +1302,12 @@ static void duskAnalyzeStmt(
 static void duskTryRegisterDecl(
     DuskCompiler *compiler, DuskAnalyzerState *state, DuskDecl *decl)
 {
-    switch (decl->kind)
-    {
+    switch (decl->kind) {
     case DUSK_DECL_EXTENSION: break;
     default: {
         DuskScope *scope = duskCurrentScope(state);
         DUSK_ASSERT(decl->name);
-        if (duskScopeLookup(scope, decl->name) != NULL)
-        {
+        if (duskScopeLookup(scope, decl->name) != NULL) {
             duskAddError(
                 compiler,
                 decl->location,
@@ -1467,16 +1327,13 @@ static void duskAnalyzeDecl(
 {
     DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
 
-    for (size_t i = 0; i < duskArrayLength(decl->attributes_arr); ++i)
-    {
+    for (size_t i = 0; i < duskArrayLength(decl->attributes_arr); ++i) {
         DuskAttribute *attribute = &decl->attributes_arr[i];
 
-        for (size_t j = 0; j < attribute->value_expr_count; ++j)
-        {
+        for (size_t j = 0; j < attribute->value_expr_count; ++j) {
             DuskExpr *value_expr = attribute->value_exprs[j];
             int64_t resolved_int;
-            if (duskExprResolveInteger(state, value_expr, &resolved_int))
-            {
+            if (duskExprResolveInteger(state, value_expr, &resolved_int)) {
                 value_expr->resolved_int =
                     duskAllocateZeroed(allocator, sizeof(int64_t));
                 *value_expr->resolved_int = resolved_int;
@@ -1484,21 +1341,17 @@ static void duskAnalyzeDecl(
         }
     }
 
-    switch (decl->kind)
-    {
+    switch (decl->kind) {
     case DUSK_DECL_FUNCTION: {
         DUSK_ASSERT(decl->function.scope == NULL);
 
         decl->function.link_name = decl->name;
 
-        for (size_t i = 0; i < duskArrayLength(decl->attributes_arr); ++i)
-        {
+        for (size_t i = 0; i < duskArrayLength(decl->attributes_arr); ++i) {
             DuskAttribute *attrib = &decl->attributes_arr[i];
-            switch (attrib->kind)
-            {
+            switch (attrib->kind) {
             case DUSK_ATTRIBUTE_STAGE: {
-                if (attrib->value_expr_count != 1)
-                {
+                if (attrib->value_expr_count != 1) {
                     duskAddError(
                         compiler,
                         decl->location,
@@ -1507,8 +1360,7 @@ static void duskAnalyzeDecl(
                     continue;
                 }
 
-                if (attrib->value_exprs[0]->kind != DUSK_EXPR_IDENT)
-                {
+                if (attrib->value_exprs[0]->kind != DUSK_EXPR_IDENT) {
                     duskAddError(
                         compiler,
                         decl->location,
@@ -1520,22 +1372,15 @@ static void duskAnalyzeDecl(
                 decl->function.is_entry_point = true;
 
                 const char *stage_str = attrib->value_exprs[0]->identifier.str;
-                if (strcmp(stage_str, "fragment") == 0)
-                {
+                if (strcmp(stage_str, "fragment") == 0) {
                     decl->function.entry_point_stage =
                         DUSK_SHADER_STAGE_FRAGMENT;
-                }
-                else if (strcmp(stage_str, "vertex") == 0)
-                {
+                } else if (strcmp(stage_str, "vertex") == 0) {
                     decl->function.entry_point_stage = DUSK_SHADER_STAGE_VERTEX;
-                }
-                else if (strcmp(stage_str, "compute") == 0)
-                {
+                } else if (strcmp(stage_str, "compute") == 0) {
                     decl->function.entry_point_stage =
                         DUSK_SHADER_STAGE_COMPUTE;
-                }
-                else
-                {
+                } else {
                     duskAddError(
                         compiler,
                         decl->location,
@@ -1552,17 +1397,14 @@ static void duskAnalyzeDecl(
 
         for (size_t i = 0;
              i < duskArrayLength(decl->function.return_type_attributes_arr);
-             ++i)
-        {
+             ++i) {
             DuskAttribute *attribute =
                 &decl->function.return_type_attributes_arr[i];
 
-            for (size_t j = 0; j < attribute->value_expr_count; ++j)
-            {
+            for (size_t j = 0; j < attribute->value_expr_count; ++j) {
                 DuskExpr *value_expr = attribute->value_exprs[j];
                 int64_t resolved_int;
-                if (duskExprResolveInteger(state, value_expr, &resolved_int))
-                {
+                if (duskExprResolveInteger(state, value_expr, &resolved_int)) {
                     value_expr->resolved_int =
                         duskAllocateZeroed(allocator, sizeof(int64_t));
                     *value_expr->resolved_int = resolved_int;
@@ -1593,20 +1435,17 @@ static void duskAnalyzeDecl(
         duskArrayPush(&state->function_stack_arr, decl);
         duskArrayPush(&state->scope_stack_arr, decl->function.scope);
 
-        for (size_t i = 0; i < param_count; ++i)
-        {
+        for (size_t i = 0; i < param_count; ++i) {
             DuskDecl *param_decl = decl->function.parameter_decls_arr[i];
             duskTryRegisterDecl(compiler, state, param_decl);
             duskAnalyzeDecl(compiler, state, param_decl);
             param_types[i] = param_decl->type;
-            if (param_types[i] == NULL)
-            {
+            if (param_types[i] == NULL) {
                 got_all_param_types = false;
             }
         }
 
-        if (!got_all_param_types || return_type == NULL)
-        {
+        if (!got_all_param_types || return_type == NULL) {
             duskArrayPop(&state->function_stack_arr);
             duskArrayPop(&state->scope_stack_arr);
             DUSK_ASSERT(duskArrayLength(compiler->errors_arr) > 0);
@@ -1616,25 +1455,19 @@ static void duskAnalyzeDecl(
         decl->type = duskTypeNewFunction(
             compiler, return_type, param_count, param_types);
 
-        if (decl->function.is_entry_point)
-        {
-            for (size_t i = 0; i < param_count; ++i)
-            {
+        if (decl->function.is_entry_point) {
+            for (size_t i = 0; i < param_count; ++i) {
                 DuskDecl *param_decl = decl->function.parameter_decls_arr[i];
-                if (param_decl->type->kind != DUSK_TYPE_STRUCT)
-                {
+                if (param_decl->type->kind != DUSK_TYPE_STRUCT) {
                     duskCheckEntryPointInterfaceAttributes(
                         state,
                         compiler,
                         param_decl->location,
                         param_decl->attributes_arr);
-                }
-                else
-                {
+                } else {
                     DuskType *struct_type = param_decl->type;
                     for (size_t j = 0; j < struct_type->struct_.field_count;
-                         ++j)
-                    {
+                         ++j) {
                         DuskArray(DuskAttribute) field_attributes_arr =
                             struct_type->struct_.field_attribute_arrays[j];
 
@@ -1647,13 +1480,11 @@ static void duskAnalyzeDecl(
                 }
             }
 
-            switch (decl->type->function.return_type->kind)
-            {
+            switch (decl->type->function.return_type->kind) {
             case DUSK_TYPE_VOID: break;
             case DUSK_TYPE_STRUCT: {
                 DuskType *struct_type = decl->type->function.return_type;
-                for (size_t j = 0; j < struct_type->struct_.field_count; ++j)
-                {
+                for (size_t j = 0; j < struct_type->struct_.field_count; ++j) {
                     DuskArray(DuskAttribute) field_attributes_arr =
                         struct_type->struct_.field_attribute_arrays[j];
 
@@ -1675,20 +1506,17 @@ static void duskAnalyzeDecl(
 
         bool got_return_stmt = false;
 
-        for (size_t i = 0; i < duskArrayLength(decl->function.stmts_arr); ++i)
-        {
+        for (size_t i = 0; i < duskArrayLength(decl->function.stmts_arr); ++i) {
             DuskStmt *stmt = decl->function.stmts_arr[i];
             duskAnalyzeStmt(compiler, state, stmt);
 
-            if (stmt->kind == DUSK_STMT_RETURN)
-            {
+            if (stmt->kind == DUSK_STMT_RETURN) {
                 got_return_stmt = true;
             }
         }
 
         if ((decl->type->function.return_type->kind != DUSK_TYPE_VOID) &&
-            (!got_return_stmt))
-        {
+            (!got_return_stmt)) {
             duskAddError(
                 compiler,
                 decl->location,
@@ -1704,8 +1532,7 @@ static void duskAnalyzeDecl(
     case DUSK_DECL_TYPE: {
         DuskType *type_type = duskTypeNewBasic(compiler, DUSK_TYPE_TYPE);
 
-        if (decl->typedef_.type_expr->kind == DUSK_EXPR_STRUCT_TYPE)
-        {
+        if (decl->typedef_.type_expr->kind == DUSK_EXPR_STRUCT_TYPE) {
             decl->typedef_.type_expr->struct_type.name = decl->name;
         }
 
@@ -1722,24 +1549,20 @@ static void duskAnalyzeDecl(
         duskAnalyzeExpr(compiler, state, decl->var.type_expr, type_type, false);
         DuskType *var_type = decl->var.type_expr->as_type;
 
-        if (!var_type)
-        {
+        if (!var_type) {
             DUSK_ASSERT(duskArrayLength(compiler->errors_arr) > 0);
             break;
         }
 
-        if (decl->var.value_expr)
-        {
+        if (decl->var.value_expr) {
             duskAnalyzeExpr(
                 compiler, state, decl->var.value_expr, var_type, false);
-            if (var_type == NULL)
-            {
+            if (var_type == NULL) {
                 var_type = decl->var.value_expr->type;
             }
         }
 
-        if (!duskTypeIsRuntime(var_type))
-        {
+        if (!duskTypeIsRuntime(var_type)) {
             duskAddError(
                 compiler,
                 decl->location,
@@ -1750,20 +1573,17 @@ static void duskAnalyzeDecl(
 
         decl->type = var_type;
 
-        if (duskArrayLength(state->function_stack_arr) == 0)
-        {
+        if (duskArrayLength(state->function_stack_arr) == 0) {
             duskCheckGlobalVariableAttributes(
                 state, compiler, decl, decl->attributes_arr);
         }
 
         // Set the storage class
 
-        if (duskArrayLength(state->function_stack_arr) == 0)
-        {
+        if (duskArrayLength(state->function_stack_arr) == 0) {
             decl->var.storage_class = DUSK_STORAGE_CLASS_UNIFORM;
 
-            switch (decl->type->kind)
-            {
+            switch (decl->type->kind) {
             case DUSK_TYPE_SAMPLER:
             case DUSK_TYPE_IMAGE:
             case DUSK_TYPE_SAMPLED_IMAGE: {
@@ -1775,11 +1595,9 @@ static void duskAnalyzeDecl(
                 break;
             }
 
-            for (size_t i = 0; i < duskArrayLength(decl->attributes_arr); ++i)
-            {
+            for (size_t i = 0; i < duskArrayLength(decl->attributes_arr); ++i) {
                 DuskAttribute *attribute = &decl->attributes_arr[i];
-                switch (attribute->kind)
-                {
+                switch (attribute->kind) {
                 case DUSK_ATTRIBUTE_UNIFORM: {
                     decl->var.storage_class = DUSK_STORAGE_CLASS_UNIFORM;
                     break;
@@ -1799,14 +1617,11 @@ static void duskAnalyzeDecl(
 
         // Check if struct type has proper layout
 
-        if (decl->type->kind == DUSK_TYPE_STRUCT)
-        {
-            switch (decl->var.storage_class)
-            {
+        if (decl->type->kind == DUSK_TYPE_STRUCT) {
+            switch (decl->var.storage_class) {
             case DUSK_STORAGE_CLASS_PUSH_CONSTANT:
             case DUSK_STORAGE_CLASS_UNIFORM: {
-                if (decl->type->struct_.layout != DUSK_STRUCT_LAYOUT_STD140)
-                {
+                if (decl->type->struct_.layout != DUSK_STRUCT_LAYOUT_STD140) {
                     duskAddError(
                         compiler,
                         decl->location,
@@ -1816,8 +1631,7 @@ static void duskAnalyzeDecl(
                 break;
             }
             case DUSK_STORAGE_CLASS_STORAGE: {
-                if (decl->type->struct_.layout != DUSK_STRUCT_LAYOUT_STD430)
-                {
+                if (decl->type->struct_.layout != DUSK_STRUCT_LAYOUT_STD430) {
                     duskAddError(
                         compiler,
                         decl->location,
@@ -1854,14 +1668,12 @@ void duskAnalyzeFile(DuskCompiler *compiler, DuskFile *file)
 
     duskArrayPush(&state->scope_stack_arr, file->scope);
 
-    for (size_t i = 0; i < duskArrayLength(file->decls_arr); ++i)
-    {
+    for (size_t i = 0; i < duskArrayLength(file->decls_arr); ++i) {
         DuskDecl *decl = file->decls_arr[i];
         duskTryRegisterDecl(compiler, state, decl);
     }
 
-    for (size_t i = 0; i < duskArrayLength(file->decls_arr); ++i)
-    {
+    for (size_t i = 0; i < duskArrayLength(file->decls_arr); ++i) {
         DuskDecl *decl = file->decls_arr[i];
         duskAnalyzeDecl(compiler, state, decl);
     }
