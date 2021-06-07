@@ -60,7 +60,7 @@ DuskCompiler *duskCompilerCreate(void)
         .type_cache = duskMapCreate(allocator, 32),
         .types_arr = duskArrayCreate(allocator, DuskType *),
 
-        .keyword_map = duskMapCreate(allocator, 64),
+        .keyword_map = duskMapCreate(allocator, 128),
         .builtin_function_map = duskMapCreate(allocator, 32),
     };
 
@@ -83,6 +83,14 @@ DuskCompiler *duskCompilerCreate(void)
     duskMapSet(compiler->keyword_map, "void", (void *)DUSK_TOKEN_VOID);
     duskMapSet(compiler->keyword_map, "bool", (void *)DUSK_TOKEN_BOOL);
 
+    duskMapSet(compiler->keyword_map, "half", (void *)DUSK_TOKEN_HALF);
+    duskMapSet(compiler->keyword_map, "half2", (void *)DUSK_TOKEN_HALF2);
+    duskMapSet(compiler->keyword_map, "half3", (void *)DUSK_TOKEN_HALF3);
+    duskMapSet(compiler->keyword_map, "half4", (void *)DUSK_TOKEN_HALF4);
+    duskMapSet(compiler->keyword_map, "half2x2", (void *)DUSK_TOKEN_HALF2X2);
+    duskMapSet(compiler->keyword_map, "half3x3", (void *)DUSK_TOKEN_HALF3X3);
+    duskMapSet(compiler->keyword_map, "half4x4", (void *)DUSK_TOKEN_HALF4X4);
+
     duskMapSet(compiler->keyword_map, "float", (void *)DUSK_TOKEN_FLOAT);
     duskMapSet(compiler->keyword_map, "float2", (void *)DUSK_TOKEN_FLOAT2);
     duskMapSet(compiler->keyword_map, "float3", (void *)DUSK_TOKEN_FLOAT3);
@@ -91,13 +99,13 @@ DuskCompiler *duskCompilerCreate(void)
     duskMapSet(compiler->keyword_map, "float3x3", (void *)DUSK_TOKEN_FLOAT3X3);
     duskMapSet(compiler->keyword_map, "float4x4", (void *)DUSK_TOKEN_FLOAT4X4);
 
-    duskMapSet(compiler->keyword_map, "half", (void *)DUSK_TOKEN_HALF);
-    duskMapSet(compiler->keyword_map, "half2", (void *)DUSK_TOKEN_HALF2);
-    duskMapSet(compiler->keyword_map, "half3", (void *)DUSK_TOKEN_HALF3);
-    duskMapSet(compiler->keyword_map, "half4", (void *)DUSK_TOKEN_HALF4);
-    duskMapSet(compiler->keyword_map, "half2x2", (void *)DUSK_TOKEN_HALF2X2);
-    duskMapSet(compiler->keyword_map, "half3x3", (void *)DUSK_TOKEN_HALF3X3);
-    duskMapSet(compiler->keyword_map, "half4x4", (void *)DUSK_TOKEN_HALF4X4);
+    duskMapSet(compiler->keyword_map, "double", (void *)DUSK_TOKEN_DOUBLE);
+    duskMapSet(compiler->keyword_map, "double2", (void *)DUSK_TOKEN_DOUBLE2);
+    duskMapSet(compiler->keyword_map, "double3", (void *)DUSK_TOKEN_DOUBLE3);
+    duskMapSet(compiler->keyword_map, "double4", (void *)DUSK_TOKEN_DOUBLE4);
+    duskMapSet(compiler->keyword_map, "double2x2", (void *)DUSK_TOKEN_DOUBLE2X2);
+    duskMapSet(compiler->keyword_map, "double3x3", (void *)DUSK_TOKEN_DOUBLE3X3);
+    duskMapSet(compiler->keyword_map, "double4x4", (void *)DUSK_TOKEN_DOUBLE4X4);
 
     duskMapSet(compiler->keyword_map, "byte", (void *)DUSK_TOKEN_BYTE);
     duskMapSet(compiler->keyword_map, "byte2", (void *)DUSK_TOKEN_BYTE2);

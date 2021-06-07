@@ -41,6 +41,14 @@ static const char *tokenTypeToString(DuskTokenType token_type)
     case DUSK_TOKEN_VOID: return "void";
     case DUSK_TOKEN_BOOL: return "bool";
 
+    case DUSK_TOKEN_HALF: return "half";
+    case DUSK_TOKEN_HALF2: return "half2";
+    case DUSK_TOKEN_HALF3: return "half3";
+    case DUSK_TOKEN_HALF4: return "half4";
+    case DUSK_TOKEN_HALF2X2: return "half2x2";
+    case DUSK_TOKEN_HALF3X3: return "half3x3";
+    case DUSK_TOKEN_HALF4X4: return "half4x4";
+
     case DUSK_TOKEN_FLOAT: return "float";
     case DUSK_TOKEN_FLOAT2: return "float2";
     case DUSK_TOKEN_FLOAT3: return "float3";
@@ -49,13 +57,13 @@ static const char *tokenTypeToString(DuskTokenType token_type)
     case DUSK_TOKEN_FLOAT3X3: return "float3x3";
     case DUSK_TOKEN_FLOAT4X4: return "float4x4";
 
-    case DUSK_TOKEN_HALF: return "half";
-    case DUSK_TOKEN_HALF2: return "half2";
-    case DUSK_TOKEN_HALF3: return "half3";
-    case DUSK_TOKEN_HALF4: return "half4";
-    case DUSK_TOKEN_HALF2X2: return "half2x2";
-    case DUSK_TOKEN_HALF3X3: return "half3x3";
-    case DUSK_TOKEN_HALF4X4: return "half4x4";
+    case DUSK_TOKEN_DOUBLE: return "double";
+    case DUSK_TOKEN_DOUBLE2: return "double2";
+    case DUSK_TOKEN_DOUBLE3: return "double3";
+    case DUSK_TOKEN_DOUBLE4: return "double4";
+    case DUSK_TOKEN_DOUBLE2X2: return "double2x2";
+    case DUSK_TOKEN_DOUBLE3X3: return "double3x3";
+    case DUSK_TOKEN_DOUBLE4X4: return "double4x4";
 
     case DUSK_TOKEN_BYTE: return "byte";
     case DUSK_TOKEN_BYTE2: return "byte2";
@@ -190,6 +198,14 @@ tokenToString(DuskAllocator *allocator, const DuskToken *token)
     case DUSK_TOKEN_VOID: return "void";
     case DUSK_TOKEN_BOOL: return "bool";
 
+    case DUSK_TOKEN_HALF: return "half";
+    case DUSK_TOKEN_HALF2: return "half2";
+    case DUSK_TOKEN_HALF3: return "half3";
+    case DUSK_TOKEN_HALF4: return "half4";
+    case DUSK_TOKEN_HALF2X2: return "half2x2";
+    case DUSK_TOKEN_HALF3X3: return "half3x3";
+    case DUSK_TOKEN_HALF4X4: return "half4x4";
+
     case DUSK_TOKEN_FLOAT: return "float";
     case DUSK_TOKEN_FLOAT2: return "float2";
     case DUSK_TOKEN_FLOAT3: return "float3";
@@ -198,13 +214,13 @@ tokenToString(DuskAllocator *allocator, const DuskToken *token)
     case DUSK_TOKEN_FLOAT3X3: return "float3x3";
     case DUSK_TOKEN_FLOAT4X4: return "float4x4";
 
-    case DUSK_TOKEN_HALF: return "half";
-    case DUSK_TOKEN_HALF2: return "half2";
-    case DUSK_TOKEN_HALF3: return "half3";
-    case DUSK_TOKEN_HALF4: return "half4";
-    case DUSK_TOKEN_HALF2X2: return "half2x2";
-    case DUSK_TOKEN_HALF3X3: return "half3x3";
-    case DUSK_TOKEN_HALF4X4: return "half4x4";
+    case DUSK_TOKEN_DOUBLE: return "double";
+    case DUSK_TOKEN_DOUBLE2: return "double2";
+    case DUSK_TOKEN_DOUBLE3: return "double3";
+    case DUSK_TOKEN_DOUBLE4: return "double4";
+    case DUSK_TOKEN_DOUBLE2X2: return "double2x2";
+    case DUSK_TOKEN_DOUBLE3X3: return "double3x3";
+    case DUSK_TOKEN_DOUBLE4X4: return "double4x4";
 
     case DUSK_TOKEN_BYTE: return "byte";
     case DUSK_TOKEN_BYTE2: return "byte2";
@@ -902,50 +918,7 @@ static DuskExpr *parsePrimaryExpr(DuskCompiler *compiler, TokenizerState *state)
         expr->kind = DUSK_EXPR_BOOL_TYPE;
         break;
     }
-    case DUSK_TOKEN_FLOAT: {
-        expr->kind = DUSK_EXPR_SCALAR_TYPE;
-        expr->scalar_type = DUSK_SCALAR_TYPE_FLOAT;
-        break;
-    }
-    case DUSK_TOKEN_FLOAT2: {
-        expr->kind = DUSK_EXPR_VECTOR_TYPE;
-        expr->vector_type.scalar_type = DUSK_SCALAR_TYPE_FLOAT;
-        expr->vector_type.length = 2;
-        break;
-    }
-    case DUSK_TOKEN_FLOAT3: {
-        expr->kind = DUSK_EXPR_VECTOR_TYPE;
-        expr->vector_type.scalar_type = DUSK_SCALAR_TYPE_FLOAT;
-        expr->vector_type.length = 3;
-        break;
-    }
-    case DUSK_TOKEN_FLOAT4: {
-        expr->kind = DUSK_EXPR_VECTOR_TYPE;
-        expr->vector_type.scalar_type = DUSK_SCALAR_TYPE_FLOAT;
-        expr->vector_type.length = 4;
-        break;
-    }
-    case DUSK_TOKEN_FLOAT2X2: {
-        expr->kind = DUSK_EXPR_MATRIX_TYPE;
-        expr->matrix_type.scalar_type = DUSK_SCALAR_TYPE_FLOAT;
-        expr->matrix_type.rows = 2;
-        expr->matrix_type.cols = 2;
-        break;
-    }
-    case DUSK_TOKEN_FLOAT3X3: {
-        expr->kind = DUSK_EXPR_MATRIX_TYPE;
-        expr->matrix_type.scalar_type = DUSK_SCALAR_TYPE_FLOAT;
-        expr->matrix_type.rows = 3;
-        expr->matrix_type.cols = 3;
-        break;
-    }
-    case DUSK_TOKEN_FLOAT4X4: {
-        expr->kind = DUSK_EXPR_MATRIX_TYPE;
-        expr->matrix_type.scalar_type = DUSK_SCALAR_TYPE_FLOAT;
-        expr->matrix_type.rows = 4;
-        expr->matrix_type.cols = 4;
-        break;
-    }
+
     case DUSK_TOKEN_HALF: {
         expr->kind = DUSK_EXPR_SCALAR_TYPE;
         expr->scalar_type = DUSK_SCALAR_TYPE_HALF;
@@ -990,6 +963,97 @@ static DuskExpr *parsePrimaryExpr(DuskCompiler *compiler, TokenizerState *state)
         expr->matrix_type.cols = 4;
         break;
     }
+
+    case DUSK_TOKEN_FLOAT: {
+        expr->kind = DUSK_EXPR_SCALAR_TYPE;
+        expr->scalar_type = DUSK_SCALAR_TYPE_FLOAT;
+        break;
+    }
+    case DUSK_TOKEN_FLOAT2: {
+        expr->kind = DUSK_EXPR_VECTOR_TYPE;
+        expr->vector_type.scalar_type = DUSK_SCALAR_TYPE_FLOAT;
+        expr->vector_type.length = 2;
+        break;
+    }
+    case DUSK_TOKEN_FLOAT3: {
+        expr->kind = DUSK_EXPR_VECTOR_TYPE;
+        expr->vector_type.scalar_type = DUSK_SCALAR_TYPE_FLOAT;
+        expr->vector_type.length = 3;
+        break;
+    }
+    case DUSK_TOKEN_FLOAT4: {
+        expr->kind = DUSK_EXPR_VECTOR_TYPE;
+        expr->vector_type.scalar_type = DUSK_SCALAR_TYPE_FLOAT;
+        expr->vector_type.length = 4;
+        break;
+    }
+    case DUSK_TOKEN_FLOAT2X2: {
+        expr->kind = DUSK_EXPR_MATRIX_TYPE;
+        expr->matrix_type.scalar_type = DUSK_SCALAR_TYPE_FLOAT;
+        expr->matrix_type.rows = 2;
+        expr->matrix_type.cols = 2;
+        break;
+    }
+    case DUSK_TOKEN_FLOAT3X3: {
+        expr->kind = DUSK_EXPR_MATRIX_TYPE;
+        expr->matrix_type.scalar_type = DUSK_SCALAR_TYPE_FLOAT;
+        expr->matrix_type.rows = 3;
+        expr->matrix_type.cols = 3;
+        break;
+    }
+    case DUSK_TOKEN_FLOAT4X4: {
+        expr->kind = DUSK_EXPR_MATRIX_TYPE;
+        expr->matrix_type.scalar_type = DUSK_SCALAR_TYPE_FLOAT;
+        expr->matrix_type.rows = 4;
+        expr->matrix_type.cols = 4;
+        break;
+    }
+
+    case DUSK_TOKEN_DOUBLE: {
+        expr->kind = DUSK_EXPR_SCALAR_TYPE;
+        expr->scalar_type = DUSK_SCALAR_TYPE_DOUBLE;
+        break;
+    }
+    case DUSK_TOKEN_DOUBLE2: {
+        expr->kind = DUSK_EXPR_VECTOR_TYPE;
+        expr->vector_type.scalar_type = DUSK_SCALAR_TYPE_DOUBLE;
+        expr->vector_type.length = 2;
+        break;
+    }
+    case DUSK_TOKEN_DOUBLE3: {
+        expr->kind = DUSK_EXPR_VECTOR_TYPE;
+        expr->vector_type.scalar_type = DUSK_SCALAR_TYPE_DOUBLE;
+        expr->vector_type.length = 3;
+        break;
+    }
+    case DUSK_TOKEN_DOUBLE4: {
+        expr->kind = DUSK_EXPR_VECTOR_TYPE;
+        expr->vector_type.scalar_type = DUSK_SCALAR_TYPE_DOUBLE;
+        expr->vector_type.length = 4;
+        break;
+    }
+    case DUSK_TOKEN_DOUBLE2X2: {
+        expr->kind = DUSK_EXPR_MATRIX_TYPE;
+        expr->matrix_type.scalar_type = DUSK_SCALAR_TYPE_DOUBLE;
+        expr->matrix_type.rows = 2;
+        expr->matrix_type.cols = 2;
+        break;
+    }
+    case DUSK_TOKEN_DOUBLE3X3: {
+        expr->kind = DUSK_EXPR_MATRIX_TYPE;
+        expr->matrix_type.scalar_type = DUSK_SCALAR_TYPE_DOUBLE;
+        expr->matrix_type.rows = 3;
+        expr->matrix_type.cols = 3;
+        break;
+    }
+    case DUSK_TOKEN_DOUBLE4X4: {
+        expr->kind = DUSK_EXPR_MATRIX_TYPE;
+        expr->matrix_type.scalar_type = DUSK_SCALAR_TYPE_DOUBLE;
+        expr->matrix_type.rows = 4;
+        expr->matrix_type.cols = 4;
+        break;
+    }
+
     case DUSK_TOKEN_BYTE: {
         expr->kind = DUSK_EXPR_SCALAR_TYPE;
         expr->scalar_type = DUSK_SCALAR_TYPE_BYTE;
@@ -1034,6 +1098,7 @@ static DuskExpr *parsePrimaryExpr(DuskCompiler *compiler, TokenizerState *state)
         expr->matrix_type.cols = 4;
         break;
     }
+
     case DUSK_TOKEN_UBYTE: {
         expr->kind = DUSK_EXPR_SCALAR_TYPE;
         expr->scalar_type = DUSK_SCALAR_TYPE_UBYTE;
@@ -1078,6 +1143,7 @@ static DuskExpr *parsePrimaryExpr(DuskCompiler *compiler, TokenizerState *state)
         expr->matrix_type.cols = 4;
         break;
     }
+
     case DUSK_TOKEN_INT: {
         expr->kind = DUSK_EXPR_SCALAR_TYPE;
         expr->scalar_type = DUSK_SCALAR_TYPE_INT;
@@ -1122,6 +1188,7 @@ static DuskExpr *parsePrimaryExpr(DuskCompiler *compiler, TokenizerState *state)
         expr->matrix_type.cols = 4;
         break;
     }
+
     case DUSK_TOKEN_UINT: {
         expr->kind = DUSK_EXPR_SCALAR_TYPE;
         expr->scalar_type = DUSK_SCALAR_TYPE_UINT;
@@ -1166,6 +1233,7 @@ static DuskExpr *parsePrimaryExpr(DuskCompiler *compiler, TokenizerState *state)
         expr->matrix_type.cols = 4;
         break;
     }
+
     case DUSK_TOKEN_INT_LITERAL: {
         expr->kind = DUSK_EXPR_INT_LITERAL;
         expr->int_literal = token.int_;
