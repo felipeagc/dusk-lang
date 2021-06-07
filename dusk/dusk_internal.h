@@ -1022,6 +1022,20 @@ struct DuskStmt {
     };
 };
 
+typedef enum {
+    DUSK_BINARY_OP_ADD,
+    DUSK_BINARY_OP_SUB,
+    DUSK_BINARY_OP_MUL,
+    DUSK_BINARY_OP_DIV,
+    DUSK_BINARY_OP_MOD,
+    DUSK_BINARY_OP_BITAND,
+    DUSK_BINARY_OP_BITOR,
+    DUSK_BINARY_OP_BITXOR,
+    DUSK_BINARY_OP_LSHIFT,
+    DUSK_BINARY_OP_RSHIFT,
+    DUSK_BINARY_OP_MAX,
+} DuskBinaryOp;
+
 typedef enum DuskExprKind {
     DUSK_EXPR_VOID_TYPE,
     DUSK_EXPR_BOOL_TYPE,
@@ -1041,6 +1055,7 @@ typedef enum DuskExprKind {
     DUSK_EXPR_BUILTIN_FUNCTION_CALL,
     DUSK_EXPR_ACCESS,
     DUSK_EXPR_ARRAY_ACCESS,
+    DUSK_EXPR_BINARY,
 } DuskExprKind;
 
 struct DuskExpr {
@@ -1102,6 +1117,11 @@ struct DuskExpr {
             DuskExpr *base_expr;
             DuskArray(DuskExpr *) chain_arr;
         } access;
+        struct {
+            DuskBinaryOp op;
+            DuskExpr *left;
+            DuskExpr *right;
+        } binary;
     };
 };
 // }}}

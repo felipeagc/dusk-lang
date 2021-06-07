@@ -1799,9 +1799,165 @@ parseAccessOrFunctionCallExpr(DuskCompiler *compiler, TokenizerState *state)
     return expr;
 }
 
+typedef struct {
+    enum {
+        DUSK_BINARY_OP_SYMBOL_EXPR,
+        DUSK_BINARY_OP_SYMBOL_OPERATOR,
+    } kind;
+    union {
+        DuskExpr *expr;
+        DuskBinaryOp op;
+    };
+} DuskBinaryOpSymbol;
+
+static DuskExpr *parseBinaryExpr(DuskCompiler *compiler, TokenizerState *state)
+{
+    DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
+
+    DuskExpr *expr = parseAccessOrFunctionCallExpr(compiler, state);
+    DUSK_ASSERT(expr);
+
+    DuskToken next_token = {0};
+    tokenizerNextToken(compiler, *state, &next_token);
+    switch (next_token.type) {
+    case DUSK_TOKEN_ADD:
+    case DUSK_TOKEN_SUB:
+    case DUSK_TOKEN_MUL:
+    case DUSK_TOKEN_DIV:
+    case DUSK_TOKEN_MOD:
+    case DUSK_TOKEN_BITOR:
+    case DUSK_TOKEN_BITXOR:
+    case DUSK_TOKEN_BITAND:
+    case DUSK_TOKEN_LSHIFT:
+    case DUSK_TOKEN_RSHIFT: break;
+    default: return expr;
+    }
+
+    DuskArray(DuskBinaryOp) op_stack_arr =
+        duskArrayCreate(allocator, DuskBinaryOp);
+    DuskArray(DuskBinaryOpSymbol) symbol_queue_arr =
+        duskArrayCreate(allocator, DuskBinaryOpSymbol);
+
+    static uint8_t precedences[DUSK_BINARY_OP_MAX] = {
+        [DUSK_BINARY_OP_ADD] = 4,
+        [DUSK_BINARY_OP_SUB] = 4,
+        [DUSK_BINARY_OP_MUL] = 3,
+        [DUSK_BINARY_OP_DIV] = 3,
+        [DUSK_BINARY_OP_MOD] = 3,
+        [DUSK_BINARY_OP_BITAND] = 8,
+        [DUSK_BINARY_OP_BITOR] = 10,
+        [DUSK_BINARY_OP_BITXOR] = 9,
+        [DUSK_BINARY_OP_LSHIFT] = 5,
+        [DUSK_BINARY_OP_RSHIFT] = 5,
+    };
+
+    {
+        DuskBinaryOpSymbol expr_symbol = {0};
+        expr_symbol.kind = DUSK_BINARY_OP_SYMBOL_EXPR;
+        expr_symbol.expr = expr;
+        duskArrayPush(&symbol_queue_arr, expr_symbol);
+    }
+
+    while (next_token.type == DUSK_TOKEN_ADD ||
+           next_token.type == DUSK_TOKEN_SUB ||
+           next_token.type == DUSK_TOKEN_MUL ||
+           next_token.type == DUSK_TOKEN_DIV ||
+           next_token.type == DUSK_TOKEN_MOD ||
+           next_token.type == DUSK_TOKEN_BITAND ||
+           next_token.type == DUSK_TOKEN_BITOR ||
+           next_token.type == DUSK_TOKEN_BITXOR ||
+           next_token.type == DUSK_TOKEN_RSHIFT ||
+           next_token.type == DUSK_TOKEN_LSHIFT) {
+        consumeToken(compiler, state, next_token.type);
+
+        DuskBinaryOp op = 0;
+        switch (next_token.type) {
+        case DUSK_TOKEN_ADD: op = DUSK_BINARY_OP_ADD; break;
+        case DUSK_TOKEN_SUB: op = DUSK_BINARY_OP_SUB; break;
+        case DUSK_TOKEN_MUL: op = DUSK_BINARY_OP_MUL; break;
+        case DUSK_TOKEN_DIV: op = DUSK_BINARY_OP_DIV; break;
+        case DUSK_TOKEN_MOD: op = DUSK_BINARY_OP_MOD; break;
+        case DUSK_TOKEN_BITAND: op = DUSK_BINARY_OP_BITAND; break;
+        case DUSK_TOKEN_BITOR: op = DUSK_BINARY_OP_BITOR; break;
+        case DUSK_TOKEN_BITXOR: op = DUSK_BINARY_OP_BITXOR; break;
+        case DUSK_TOKEN_LSHIFT: op = DUSK_BINARY_OP_LSHIFT; break;
+        case DUSK_TOKEN_RSHIFT: op = DUSK_BINARY_OP_RSHIFT; break;
+        default: DUSK_ASSERT(0); break;
+        }
+
+        while (duskArrayLength(op_stack_arr) > 0 &&
+               precedences[op_stack_arr[duskArrayLength(op_stack_arr) - 1]] <
+                   precedences[op]) {
+            DuskBinaryOp popped_op =
+                op_stack_arr[duskArrayLength(op_stack_arr) - 1];
+            duskArrayPop(&op_stack_arr);
+
+            DuskBinaryOpSymbol op_symbol = {0};
+            op_symbol.kind = DUSK_BINARY_OP_SYMBOL_OPERATOR;
+            op_symbol.op = popped_op;
+            duskArrayPush(&symbol_queue_arr, op_symbol);
+        }
+
+        duskArrayPush(&op_stack_arr, op);
+
+        DuskExpr *right_expr = parseAccessOrFunctionCallExpr(compiler, state);
+
+        {
+            DuskBinaryOpSymbol expr_symbol = {0};
+            expr_symbol.kind = DUSK_BINARY_OP_SYMBOL_EXPR;
+            expr_symbol.expr = right_expr;
+            duskArrayPush(&symbol_queue_arr, expr_symbol);
+        }
+
+        tokenizerNextToken(compiler, *state, &next_token);
+    }
+
+    while (duskArrayLength(op_stack_arr) > 0) {
+        DuskBinaryOp popped_op =
+            op_stack_arr[duskArrayLength(op_stack_arr) - 1];
+        duskArrayPop(&op_stack_arr);
+
+        DuskBinaryOpSymbol op_symbol = {0};
+        op_symbol.kind = DUSK_BINARY_OP_SYMBOL_OPERATOR;
+        op_symbol.op = popped_op;
+        duskArrayPush(&symbol_queue_arr, op_symbol);
+    }
+
+    DuskArray(DuskExpr *) expr_stack_arr =
+        duskArrayCreate(allocator, DuskExpr *);
+
+    for (size_t i = 0; i < duskArrayLength(symbol_queue_arr); ++i) {
+        DuskBinaryOpSymbol symbol = symbol_queue_arr[i];
+        if (symbol.kind == DUSK_BINARY_OP_SYMBOL_OPERATOR) {
+            DUSK_ASSERT(duskArrayLength(expr_stack_arr) >= 2);
+            DuskExpr *right_expr =
+                expr_stack_arr[duskArrayLength(expr_stack_arr) - 1];
+            DuskExpr *left_expr =
+                expr_stack_arr[duskArrayLength(expr_stack_arr) - 2];
+            duskArrayPop(&expr_stack_arr);
+            duskArrayPop(&expr_stack_arr);
+
+            DuskExpr *bin_expr = DUSK_NEW(allocator, DuskExpr);
+            bin_expr->kind = DUSK_EXPR_BINARY;
+            bin_expr->location = left_expr->location;
+            bin_expr->binary.op = symbol.op;
+            bin_expr->binary.left = left_expr;
+            bin_expr->binary.right = right_expr;
+
+            duskArrayPush(&expr_stack_arr, bin_expr);
+        } else {
+            duskArrayPush(&expr_stack_arr, symbol.expr);
+        }
+    }
+
+    DUSK_ASSERT(duskArrayLength(expr_stack_arr) == 1);
+
+    return expr_stack_arr[duskArrayLength(expr_stack_arr) - 1];
+}
+
 static DuskExpr *parseExpr(DuskCompiler *compiler, TokenizerState *state)
 {
-    return parseAccessOrFunctionCallExpr(compiler, state);
+    return parseBinaryExpr(compiler, state);
 }
 
 static DuskStmt *parseStmt(DuskCompiler *compiler, TokenizerState *state)

@@ -929,6 +929,11 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
         break;
     }
 
+    case DUSK_EXPR_BINARY: {
+        DUSK_ASSERT(!"unimplemented");
+        break;
+    }
+
     case DUSK_EXPR_STRING_LITERAL:
     case DUSK_EXPR_BOOL_TYPE:
     case DUSK_EXPR_ARRAY_TYPE:

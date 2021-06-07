@@ -166,6 +166,11 @@ static bool duskExprResolveInteger(
         return false;
     }
 
+    case DUSK_EXPR_BINARY: {
+        DUSK_ASSERT(!"unimplemented");
+        break;
+    }
+
     case DUSK_EXPR_ARRAY_ACCESS:
     case DUSK_EXPR_STRUCT_LITERAL:
     case DUSK_EXPR_ACCESS:
@@ -1318,6 +1323,10 @@ static void duskAnalyzeExpr(
 
         expr->type = left_type;
 
+        break;
+    }
+    case DUSK_EXPR_BINARY: {
+        DUSK_ASSERT(!"unimplemented");
         break;
     }
     }
