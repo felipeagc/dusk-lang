@@ -37,7 +37,6 @@ static const char *tokenTypeToString(DuskTokenType token_type)
     case DUSK_TOKEN_SWITCH: return "switch";
     case DUSK_TOKEN_TRUE: return "true";
     case DUSK_TOKEN_FALSE: return "false";
-    case DUSK_TOKEN_EXTENSION: return "extension";
 
     case DUSK_TOKEN_VOID: return "void";
     case DUSK_TOKEN_BOOL: return "bool";
@@ -163,7 +162,6 @@ tokenToString(DuskAllocator *allocator, const DuskToken *token)
     case DUSK_TOKEN_SWITCH: return "switch";
     case DUSK_TOKEN_TRUE: return "true";
     case DUSK_TOKEN_FALSE: return "false";
-    case DUSK_TOKEN_EXTENSION: return "extension";
 
     case DUSK_TOKEN_VOID: return "void";
     case DUSK_TOKEN_BOOL: return "bool";
@@ -1516,18 +1514,6 @@ parseTopLevelDecl(DuskCompiler *compiler, TokenizerState *state)
         decl->kind = DUSK_DECL_TYPE;
         decl->name = name_token.str;
         decl->typedef_.type_expr = type_expr;
-
-        consumeToken(compiler, state, DUSK_TOKEN_SEMICOLON);
-        break;
-    }
-    case DUSK_TOKEN_EXTENSION: {
-        consumeToken(compiler, state, DUSK_TOKEN_EXTENSION);
-        DuskToken name_token =
-            consumeToken(compiler, state, DUSK_TOKEN_STRING_LITERAL);
-
-        decl->kind = DUSK_DECL_EXTENSION;
-        decl->name = NULL;
-        decl->extension.name = name_token.str;
 
         consumeToken(compiler, state, DUSK_TOKEN_SEMICOLON);
         break;

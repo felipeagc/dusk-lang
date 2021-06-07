@@ -1383,24 +1383,18 @@ static void duskAnalyzeStmt(
 static void duskTryRegisterDecl(
     DuskCompiler *compiler, DuskAnalyzerState *state, DuskDecl *decl)
 {
-    switch (decl->kind) {
-    case DUSK_DECL_EXTENSION: break;
-    default: {
-        DuskScope *scope = duskCurrentScope(state);
-        DUSK_ASSERT(decl->name);
-        if (duskScopeLookup(scope, decl->name) != NULL) {
-            duskAddError(
-                compiler,
-                decl->location,
-                "duplicate declaration: '%s'",
-                decl->name);
-            return;
-        }
+    DuskScope *scope = duskCurrentScope(state);
+    DUSK_ASSERT(decl->name);
+    if (duskScopeLookup(scope, decl->name) != NULL) {
+        duskAddError(
+            compiler,
+            decl->location,
+            "duplicate declaration: '%s'",
+            decl->name);
+        return;
+    }
 
-        duskScopeSet(scope, decl->name, decl);
-        break;
-    }
-    }
+    duskScopeSet(scope, decl->name, decl);
 }
 
 static void duskAnalyzeDecl(
@@ -1726,9 +1720,6 @@ static void duskAnalyzeDecl(
             }
         }
 
-        break;
-    }
-    case DUSK_DECL_EXTENSION: {
         break;
     }
     }

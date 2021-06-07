@@ -1060,7 +1060,6 @@ duskGenerateLocalDecl(DuskIRModule *module, DuskDecl *func_decl, DuskDecl *decl)
         break;
     }
     case DUSK_DECL_FUNCTION:
-    case DUSK_DECL_EXTENSION:
     case DUSK_DECL_TYPE: DUSK_ASSERT(0); break;
     }
 }
@@ -1274,10 +1273,13 @@ static void duskGenerateGlobalDecl(DuskIRModule *module, DuskDecl *decl)
             duskArrayLength(decl->attributes_arr),
             decl->attributes_arr);
 
-        break;
-    }
-    case DUSK_DECL_EXTENSION: {
-        duskArrayPush(&module->extensions_arr, decl->extension.name);
+        if (decl->type->kind == DUSK_TYPE_RUNTIME_ARRAY) {
+            duskArrayPush(
+                &module->extensions_arr, "SPV_EXT_descriptor_indexing");
+            duskArrayPush(
+                &module->capabilities_arr, SpvCapabilityRuntimeDescriptorArray);
+        }
+
         break;
     }
     case DUSK_DECL_TYPE: break;

@@ -80,8 +80,6 @@ DuskCompiler *duskCompilerCreate(void)
     duskMapSet(compiler->keyword_map, "switch", (void *)DUSK_TOKEN_SWITCH);
     duskMapSet(compiler->keyword_map, "true", (void *)DUSK_TOKEN_TRUE);
     duskMapSet(compiler->keyword_map, "false", (void *)DUSK_TOKEN_FALSE);
-    duskMapSet(
-        compiler->keyword_map, "extension", (void *)DUSK_TOKEN_EXTENSION);
     duskMapSet(compiler->keyword_map, "void", (void *)DUSK_TOKEN_VOID);
     duskMapSet(compiler->keyword_map, "bool", (void *)DUSK_TOKEN_BOOL);
 

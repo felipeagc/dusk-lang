@@ -184,6 +184,9 @@ DuskIRModule *duskIRModuleCreate(DuskCompiler *compiler)
     module->last_id = 0;
     module->stream_arr = duskArrayCreate(allocator, uint32_t);
     module->extensions_arr = duskArrayCreate(allocator, const char *);
+    module->capabilities_arr = duskArrayCreate(allocator, uint32_t);
+
+    duskArrayPush(&module->capabilities_arr, SpvCapabilityShader);
 
     module->const_cache = duskMapCreate(allocator, 32);
     module->consts_arr = duskArrayCreate(allocator, DuskIRValue *);
@@ -1450,10 +1453,9 @@ DuskArray(uint32_t)
     duskArrayPush(&module->stream_arr, 0);  // ID Bound (fill out later)
     duskArrayPush(&module->stream_arr, 0);
 
-    {
-        uint32_t params[1] = {SpvCapabilityShader};
-        duskEncodeInst(
-            module, SpvOpCapability, params, DUSK_CARRAY_LENGTH(params));
+    for (size_t i = 0; i < duskArrayLength(module->capabilities_arr); ++i) {
+        uint32_t capability = module->capabilities_arr[i];
+        duskEncodeInst(module, SpvOpCapability, &capability, 1);
     }
 
     for (size_t i = 0; i < duskArrayLength(module->extensions_arr); ++i) {
