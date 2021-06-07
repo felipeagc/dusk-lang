@@ -103,9 +103,12 @@ DuskCompiler *duskCompilerCreate(void)
     duskMapSet(compiler->keyword_map, "double2", (void *)DUSK_TOKEN_DOUBLE2);
     duskMapSet(compiler->keyword_map, "double3", (void *)DUSK_TOKEN_DOUBLE3);
     duskMapSet(compiler->keyword_map, "double4", (void *)DUSK_TOKEN_DOUBLE4);
-    duskMapSet(compiler->keyword_map, "double2x2", (void *)DUSK_TOKEN_DOUBLE2X2);
-    duskMapSet(compiler->keyword_map, "double3x3", (void *)DUSK_TOKEN_DOUBLE3X3);
-    duskMapSet(compiler->keyword_map, "double4x4", (void *)DUSK_TOKEN_DOUBLE4X4);
+    duskMapSet(
+        compiler->keyword_map, "double2x2", (void *)DUSK_TOKEN_DOUBLE2X2);
+    duskMapSet(
+        compiler->keyword_map, "double3x3", (void *)DUSK_TOKEN_DOUBLE3X3);
+    duskMapSet(
+        compiler->keyword_map, "double4x4", (void *)DUSK_TOKEN_DOUBLE4X4);
 
     duskMapSet(compiler->keyword_map, "byte", (void *)DUSK_TOKEN_BYTE);
     duskMapSet(compiler->keyword_map, "byte2", (void *)DUSK_TOKEN_BYTE2);
@@ -135,9 +138,12 @@ DuskCompiler *duskCompilerCreate(void)
     duskMapSet(compiler->keyword_map, "ushort2", (void *)DUSK_TOKEN_USHORT2);
     duskMapSet(compiler->keyword_map, "ushort3", (void *)DUSK_TOKEN_USHORT3);
     duskMapSet(compiler->keyword_map, "ushort4", (void *)DUSK_TOKEN_USHORT4);
-    duskMapSet(compiler->keyword_map, "ushort2x2", (void *)DUSK_TOKEN_USHORT2X2);
-    duskMapSet(compiler->keyword_map, "ushort3x3", (void *)DUSK_TOKEN_USHORT3X3);
-    duskMapSet(compiler->keyword_map, "ushort4x4", (void *)DUSK_TOKEN_USHORT4X4);
+    duskMapSet(
+        compiler->keyword_map, "ushort2x2", (void *)DUSK_TOKEN_USHORT2X2);
+    duskMapSet(
+        compiler->keyword_map, "ushort3x3", (void *)DUSK_TOKEN_USHORT3X3);
+    duskMapSet(
+        compiler->keyword_map, "ushort4x4", (void *)DUSK_TOKEN_USHORT4X4);
 
     duskMapSet(compiler->keyword_map, "int", (void *)DUSK_TOKEN_INT);
     duskMapSet(compiler->keyword_map, "int2", (void *)DUSK_TOKEN_INT2);

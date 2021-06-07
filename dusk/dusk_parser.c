@@ -1676,8 +1676,11 @@ parseAccessOrFunctionCallExpr(DuskCompiler *compiler, TokenizerState *state)
         tokenizerNextToken(compiler, *state, &next_token);
 
     while (next_token.type == DUSK_TOKEN_LPAREN ||
+           next_token.type == DUSK_TOKEN_LBRACKET ||
            next_token.type == DUSK_TOKEN_DOT) {
         if (next_token.type == DUSK_TOKEN_LPAREN) {
+            // Function call expression
+
             DuskExpr *func_expr = expr;
             expr = DUSK_NEW(allocator, DuskExpr);
             expr->location = func_expr->location;
@@ -1702,6 +1705,8 @@ parseAccessOrFunctionCallExpr(DuskCompiler *compiler, TokenizerState *state)
 
             consumeToken(compiler, state, DUSK_TOKEN_RPAREN);
         } else if (next_token.type == DUSK_TOKEN_DOT) {
+            // Struct literal or access expression
+
             tokenizerNextToken(compiler, next_state, &next_token);
             if (next_token.type == DUSK_TOKEN_LCURLY) {
                 // Struct literal
@@ -1764,6 +1769,27 @@ parseAccessOrFunctionCallExpr(DuskCompiler *compiler, TokenizerState *state)
 
                     tokenizerNextToken(compiler, *state, &next_token);
                 }
+            }
+        } else if (next_token.type == DUSK_TOKEN_LBRACKET) {
+            // Array access expression
+            DuskExpr *base_expr = expr;
+            expr = DUSK_NEW(allocator, DuskExpr);
+            expr->location = base_expr->location;
+            expr->kind = DUSK_EXPR_ARRAY_ACCESS;
+            expr->access.base_expr = base_expr;
+            expr->access.chain_arr = duskArrayCreate(allocator, DuskExpr *);
+
+            tokenizerNextToken(compiler, *state, &next_token);
+            while (next_token.type == DUSK_TOKEN_LBRACKET) {
+                consumeToken(compiler, state, DUSK_TOKEN_LBRACKET);
+
+                DuskExpr *index_expr = parseExpr(compiler, state);
+
+                duskArrayPush(&expr->access.chain_arr, index_expr);
+
+                consumeToken(compiler, state, DUSK_TOKEN_RBRACKET);
+
+                tokenizerNextToken(compiler, *state, &next_token);
             }
         }
 

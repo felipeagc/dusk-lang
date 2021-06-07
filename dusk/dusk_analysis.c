@@ -166,6 +166,7 @@ static bool duskExprResolveInteger(
         return false;
     }
 
+    case DUSK_EXPR_ARRAY_ACCESS:
     case DUSK_EXPR_STRUCT_LITERAL:
     case DUSK_EXPR_ACCESS:
     case DUSK_EXPR_FUNCTION_CALL:
@@ -214,6 +215,9 @@ static bool duskIsExprAssignable(DuskAnalyzerState *state, DuskExpr *expr)
         break;
     }
     case DUSK_EXPR_ACCESS: {
+        return duskIsExprAssignable(state, expr->access.base_expr);
+    }
+    case DUSK_EXPR_ARRAY_ACCESS: {
         return duskIsExprAssignable(state, expr->access.base_expr);
     }
     default: {
@@ -556,8 +560,15 @@ static void duskAnalyzeExpr(
         expr->identifier.decl = ident_decl;
 
         expr->type = ident_decl->type;
+        if (!expr->type) {
+            DUSK_ASSERT(duskArrayLength(compiler->errors_arr) > 0);
+        }
+
         if (ident_decl->kind == DUSK_DECL_TYPE) {
             expr->as_type = ident_decl->typedef_.type_expr->as_type;
+            if (!expr->as_type) {
+                DUSK_ASSERT(duskArrayLength(compiler->errors_arr) > 0);
+            }
         }
         break;
     }
@@ -1135,9 +1146,10 @@ static void duskAnalyzeExpr(
     }
 
     case DUSK_EXPR_ACCESS: {
-        duskAnalyzeExpr(compiler, state, expr->access.base_expr, NULL, false);
+        duskAnalyzeExpr(
+            compiler, state, expr->access.base_expr, NULL, must_be_assignable);
         DuskExpr *left_expr = expr->access.base_expr;
-        if (!left_expr) {
+        if (!left_expr->type) {
             DUSK_ASSERT(duskArrayLength(compiler->errors_arr) > 0);
             break;
         }
@@ -1262,6 +1274,52 @@ static void duskAnalyzeExpr(
 
         break;
     }
+    case DUSK_EXPR_ARRAY_ACCESS: {
+        duskAnalyzeExpr(
+            compiler, state, expr->access.base_expr, NULL, must_be_assignable);
+        if (!expr->access.base_expr->type) {
+            DUSK_ASSERT(duskArrayLength(compiler->errors_arr) > 0);
+            break;
+        }
+
+        DuskType *left_type = expr->access.base_expr->type;
+
+        DuskType *index_type =
+            duskTypeNewScalar(compiler, DUSK_SCALAR_TYPE_UINT);
+
+        for (size_t i = 0; i < duskArrayLength(expr->access.chain_arr); ++i) {
+            if (!left_type) {
+                DUSK_ASSERT(duskArrayLength(compiler->errors_arr) > 0);
+                break;
+            }
+
+            if (left_type->kind != DUSK_TYPE_ARRAY &&
+                left_type->kind != DUSK_TYPE_RUNTIME_ARRAY) {
+                duskAddError(
+                    compiler,
+                    expr->location,
+                    "array access expression cannot index values of type '%s'",
+                    duskTypeToPrettyString(allocator, left_type));
+                left_type = NULL;
+                break;
+            }
+
+            left_type = left_type->array.sub;
+        }
+
+        for (size_t i = 0; i < duskArrayLength(expr->access.chain_arr); ++i) {
+            DuskExpr *right_expr = expr->access.chain_arr[i];
+            duskAnalyzeExpr(compiler, state, right_expr, index_type, false);
+            if (!right_expr->type) {
+                DUSK_ASSERT(duskArrayLength(compiler->errors_arr) > 0);
+                break;
+            }
+        }
+
+        expr->type = left_type;
+
+        break;
+    }
     }
 
     if (!expr->type) {
@@ -1301,8 +1359,8 @@ static void duskAnalyzeStmt(
 
     switch (stmt->kind) {
     case DUSK_STMT_DECL: {
-        duskTryRegisterDecl(compiler, state, stmt->decl);
         duskAnalyzeDecl(compiler, state, stmt->decl);
+        duskTryRegisterDecl(compiler, state, stmt->decl);
         break;
     }
     case DUSK_STMT_EXPR: {

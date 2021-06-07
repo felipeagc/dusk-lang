@@ -1040,6 +1040,7 @@ typedef enum DuskExprKind {
     DUSK_EXPR_FUNCTION_CALL,
     DUSK_EXPR_BUILTIN_FUNCTION_CALL,
     DUSK_EXPR_ACCESS,
+    DUSK_EXPR_ARRAY_ACCESS,
 } DuskExprKind;
 
 struct DuskExpr {

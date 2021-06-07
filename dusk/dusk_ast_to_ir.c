@@ -893,6 +893,42 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
         break;
     }
 
+    case DUSK_EXPR_ARRAY_ACCESS: {
+        DuskIRValue *function = func_decl->ir_value;
+        DUSK_ASSERT(duskArrayLength(function->function.blocks_arr) > 0);
+        DuskIRValue *block =
+            function->function
+                .blocks_arr[duskArrayLength(function->function.blocks_arr) - 1];
+
+        duskGenerateExpr(module, func_decl, expr->access.base_expr);
+        DuskIRValue *base_value = expr->access.base_expr->ir_value;
+        DUSK_ASSERT(base_value);
+
+        DuskArray(DuskIRValue *) index_values_arr =
+            duskArrayCreate(module->allocator, DuskIRValue *);
+
+        for (size_t i = 0; i < duskArrayLength(expr->access.chain_arr); ++i) {
+
+            DuskExpr *index_expr = expr->access.chain_arr[i];
+            duskGenerateExpr(module, func_decl, index_expr);
+            DUSK_ASSERT(index_expr->ir_value);
+
+            duskArrayPush(&index_values_arr, index_expr->ir_value);
+        }
+
+        DUSK_ASSERT(duskIRIsLvalue(base_value));
+
+        expr->ir_value = duskIRCreateAccessChain(
+            module,
+            block,
+            expr->type,
+            base_value,
+            duskArrayLength(index_values_arr),
+            index_values_arr);
+
+        break;
+    }
+
     case DUSK_EXPR_STRING_LITERAL:
     case DUSK_EXPR_BOOL_TYPE:
     case DUSK_EXPR_ARRAY_TYPE:

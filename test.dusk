@@ -108,7 +108,11 @@ fn fs_main([location(0)] in_pos: float3) [location(0)] float4 {
     s = @trunc(s);
     s = @exp2(s);
 
-    let other: float3 = float3(1);
+    let my_arr_arr: [2][2]float;
+    let my_arr: [2]float = my_arr_arr[0];
+    my_arr_arr[0][0] = 123;
+
+    let other: float3 = float3(1).xxx;
     other.x = 123;
     return float4(float3(1, 2, 3), 1);
 }
