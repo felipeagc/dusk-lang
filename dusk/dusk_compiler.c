@@ -123,6 +123,22 @@ DuskCompiler *duskCompilerCreate(void)
     duskMapSet(compiler->keyword_map, "ubyte3x3", (void *)DUSK_TOKEN_UBYTE3X3);
     duskMapSet(compiler->keyword_map, "ubyte4x4", (void *)DUSK_TOKEN_UBYTE4X4);
 
+    duskMapSet(compiler->keyword_map, "short", (void *)DUSK_TOKEN_SHORT);
+    duskMapSet(compiler->keyword_map, "short2", (void *)DUSK_TOKEN_SHORT2);
+    duskMapSet(compiler->keyword_map, "short3", (void *)DUSK_TOKEN_SHORT3);
+    duskMapSet(compiler->keyword_map, "short4", (void *)DUSK_TOKEN_SHORT4);
+    duskMapSet(compiler->keyword_map, "short2x2", (void *)DUSK_TOKEN_SHORT2X2);
+    duskMapSet(compiler->keyword_map, "short3x3", (void *)DUSK_TOKEN_SHORT3X3);
+    duskMapSet(compiler->keyword_map, "short4x4", (void *)DUSK_TOKEN_SHORT4X4);
+
+    duskMapSet(compiler->keyword_map, "ushort", (void *)DUSK_TOKEN_USHORT);
+    duskMapSet(compiler->keyword_map, "ushort2", (void *)DUSK_TOKEN_USHORT2);
+    duskMapSet(compiler->keyword_map, "ushort3", (void *)DUSK_TOKEN_USHORT3);
+    duskMapSet(compiler->keyword_map, "ushort4", (void *)DUSK_TOKEN_USHORT4);
+    duskMapSet(compiler->keyword_map, "ushort2x2", (void *)DUSK_TOKEN_USHORT2X2);
+    duskMapSet(compiler->keyword_map, "ushort3x3", (void *)DUSK_TOKEN_USHORT3X3);
+    duskMapSet(compiler->keyword_map, "ushort4x4", (void *)DUSK_TOKEN_USHORT4X4);
+
     duskMapSet(compiler->keyword_map, "int", (void *)DUSK_TOKEN_INT);
     duskMapSet(compiler->keyword_map, "int2", (void *)DUSK_TOKEN_INT2);
     duskMapSet(compiler->keyword_map, "int3", (void *)DUSK_TOKEN_INT3);
@@ -138,6 +154,22 @@ DuskCompiler *duskCompilerCreate(void)
     duskMapSet(compiler->keyword_map, "uint2x2", (void *)DUSK_TOKEN_UINT2X2);
     duskMapSet(compiler->keyword_map, "uint3x3", (void *)DUSK_TOKEN_UINT3X3);
     duskMapSet(compiler->keyword_map, "uint4x4", (void *)DUSK_TOKEN_UINT4X4);
+
+    duskMapSet(compiler->keyword_map, "long", (void *)DUSK_TOKEN_LONG);
+    duskMapSet(compiler->keyword_map, "long2", (void *)DUSK_TOKEN_LONG2);
+    duskMapSet(compiler->keyword_map, "long3", (void *)DUSK_TOKEN_LONG3);
+    duskMapSet(compiler->keyword_map, "long4", (void *)DUSK_TOKEN_LONG4);
+    duskMapSet(compiler->keyword_map, "long2x2", (void *)DUSK_TOKEN_LONG2X2);
+    duskMapSet(compiler->keyword_map, "long3x3", (void *)DUSK_TOKEN_LONG3X3);
+    duskMapSet(compiler->keyword_map, "long4x4", (void *)DUSK_TOKEN_LONG4X4);
+
+    duskMapSet(compiler->keyword_map, "ulong", (void *)DUSK_TOKEN_ULONG);
+    duskMapSet(compiler->keyword_map, "ulong2", (void *)DUSK_TOKEN_ULONG2);
+    duskMapSet(compiler->keyword_map, "ulong3", (void *)DUSK_TOKEN_ULONG3);
+    duskMapSet(compiler->keyword_map, "ulong4", (void *)DUSK_TOKEN_ULONG4);
+    duskMapSet(compiler->keyword_map, "ulong2x2", (void *)DUSK_TOKEN_ULONG2X2);
+    duskMapSet(compiler->keyword_map, "ulong3x3", (void *)DUSK_TOKEN_ULONG3X3);
+    duskMapSet(compiler->keyword_map, "ulong4x4", (void *)DUSK_TOKEN_ULONG4X4);
 
     for (size_t i = 0; i < DUSK_BUILTIN_FUNCTION_MAX; ++i) {
         duskMapSet(

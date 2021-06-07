@@ -455,6 +455,18 @@ DuskType *duskTypeNewScalar(DuskCompiler *compiler, DuskScalarType scalar_type)
         type->int_.bits = 8;
         break;
     }
+    case DUSK_SCALAR_TYPE_SHORT: {
+        type->kind = DUSK_TYPE_INT;
+        type->int_.is_signed = true;
+        type->int_.bits = 16;
+        break;
+    }
+    case DUSK_SCALAR_TYPE_USHORT: {
+        type->kind = DUSK_TYPE_INT;
+        type->int_.is_signed = false;
+        type->int_.bits = 16;
+        break;
+    }
     case DUSK_SCALAR_TYPE_INT: {
         type->kind = DUSK_TYPE_INT;
         type->int_.is_signed = true;
@@ -465,6 +477,18 @@ DuskType *duskTypeNewScalar(DuskCompiler *compiler, DuskScalarType scalar_type)
         type->kind = DUSK_TYPE_INT;
         type->int_.is_signed = false;
         type->int_.bits = 32;
+        break;
+    }
+    case DUSK_SCALAR_TYPE_LONG: {
+        type->kind = DUSK_TYPE_INT;
+        type->int_.is_signed = true;
+        type->int_.bits = 64;
+        break;
+    }
+    case DUSK_SCALAR_TYPE_ULONG: {
+        type->kind = DUSK_TYPE_INT;
+        type->int_.is_signed = false;
+        type->int_.bits = 64;
         break;
     }
     case DUSK_SCALAR_TYPE_HALF: {

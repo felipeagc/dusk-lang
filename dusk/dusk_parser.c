@@ -81,6 +81,22 @@ static const char *tokenTypeToString(DuskTokenType token_type)
     case DUSK_TOKEN_UBYTE3X3: return "ubyte3x3";
     case DUSK_TOKEN_UBYTE4X4: return "ubyte4x4";
 
+    case DUSK_TOKEN_SHORT: return "short";
+    case DUSK_TOKEN_SHORT2: return "short2";
+    case DUSK_TOKEN_SHORT3: return "short3";
+    case DUSK_TOKEN_SHORT4: return "short4";
+    case DUSK_TOKEN_SHORT2X2: return "short2x2";
+    case DUSK_TOKEN_SHORT3X3: return "short3x3";
+    case DUSK_TOKEN_SHORT4X4: return "short4x4";
+
+    case DUSK_TOKEN_USHORT: return "ushort";
+    case DUSK_TOKEN_USHORT2: return "ushort2";
+    case DUSK_TOKEN_USHORT3: return "ushort3";
+    case DUSK_TOKEN_USHORT4: return "ushort4";
+    case DUSK_TOKEN_USHORT2X2: return "ushort2x2";
+    case DUSK_TOKEN_USHORT3X3: return "ushort3x3";
+    case DUSK_TOKEN_USHORT4X4: return "ushort4x4";
+
     case DUSK_TOKEN_INT: return "int";
     case DUSK_TOKEN_INT2: return "int2";
     case DUSK_TOKEN_INT3: return "int3";
@@ -96,6 +112,22 @@ static const char *tokenTypeToString(DuskTokenType token_type)
     case DUSK_TOKEN_UINT2X2: return "uint2x2";
     case DUSK_TOKEN_UINT3X3: return "uint3x3";
     case DUSK_TOKEN_UINT4X4: return "uint4x4";
+
+    case DUSK_TOKEN_LONG: return "long";
+    case DUSK_TOKEN_LONG2: return "long2";
+    case DUSK_TOKEN_LONG3: return "long3";
+    case DUSK_TOKEN_LONG4: return "long4";
+    case DUSK_TOKEN_LONG2X2: return "long2x2";
+    case DUSK_TOKEN_LONG3X3: return "long3x3";
+    case DUSK_TOKEN_LONG4X4: return "long4x4";
+
+    case DUSK_TOKEN_ULONG: return "ulong";
+    case DUSK_TOKEN_ULONG2: return "ulong2";
+    case DUSK_TOKEN_ULONG3: return "ulong3";
+    case DUSK_TOKEN_ULONG4: return "ulong4";
+    case DUSK_TOKEN_ULONG2X2: return "ulong2x2";
+    case DUSK_TOKEN_ULONG3X3: return "ulong3x3";
+    case DUSK_TOKEN_ULONG4X4: return "ulong4x4";
 
     case DUSK_TOKEN_LCURLY: return "{";
     case DUSK_TOKEN_RCURLY: return "}";
@@ -238,6 +270,22 @@ tokenToString(DuskAllocator *allocator, const DuskToken *token)
     case DUSK_TOKEN_UBYTE3X3: return "ubyte3x3";
     case DUSK_TOKEN_UBYTE4X4: return "ubyte4x4";
 
+    case DUSK_TOKEN_SHORT: return "short";
+    case DUSK_TOKEN_SHORT2: return "short2";
+    case DUSK_TOKEN_SHORT3: return "short3";
+    case DUSK_TOKEN_SHORT4: return "short4";
+    case DUSK_TOKEN_SHORT2X2: return "short2x2";
+    case DUSK_TOKEN_SHORT3X3: return "short3x3";
+    case DUSK_TOKEN_SHORT4X4: return "short4x4";
+
+    case DUSK_TOKEN_USHORT: return "ushort";
+    case DUSK_TOKEN_USHORT2: return "ushort2";
+    case DUSK_TOKEN_USHORT3: return "ushort3";
+    case DUSK_TOKEN_USHORT4: return "ushort4";
+    case DUSK_TOKEN_USHORT2X2: return "ushort2x2";
+    case DUSK_TOKEN_USHORT3X3: return "ushort3x3";
+    case DUSK_TOKEN_USHORT4X4: return "ushort4x4";
+
     case DUSK_TOKEN_INT: return "int";
     case DUSK_TOKEN_INT2: return "int2";
     case DUSK_TOKEN_INT3: return "int3";
@@ -253,6 +301,22 @@ tokenToString(DuskAllocator *allocator, const DuskToken *token)
     case DUSK_TOKEN_UINT2X2: return "uint2x2";
     case DUSK_TOKEN_UINT3X3: return "uint3x3";
     case DUSK_TOKEN_UINT4X4: return "uint4x4";
+
+    case DUSK_TOKEN_LONG: return "long";
+    case DUSK_TOKEN_LONG2: return "long2";
+    case DUSK_TOKEN_LONG3: return "long3";
+    case DUSK_TOKEN_LONG4: return "long4";
+    case DUSK_TOKEN_LONG2X2: return "long2x2";
+    case DUSK_TOKEN_LONG3X3: return "long3x3";
+    case DUSK_TOKEN_LONG4X4: return "long4x4";
+
+    case DUSK_TOKEN_ULONG: return "ulong";
+    case DUSK_TOKEN_ULONG2: return "ulong2";
+    case DUSK_TOKEN_ULONG3: return "ulong3";
+    case DUSK_TOKEN_ULONG4: return "ulong4";
+    case DUSK_TOKEN_ULONG2X2: return "ulong2x2";
+    case DUSK_TOKEN_ULONG3X3: return "ulong3x3";
+    case DUSK_TOKEN_ULONG4X4: return "ulong4x4";
 
     case DUSK_TOKEN_LCURLY: return "{";
     case DUSK_TOKEN_RCURLY: return "}";
@@ -1144,6 +1208,96 @@ static DuskExpr *parsePrimaryExpr(DuskCompiler *compiler, TokenizerState *state)
         break;
     }
 
+    case DUSK_TOKEN_SHORT: {
+        expr->kind = DUSK_EXPR_SCALAR_TYPE;
+        expr->scalar_type = DUSK_SCALAR_TYPE_SHORT;
+        break;
+    }
+    case DUSK_TOKEN_SHORT2: {
+        expr->kind = DUSK_EXPR_VECTOR_TYPE;
+        expr->vector_type.scalar_type = DUSK_SCALAR_TYPE_SHORT;
+        expr->vector_type.length = 2;
+        break;
+    }
+    case DUSK_TOKEN_SHORT3: {
+        expr->kind = DUSK_EXPR_VECTOR_TYPE;
+        expr->vector_type.scalar_type = DUSK_SCALAR_TYPE_SHORT;
+        expr->vector_type.length = 3;
+        break;
+    }
+    case DUSK_TOKEN_SHORT4: {
+        expr->kind = DUSK_EXPR_VECTOR_TYPE;
+        expr->vector_type.scalar_type = DUSK_SCALAR_TYPE_SHORT;
+        expr->vector_type.length = 4;
+        break;
+    }
+    case DUSK_TOKEN_SHORT2X2: {
+        expr->kind = DUSK_EXPR_MATRIX_TYPE;
+        expr->matrix_type.scalar_type = DUSK_SCALAR_TYPE_SHORT;
+        expr->matrix_type.rows = 2;
+        expr->matrix_type.cols = 2;
+        break;
+    }
+    case DUSK_TOKEN_SHORT3X3: {
+        expr->kind = DUSK_EXPR_MATRIX_TYPE;
+        expr->matrix_type.scalar_type = DUSK_SCALAR_TYPE_SHORT;
+        expr->matrix_type.rows = 3;
+        expr->matrix_type.cols = 3;
+        break;
+    }
+    case DUSK_TOKEN_SHORT4X4: {
+        expr->kind = DUSK_EXPR_MATRIX_TYPE;
+        expr->matrix_type.scalar_type = DUSK_SCALAR_TYPE_SHORT;
+        expr->matrix_type.rows = 4;
+        expr->matrix_type.cols = 4;
+        break;
+    }
+
+    case DUSK_TOKEN_USHORT: {
+        expr->kind = DUSK_EXPR_SCALAR_TYPE;
+        expr->scalar_type = DUSK_SCALAR_TYPE_USHORT;
+        break;
+    }
+    case DUSK_TOKEN_USHORT2: {
+        expr->kind = DUSK_EXPR_VECTOR_TYPE;
+        expr->vector_type.scalar_type = DUSK_SCALAR_TYPE_USHORT;
+        expr->vector_type.length = 2;
+        break;
+    }
+    case DUSK_TOKEN_USHORT3: {
+        expr->kind = DUSK_EXPR_VECTOR_TYPE;
+        expr->vector_type.scalar_type = DUSK_SCALAR_TYPE_USHORT;
+        expr->vector_type.length = 3;
+        break;
+    }
+    case DUSK_TOKEN_USHORT4: {
+        expr->kind = DUSK_EXPR_VECTOR_TYPE;
+        expr->vector_type.scalar_type = DUSK_SCALAR_TYPE_USHORT;
+        expr->vector_type.length = 4;
+        break;
+    }
+    case DUSK_TOKEN_USHORT2X2: {
+        expr->kind = DUSK_EXPR_MATRIX_TYPE;
+        expr->matrix_type.scalar_type = DUSK_SCALAR_TYPE_USHORT;
+        expr->matrix_type.rows = 2;
+        expr->matrix_type.cols = 2;
+        break;
+    }
+    case DUSK_TOKEN_USHORT3X3: {
+        expr->kind = DUSK_EXPR_MATRIX_TYPE;
+        expr->matrix_type.scalar_type = DUSK_SCALAR_TYPE_USHORT;
+        expr->matrix_type.rows = 3;
+        expr->matrix_type.cols = 3;
+        break;
+    }
+    case DUSK_TOKEN_USHORT4X4: {
+        expr->kind = DUSK_EXPR_MATRIX_TYPE;
+        expr->matrix_type.scalar_type = DUSK_SCALAR_TYPE_USHORT;
+        expr->matrix_type.rows = 4;
+        expr->matrix_type.cols = 4;
+        break;
+    }
+
     case DUSK_TOKEN_INT: {
         expr->kind = DUSK_EXPR_SCALAR_TYPE;
         expr->scalar_type = DUSK_SCALAR_TYPE_INT;
@@ -1229,6 +1383,96 @@ static DuskExpr *parsePrimaryExpr(DuskCompiler *compiler, TokenizerState *state)
     case DUSK_TOKEN_UINT4X4: {
         expr->kind = DUSK_EXPR_MATRIX_TYPE;
         expr->matrix_type.scalar_type = DUSK_SCALAR_TYPE_UINT;
+        expr->matrix_type.rows = 4;
+        expr->matrix_type.cols = 4;
+        break;
+    }
+
+    case DUSK_TOKEN_LONG: {
+        expr->kind = DUSK_EXPR_SCALAR_TYPE;
+        expr->scalar_type = DUSK_SCALAR_TYPE_LONG;
+        break;
+    }
+    case DUSK_TOKEN_LONG2: {
+        expr->kind = DUSK_EXPR_VECTOR_TYPE;
+        expr->vector_type.scalar_type = DUSK_SCALAR_TYPE_LONG;
+        expr->vector_type.length = 2;
+        break;
+    }
+    case DUSK_TOKEN_LONG3: {
+        expr->kind = DUSK_EXPR_VECTOR_TYPE;
+        expr->vector_type.scalar_type = DUSK_SCALAR_TYPE_LONG;
+        expr->vector_type.length = 3;
+        break;
+    }
+    case DUSK_TOKEN_LONG4: {
+        expr->kind = DUSK_EXPR_VECTOR_TYPE;
+        expr->vector_type.scalar_type = DUSK_SCALAR_TYPE_LONG;
+        expr->vector_type.length = 4;
+        break;
+    }
+    case DUSK_TOKEN_LONG2X2: {
+        expr->kind = DUSK_EXPR_MATRIX_TYPE;
+        expr->matrix_type.scalar_type = DUSK_SCALAR_TYPE_LONG;
+        expr->matrix_type.rows = 2;
+        expr->matrix_type.cols = 2;
+        break;
+    }
+    case DUSK_TOKEN_LONG3X3: {
+        expr->kind = DUSK_EXPR_MATRIX_TYPE;
+        expr->matrix_type.scalar_type = DUSK_SCALAR_TYPE_LONG;
+        expr->matrix_type.rows = 3;
+        expr->matrix_type.cols = 3;
+        break;
+    }
+    case DUSK_TOKEN_LONG4X4: {
+        expr->kind = DUSK_EXPR_MATRIX_TYPE;
+        expr->matrix_type.scalar_type = DUSK_SCALAR_TYPE_LONG;
+        expr->matrix_type.rows = 4;
+        expr->matrix_type.cols = 4;
+        break;
+    }
+
+    case DUSK_TOKEN_ULONG: {
+        expr->kind = DUSK_EXPR_SCALAR_TYPE;
+        expr->scalar_type = DUSK_SCALAR_TYPE_ULONG;
+        break;
+    }
+    case DUSK_TOKEN_ULONG2: {
+        expr->kind = DUSK_EXPR_VECTOR_TYPE;
+        expr->vector_type.scalar_type = DUSK_SCALAR_TYPE_ULONG;
+        expr->vector_type.length = 2;
+        break;
+    }
+    case DUSK_TOKEN_ULONG3: {
+        expr->kind = DUSK_EXPR_VECTOR_TYPE;
+        expr->vector_type.scalar_type = DUSK_SCALAR_TYPE_ULONG;
+        expr->vector_type.length = 3;
+        break;
+    }
+    case DUSK_TOKEN_ULONG4: {
+        expr->kind = DUSK_EXPR_VECTOR_TYPE;
+        expr->vector_type.scalar_type = DUSK_SCALAR_TYPE_ULONG;
+        expr->vector_type.length = 4;
+        break;
+    }
+    case DUSK_TOKEN_ULONG2X2: {
+        expr->kind = DUSK_EXPR_MATRIX_TYPE;
+        expr->matrix_type.scalar_type = DUSK_SCALAR_TYPE_ULONG;
+        expr->matrix_type.rows = 2;
+        expr->matrix_type.cols = 2;
+        break;
+    }
+    case DUSK_TOKEN_ULONG3X3: {
+        expr->kind = DUSK_EXPR_MATRIX_TYPE;
+        expr->matrix_type.scalar_type = DUSK_SCALAR_TYPE_ULONG;
+        expr->matrix_type.rows = 3;
+        expr->matrix_type.cols = 3;
+        break;
+    }
+    case DUSK_TOKEN_ULONG4X4: {
+        expr->kind = DUSK_EXPR_MATRIX_TYPE;
+        expr->matrix_type.scalar_type = DUSK_SCALAR_TYPE_ULONG;
         expr->matrix_type.rows = 4;
         expr->matrix_type.cols = 4;
         break;

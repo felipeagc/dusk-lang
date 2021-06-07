@@ -1397,6 +1397,8 @@ DuskArray(uint32_t)
     }
 
     bool got_byte_type = false;
+    bool got_short_type = false;
+    bool got_long_type = false;
     bool got_half_type = false;
     bool got_double_type = false;
 
@@ -1409,6 +1411,18 @@ DuskArray(uint32_t)
                 type->int_.bits == 8) {
                 got_byte_type = true;
                 duskArrayPush(&module->capabilities_arr, SpvCapabilityInt8);
+            }
+
+            if (!got_short_type && type->kind == DUSK_TYPE_INT &&
+                type->int_.bits == 16) {
+                got_short_type = true;
+                duskArrayPush(&module->capabilities_arr, SpvCapabilityInt16);
+            }
+
+            if (!got_long_type && type->kind == DUSK_TYPE_INT &&
+                type->int_.bits == 64) {
+                got_long_type = true;
+                duskArrayPush(&module->capabilities_arr, SpvCapabilityInt64);
             }
 
             if (!got_half_type && type->kind == DUSK_TYPE_FLOAT &&

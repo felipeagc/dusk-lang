@@ -13,6 +13,7 @@ let uniform : struct (std140) {
     a: int,
     b: float,
     c: float3,
+    d: long,
     some_arr: []float,
 };
 

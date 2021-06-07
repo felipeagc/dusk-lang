@@ -45,8 +45,12 @@ fn fs_main(input: VsOutput) [location(0)] float4 {
 `bool`:: boolean type
 `byte`:: 8-bit signed integer type
 `ubyte`:: 8-bit unsigned integer type
+`short`:: 16-bit signed integer type
+`ushort`:: 16-bit unsigned integer type
 `int`:: 32-bit signed integer type
 `uint`:: 32-bit unsigned integer type
+`long`:: 64-bit signed integer type
+`ulong`:: 64-bit unsigned integer type
 `half`:: 16-bit floating point type
 `float`:: 32-bit floating point type
 `double`:: 64-bit floating point type
