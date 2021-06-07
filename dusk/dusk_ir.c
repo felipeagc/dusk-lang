@@ -1396,10 +1396,25 @@ DuskArray(uint32_t)
         }
     }
 
+    bool got_half_type = false;
+    bool got_double_type = false;
+
     for (size_t i = 0; i < duskArrayLength(compiler->types_arr); ++i) {
         DuskType *type = compiler->types_arr[i];
         if (type->emit) {
             type->id = duskReserveId(module);
+
+            if (!got_half_type && type->kind == DUSK_TYPE_FLOAT &&
+                type->float_.bits == 16) {
+                got_half_type = true;
+                duskArrayPush(&module->capabilities_arr, SpvCapabilityFloat16);
+            }
+
+            if (!got_double_type && type->kind == DUSK_TYPE_FLOAT &&
+                type->float_.bits == 64) {
+                got_double_type = true;
+                duskArrayPush(&module->capabilities_arr, SpvCapabilityFloat64);
+            }
         }
     }
 

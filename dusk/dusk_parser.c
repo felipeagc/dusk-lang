@@ -49,6 +49,14 @@ static const char *tokenTypeToString(DuskTokenType token_type)
     case DUSK_TOKEN_FLOAT3X3: return "float3x3";
     case DUSK_TOKEN_FLOAT4X4: return "float4x4";
 
+    case DUSK_TOKEN_HALF: return "half";
+    case DUSK_TOKEN_HALF2: return "half2";
+    case DUSK_TOKEN_HALF3: return "half3";
+    case DUSK_TOKEN_HALF4: return "half4";
+    case DUSK_TOKEN_HALF2X2: return "half2x2";
+    case DUSK_TOKEN_HALF3X3: return "half3x3";
+    case DUSK_TOKEN_HALF4X4: return "half4x4";
+
     case DUSK_TOKEN_INT: return "int";
     case DUSK_TOKEN_INT2: return "int2";
     case DUSK_TOKEN_INT3: return "int3";
@@ -173,6 +181,14 @@ tokenToString(DuskAllocator *allocator, const DuskToken *token)
     case DUSK_TOKEN_FLOAT2X2: return "float2x2";
     case DUSK_TOKEN_FLOAT3X3: return "float3x3";
     case DUSK_TOKEN_FLOAT4X4: return "float4x4";
+
+    case DUSK_TOKEN_HALF: return "half";
+    case DUSK_TOKEN_HALF2: return "half2";
+    case DUSK_TOKEN_HALF3: return "half3";
+    case DUSK_TOKEN_HALF4: return "half4";
+    case DUSK_TOKEN_HALF2X2: return "half2x2";
+    case DUSK_TOKEN_HALF3X3: return "half3x3";
+    case DUSK_TOKEN_HALF4X4: return "half4x4";
 
     case DUSK_TOKEN_INT: return "int";
     case DUSK_TOKEN_INT2: return "int2";
@@ -894,6 +910,50 @@ static DuskExpr *parsePrimaryExpr(DuskCompiler *compiler, TokenizerState *state)
     case DUSK_TOKEN_FLOAT4X4: {
         expr->kind = DUSK_EXPR_MATRIX_TYPE;
         expr->matrix_type.scalar_type = DUSK_SCALAR_TYPE_FLOAT;
+        expr->matrix_type.rows = 4;
+        expr->matrix_type.cols = 4;
+        break;
+    }
+    case DUSK_TOKEN_HALF: {
+        expr->kind = DUSK_EXPR_SCALAR_TYPE;
+        expr->scalar_type = DUSK_SCALAR_TYPE_HALF;
+        break;
+    }
+    case DUSK_TOKEN_HALF2: {
+        expr->kind = DUSK_EXPR_VECTOR_TYPE;
+        expr->vector_type.scalar_type = DUSK_SCALAR_TYPE_HALF;
+        expr->vector_type.length = 2;
+        break;
+    }
+    case DUSK_TOKEN_HALF3: {
+        expr->kind = DUSK_EXPR_VECTOR_TYPE;
+        expr->vector_type.scalar_type = DUSK_SCALAR_TYPE_HALF;
+        expr->vector_type.length = 3;
+        break;
+    }
+    case DUSK_TOKEN_HALF4: {
+        expr->kind = DUSK_EXPR_VECTOR_TYPE;
+        expr->vector_type.scalar_type = DUSK_SCALAR_TYPE_HALF;
+        expr->vector_type.length = 4;
+        break;
+    }
+    case DUSK_TOKEN_HALF2X2: {
+        expr->kind = DUSK_EXPR_MATRIX_TYPE;
+        expr->matrix_type.scalar_type = DUSK_SCALAR_TYPE_HALF;
+        expr->matrix_type.rows = 2;
+        expr->matrix_type.cols = 2;
+        break;
+    }
+    case DUSK_TOKEN_HALF3X3: {
+        expr->kind = DUSK_EXPR_MATRIX_TYPE;
+        expr->matrix_type.scalar_type = DUSK_SCALAR_TYPE_HALF;
+        expr->matrix_type.rows = 3;
+        expr->matrix_type.cols = 3;
+        break;
+    }
+    case DUSK_TOKEN_HALF4X4: {
+        expr->kind = DUSK_EXPR_MATRIX_TYPE;
+        expr->matrix_type.scalar_type = DUSK_SCALAR_TYPE_HALF;
         expr->matrix_type.rows = 4;
         expr->matrix_type.cols = 4;
         break;

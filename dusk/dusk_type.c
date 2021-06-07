@@ -455,6 +455,11 @@ DuskType *duskTypeNewScalar(DuskCompiler *compiler, DuskScalarType scalar_type)
         type->int_.bits = 32;
         break;
     }
+    case DUSK_SCALAR_TYPE_HALF: {
+        type->kind = DUSK_TYPE_FLOAT;
+        type->float_.bits = 16;
+        break;
+    }
     case DUSK_SCALAR_TYPE_FLOAT: {
         type->kind = DUSK_TYPE_FLOAT;
         type->float_.bits = 32;
