@@ -99,6 +99,22 @@ DuskCompiler *duskCompilerCreate(void)
     duskMapSet(compiler->keyword_map, "half3x3", (void *)DUSK_TOKEN_HALF3X3);
     duskMapSet(compiler->keyword_map, "half4x4", (void *)DUSK_TOKEN_HALF4X4);
 
+    duskMapSet(compiler->keyword_map, "byte", (void *)DUSK_TOKEN_BYTE);
+    duskMapSet(compiler->keyword_map, "byte2", (void *)DUSK_TOKEN_BYTE2);
+    duskMapSet(compiler->keyword_map, "byte3", (void *)DUSK_TOKEN_BYTE3);
+    duskMapSet(compiler->keyword_map, "byte4", (void *)DUSK_TOKEN_BYTE4);
+    duskMapSet(compiler->keyword_map, "byte2x2", (void *)DUSK_TOKEN_BYTE2X2);
+    duskMapSet(compiler->keyword_map, "byte3x3", (void *)DUSK_TOKEN_BYTE3X3);
+    duskMapSet(compiler->keyword_map, "byte4x4", (void *)DUSK_TOKEN_BYTE4X4);
+
+    duskMapSet(compiler->keyword_map, "ubyte", (void *)DUSK_TOKEN_UBYTE);
+    duskMapSet(compiler->keyword_map, "ubyte2", (void *)DUSK_TOKEN_UBYTE2);
+    duskMapSet(compiler->keyword_map, "ubyte3", (void *)DUSK_TOKEN_UBYTE3);
+    duskMapSet(compiler->keyword_map, "ubyte4", (void *)DUSK_TOKEN_UBYTE4);
+    duskMapSet(compiler->keyword_map, "ubyte2x2", (void *)DUSK_TOKEN_UBYTE2X2);
+    duskMapSet(compiler->keyword_map, "ubyte3x3", (void *)DUSK_TOKEN_UBYTE3X3);
+    duskMapSet(compiler->keyword_map, "ubyte4x4", (void *)DUSK_TOKEN_UBYTE4X4);
+
     duskMapSet(compiler->keyword_map, "int", (void *)DUSK_TOKEN_INT);
     duskMapSet(compiler->keyword_map, "int2", (void *)DUSK_TOKEN_INT2);
     duskMapSet(compiler->keyword_map, "int3", (void *)DUSK_TOKEN_INT3);

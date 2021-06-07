@@ -443,6 +443,18 @@ DuskType *duskTypeNewScalar(DuskCompiler *compiler, DuskScalarType scalar_type)
     DuskType *type = DUSK_NEW(allocator, DuskType);
 
     switch (scalar_type) {
+    case DUSK_SCALAR_TYPE_BYTE: {
+        type->kind = DUSK_TYPE_INT;
+        type->int_.is_signed = true;
+        type->int_.bits = 8;
+        break;
+    }
+    case DUSK_SCALAR_TYPE_UBYTE: {
+        type->kind = DUSK_TYPE_INT;
+        type->int_.is_signed = false;
+        type->int_.bits = 8;
+        break;
+    }
     case DUSK_SCALAR_TYPE_INT: {
         type->kind = DUSK_TYPE_INT;
         type->int_.is_signed = true;

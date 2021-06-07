@@ -43,8 +43,13 @@ fn fs_main(input: VsOutput) [location(0)] float4 {
 [horizontal]
 `void`:: void type
 `bool`:: boolean type
-`int`:: 32-bit integer type
-`float`:: 32-bit IEEE-754 floating point type
+`byte`:: 8-bit signed integer type
+`ubyte`:: 8-bit unsigned integer type
+`int`:: 32-bit signed integer type
+`uint`:: 32-bit unsigned integer type
+`half`:: 16-bit floating point type
+`float`:: 32-bit floating point type
+`double`:: 64-bit floating point type
 `scalarN`:: Vector type with `N` elements of type `scalar`
 `scalarNxM`:: Matrix type with `N` columns and `M` rows of elements of type `scalar`
 `[N]T`:: An array with constant size

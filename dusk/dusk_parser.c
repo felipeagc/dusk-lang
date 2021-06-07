@@ -57,6 +57,22 @@ static const char *tokenTypeToString(DuskTokenType token_type)
     case DUSK_TOKEN_HALF3X3: return "half3x3";
     case DUSK_TOKEN_HALF4X4: return "half4x4";
 
+    case DUSK_TOKEN_BYTE: return "byte";
+    case DUSK_TOKEN_BYTE2: return "byte2";
+    case DUSK_TOKEN_BYTE3: return "byte3";
+    case DUSK_TOKEN_BYTE4: return "byte4";
+    case DUSK_TOKEN_BYTE2X2: return "byte2x2";
+    case DUSK_TOKEN_BYTE3X3: return "byte3x3";
+    case DUSK_TOKEN_BYTE4X4: return "byte4x4";
+
+    case DUSK_TOKEN_UBYTE: return "ubyte";
+    case DUSK_TOKEN_UBYTE2: return "ubyte2";
+    case DUSK_TOKEN_UBYTE3: return "ubyte3";
+    case DUSK_TOKEN_UBYTE4: return "ubyte4";
+    case DUSK_TOKEN_UBYTE2X2: return "ubyte2x2";
+    case DUSK_TOKEN_UBYTE3X3: return "ubyte3x3";
+    case DUSK_TOKEN_UBYTE4X4: return "ubyte4x4";
+
     case DUSK_TOKEN_INT: return "int";
     case DUSK_TOKEN_INT2: return "int2";
     case DUSK_TOKEN_INT3: return "int3";
@@ -189,6 +205,22 @@ tokenToString(DuskAllocator *allocator, const DuskToken *token)
     case DUSK_TOKEN_HALF2X2: return "half2x2";
     case DUSK_TOKEN_HALF3X3: return "half3x3";
     case DUSK_TOKEN_HALF4X4: return "half4x4";
+
+    case DUSK_TOKEN_BYTE: return "byte";
+    case DUSK_TOKEN_BYTE2: return "byte2";
+    case DUSK_TOKEN_BYTE3: return "byte3";
+    case DUSK_TOKEN_BYTE4: return "byte4";
+    case DUSK_TOKEN_BYTE2X2: return "byte2x2";
+    case DUSK_TOKEN_BYTE3X3: return "byte3x3";
+    case DUSK_TOKEN_BYTE4X4: return "byte4x4";
+
+    case DUSK_TOKEN_UBYTE: return "ubyte";
+    case DUSK_TOKEN_UBYTE2: return "ubyte2";
+    case DUSK_TOKEN_UBYTE3: return "ubyte3";
+    case DUSK_TOKEN_UBYTE4: return "ubyte4";
+    case DUSK_TOKEN_UBYTE2X2: return "ubyte2x2";
+    case DUSK_TOKEN_UBYTE3X3: return "ubyte3x3";
+    case DUSK_TOKEN_UBYTE4X4: return "ubyte4x4";
 
     case DUSK_TOKEN_INT: return "int";
     case DUSK_TOKEN_INT2: return "int2";
@@ -954,6 +986,94 @@ static DuskExpr *parsePrimaryExpr(DuskCompiler *compiler, TokenizerState *state)
     case DUSK_TOKEN_HALF4X4: {
         expr->kind = DUSK_EXPR_MATRIX_TYPE;
         expr->matrix_type.scalar_type = DUSK_SCALAR_TYPE_HALF;
+        expr->matrix_type.rows = 4;
+        expr->matrix_type.cols = 4;
+        break;
+    }
+    case DUSK_TOKEN_BYTE: {
+        expr->kind = DUSK_EXPR_SCALAR_TYPE;
+        expr->scalar_type = DUSK_SCALAR_TYPE_BYTE;
+        break;
+    }
+    case DUSK_TOKEN_BYTE2: {
+        expr->kind = DUSK_EXPR_VECTOR_TYPE;
+        expr->vector_type.scalar_type = DUSK_SCALAR_TYPE_BYTE;
+        expr->vector_type.length = 2;
+        break;
+    }
+    case DUSK_TOKEN_BYTE3: {
+        expr->kind = DUSK_EXPR_VECTOR_TYPE;
+        expr->vector_type.scalar_type = DUSK_SCALAR_TYPE_BYTE;
+        expr->vector_type.length = 3;
+        break;
+    }
+    case DUSK_TOKEN_BYTE4: {
+        expr->kind = DUSK_EXPR_VECTOR_TYPE;
+        expr->vector_type.scalar_type = DUSK_SCALAR_TYPE_BYTE;
+        expr->vector_type.length = 4;
+        break;
+    }
+    case DUSK_TOKEN_BYTE2X2: {
+        expr->kind = DUSK_EXPR_MATRIX_TYPE;
+        expr->matrix_type.scalar_type = DUSK_SCALAR_TYPE_BYTE;
+        expr->matrix_type.rows = 2;
+        expr->matrix_type.cols = 2;
+        break;
+    }
+    case DUSK_TOKEN_BYTE3X3: {
+        expr->kind = DUSK_EXPR_MATRIX_TYPE;
+        expr->matrix_type.scalar_type = DUSK_SCALAR_TYPE_BYTE;
+        expr->matrix_type.rows = 3;
+        expr->matrix_type.cols = 3;
+        break;
+    }
+    case DUSK_TOKEN_BYTE4X4: {
+        expr->kind = DUSK_EXPR_MATRIX_TYPE;
+        expr->matrix_type.scalar_type = DUSK_SCALAR_TYPE_BYTE;
+        expr->matrix_type.rows = 4;
+        expr->matrix_type.cols = 4;
+        break;
+    }
+    case DUSK_TOKEN_UBYTE: {
+        expr->kind = DUSK_EXPR_SCALAR_TYPE;
+        expr->scalar_type = DUSK_SCALAR_TYPE_UBYTE;
+        break;
+    }
+    case DUSK_TOKEN_UBYTE2: {
+        expr->kind = DUSK_EXPR_VECTOR_TYPE;
+        expr->vector_type.scalar_type = DUSK_SCALAR_TYPE_UBYTE;
+        expr->vector_type.length = 2;
+        break;
+    }
+    case DUSK_TOKEN_UBYTE3: {
+        expr->kind = DUSK_EXPR_VECTOR_TYPE;
+        expr->vector_type.scalar_type = DUSK_SCALAR_TYPE_UBYTE;
+        expr->vector_type.length = 3;
+        break;
+    }
+    case DUSK_TOKEN_UBYTE4: {
+        expr->kind = DUSK_EXPR_VECTOR_TYPE;
+        expr->vector_type.scalar_type = DUSK_SCALAR_TYPE_UBYTE;
+        expr->vector_type.length = 4;
+        break;
+    }
+    case DUSK_TOKEN_UBYTE2X2: {
+        expr->kind = DUSK_EXPR_MATRIX_TYPE;
+        expr->matrix_type.scalar_type = DUSK_SCALAR_TYPE_UBYTE;
+        expr->matrix_type.rows = 2;
+        expr->matrix_type.cols = 2;
+        break;
+    }
+    case DUSK_TOKEN_UBYTE3X3: {
+        expr->kind = DUSK_EXPR_MATRIX_TYPE;
+        expr->matrix_type.scalar_type = DUSK_SCALAR_TYPE_UBYTE;
+        expr->matrix_type.rows = 3;
+        expr->matrix_type.cols = 3;
+        break;
+    }
+    case DUSK_TOKEN_UBYTE4X4: {
+        expr->kind = DUSK_EXPR_MATRIX_TYPE;
+        expr->matrix_type.scalar_type = DUSK_SCALAR_TYPE_UBYTE;
         expr->matrix_type.rows = 4;
         expr->matrix_type.cols = 4;
         break;
