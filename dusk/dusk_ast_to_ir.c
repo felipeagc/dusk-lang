@@ -245,6 +245,14 @@ static void duskDecorateFromAttributes(
             duskArrayPush(decorations_arr, decoration);
             break;
         }
+        case DUSK_ATTRIBUTE_READ_ONLY: {
+            DUSK_ASSERT(attribute->value_expr_count == 0);
+
+            DuskIRDecoration decoration = duskIRCreateDecoration(
+                module->allocator, DUSK_IR_DECORATION_NON_WRITABLE, 0, NULL);
+            duskArrayPush(decorations_arr, decoration);
+            break;
+        }
         case DUSK_ATTRIBUTE_BUILTIN: {
             DUSK_ASSERT(attribute->value_expr_count == 1);
             DUSK_ASSERT(attribute->value_exprs[0]->kind == DUSK_EXPR_IDENT);
@@ -253,8 +261,6 @@ static void duskDecorateFromAttributes(
             uint32_t builtin = 0;
             if (strcmp(builtin_name, "position") == 0) {
                 builtin = SpvBuiltInPosition;
-            } else if (strcmp(builtin_name, "frag_coord") == 0) {
-                builtin = SpvBuiltInFragCoord;
             } else if (strcmp(builtin_name, "frag_coord") == 0) {
                 builtin = SpvBuiltInFragCoord;
             } else if (strcmp(builtin_name, "vertex_id") == 0) {

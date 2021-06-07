@@ -903,6 +903,7 @@ static void duskEmitDecorations(
         case DUSK_IR_DECORATION_ARRAY_STRIDE:
             params[1] = SpvDecorationArrayStride;
             break;
+        case DUSK_IR_DECORATION_NON_WRITABLE: params[1] = SpvDecorationNonWritable; break;
 
         case DUSK_IR_DECORATION_OFFSET: continue;
         }
@@ -937,6 +938,7 @@ static void duskEmitMemberDecorations(
 
         switch (decoration->kind) {
         case DUSK_IR_DECORATION_OFFSET: params[2] = SpvDecorationOffset; break;
+        case DUSK_IR_DECORATION_NON_WRITABLE:
         case DUSK_IR_DECORATION_ARRAY_STRIDE:
         case DUSK_IR_DECORATION_LOCATION:
         case DUSK_IR_DECORATION_BUILTIN:

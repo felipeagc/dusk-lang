@@ -1,4 +1,5 @@
 = Dusk shading language
+:url-repo: https://github.com/felipeagc/dusk-lang
 :sectnums:
 :sectanchors:
 :toc:
@@ -77,6 +78,60 @@ Represents an image combined with a sampler
 * `@ImageCubeSampler`
 * `@ImageCubeArraySampler`
 
+=== Attributes
+
+Attributes represent additional properties given to variables or functions.
+They are used as follows:
+[source]
+----
+[set(0), binding(0)] let sampler : @Sampler();
+
+type MyStruct struct {
+	[offset(0)] a: int,
+};
+
+[stage(fragment)]
+fn fs_main([location(0)] in_pos: float3) [location(0)] float4 {
+	...
+}
+----
+
+The following attributes are available:
+
+`set`::
+Used to specify descriptor set index.
+
+`binding`::
+Used to specify descriptor set binding index.
+
+`location`::
+Used to specify input/output variable location.
+
+`offset`::
+Used to specify struct member offsets.
+
+`read_only`::
+Used to declare a variable such as a storage buffer as read-only.
+
+`builtin`::
+Used to declare a variable as a builtin.
+Available builtins:
+* `position`: output vertex position from vertex shader.
+* `frag_coord`: equivalent to `gl_FragCoord` in GLSL.
+* `vertex_id`: input vertex ID to a vertex shader.
+* `vertex_index`: 
+* `instance_id`: input instance ID to a vertex shader.
+* `instance_index`
+* `frag_depth`: output fragment depth from the fragment shader.
+* `num_workgroups`: number of workgroups in a compute shader.
+* `workgroup_size`: workgroup size in a compute shader.
+* `workgroup_id`: workgroup ID in a compute shader.
+* `local_invocation_id`: local invocation ID in a compute shader.
+* `local_invocation_index`: local invocation index in a compute shader.
+* `global_invocation_id`: global invocation ID in a compute shader.
+
+`stage`::
+Used to mark a function as an entry point
 
 === Builtin functions
 [cols=3*,options=header]
@@ -85,88 +140,84 @@ Represents an image combined with a sampler
 |Precondition
 |Description
 
-|`@arrayLength(x: T): uint`
-|`T` is a runtime array type
+|`@arrayLength(x: []T): uint`
+|`[]T` is a runtime array type
 |Gets the length of the runtime array
 
-|`@distance(v1: scalarN, v2: scalarN): scalar`
-|`scalarN` is a vector type
+|`@distance(v1: V, v2: V): S`
+|`V` is a vector type with scalar type `S`
 |Gets the distance between two vectors
 
-|`@length(v: scalarN): scalar`
-|`scalarN` is a vector type
+|`@length(v: V): S`
+|`V` is a vector type with scalar type `S`
 |Gets the length of a vector
 
-|`@normalize(v: scalarN): scalarN`
-|
-|
+|`@normalize(v: V): V`
+|`V` is a vector type
+|Normalizes a vector
 
-|`@cross(v1: scalar3, v2: scalar3): scalar3`
-|
-|
+|`@cross(v1: V3, v2: V3): V3`
+|`V3` is a vector type with 3 elements
+|Calculates the cross-product of two vectors
 
 |`@sqrt(v: T): T`
-|
+|`T` is a floating point vector or scalar type
 |
 
 |`@inverseSqrt(v: T): T`
-|
+|`T` is a floating point vector or scalar type
 |
 
 |`@log(v: T): T`
-|
+|`T` is a floating point vector or scalar type
 |
 
 |`@log2(v: T): T`
-|
+|`T` is a floating point vector or scalar type
 |
 
 |`@exp(v: T): T`
-|
+|`T` is a floating point vector or scalar type
 |
 
 |`@exp2(v: T): T`
-|
-|
-
-|`@determinant(v: scalarNxM): scalar`
-|
+|`T` is a floating point vector or scalar type
 |
 
-|`@inverse(v: scalarNxM): scalarNxM`
-|
+|`@determinant(v: M): S`
+|`M` is a square matrix type and `S` is the component type of the matrix
+|Calculates the matrix determinant
+
+|`@inverse(v: M): M`
+|`M` is a square matrix type
+|Calculates the matrix inverse
+
+|`@reflect(i: T, n: T): T`
+|`T` is a floating point vector or scalar type
 |
 
-|`@reflect(i: scalarN, n: scalarN): scalarN`
-|
-|
-
-|`@refract(i: scalarN, n: scalarN, eta: float): scalarN`
-|
-|
-
-|`@modf()`
-|
+|`@refract(i: V, n: V, eta: S): V`
+|`V` is a floating point vector type and `S` is a floating point scalar type
 |
 
 |`@abs(x: T): T`
-|
+|`T` is a floating point vector or scalar type
 |
 
 |`@min(a: T, b: T): T`
-|
+|`T` is a floating point vector or scalar type
 |
 
 |`@max(a: T, b: T): T`
-|
+|`T` is a floating point vector or scalar type
 |
 
 |`@clamp(x: T, min: T, max: T): T`
-|
+|`T` is a floating point vector or scalar type
 |
 
 |`@mix(x: T, y: T, a: T): T`
-|
+|`T` is a floating point vector or scalar type
 |
 
 |`@step(edge: T, x: T): T`
@@ -177,91 +228,95 @@ Represents an image combined with a sampler
 |
 |
 
+|`@modf()`
+|
+|
+
 |`@fma(a: T, b: T, c: T): T`
 |
 |
 
-|`@sin(v: T): T`
-|
-|
-
-|`@cos(v: T): T`
-|
-|
-
-|`@tan(v: T): T`
-|
-|
-
-|`@asin(v: T): T`
-|
-|
-
-|`@acos(v: T): T`
-|
-|
-
-|`@atan(v: T): T`
-|
-|
-
-|`@sinh(v: T): T`
-|
-|
-
-|`@cosh(v: T): T`
-|
-|
-
-|`@tanh(v: T): T`
-|
-|
-
-|`@asinh(v: T): T`
-|
-|
-
-|`@acosh(v: T): T`
-|
-|
-
-|`@atanh(v: T): T`
-|
-|
-
-|`@atan2(v: T): T`
-|
-|
-
 |`@pow(x: T, y: T): T`
-|
+|`T` is a floating point vector or scalar type
 |
 
 |`@round(v: T): T`
-|
+|`T` is a floating point vector or scalar type
 |
 
 |`@trunc(v: T): T`
-|
+|`T` is a floating point vector or scalar type
 |
 
 |`@floor(v: T): T`
-|
+|`T` is a floating point vector or scalar type
 |
 
 |`@ceil(v: T): T`
-|
+|`T` is a floating point vector or scalar type
 |
 
 |`@fract(v: T): T`
-|
+|`T` is a floating point vector or scalar type
 |
 
 |`@radians(v: T): T`
-|
+|`T` is a floating point vector or scalar type
 |
 
 |`@degrees(v: T): T`
+|`T` is a floating point vector or scalar type
 |
+
+|`@sin(v: T): T`
+|`T` is a floating point vector or scalar type
+|
+
+|`@cos(v: T): T`
+|`T` is a floating point vector or scalar type
+|
+
+|`@tan(v: T): T`
+|`T` is a floating point vector or scalar type
+|
+
+|`@asin(v: T): T`
+|`T` is a floating point vector or scalar type
+|
+
+|`@acos(v: T): T`
+|`T` is a floating point vector or scalar type
+|
+
+|`@atan(v: T): T`
+|`T` is a floating point vector or scalar type
+|
+
+|`@sinh(v: T): T`
+|`T` is a floating point vector or scalar type
+|
+
+|`@cosh(v: T): T`
+|`T` is a floating point vector or scalar type
+|
+
+|`@tanh(v: T): T`
+|`T` is a floating point vector or scalar type
+|
+
+|`@asinh(v: T): T`
+|`T` is a floating point vector or scalar type
+|
+
+|`@acosh(v: T): T`
+|`T` is a floating point vector or scalar type
+|
+
+|`@atanh(v: T): T`
+|`T` is a floating point vector or scalar type
+|
+
+|`@atan2(y: T, x: T): T`
+|`T` is a floating point vector or scalar type
 |
 |===

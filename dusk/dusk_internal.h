@@ -301,6 +301,7 @@ typedef enum DuskIRDecorationKind {
     DUSK_IR_DECORATION_BLOCK,
     DUSK_IR_DECORATION_OFFSET,
     DUSK_IR_DECORATION_ARRAY_STRIDE,
+    DUSK_IR_DECORATION_NON_WRITABLE,
 } DuskIRDecorationKind;
 
 typedef struct DuskIRDecoration {
@@ -317,6 +318,7 @@ typedef enum DuskAttributeKind {
     DUSK_ATTRIBUTE_BINDING,
     DUSK_ATTRIBUTE_BUILTIN,
     DUSK_ATTRIBUTE_OFFSET,
+    DUSK_ATTRIBUTE_READ_ONLY,
 } DuskAttributeKind;
 
 typedef struct DuskAttribute {
@@ -982,6 +984,7 @@ struct DuskDecl {
             DuskExpr *type_expr;
             DuskExpr *value_expr;
             DuskStorageClass storage_class;
+            bool read_only;
         } var;
         struct {
             DuskExpr *type_expr;

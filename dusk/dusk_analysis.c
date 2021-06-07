@@ -233,6 +233,7 @@ static const char *duskGetAttributeName(DuskAttributeKind kind)
     case DUSK_ATTRIBUTE_LOCATION: return "location";
     case DUSK_ATTRIBUTE_OFFSET: return "offset";
     case DUSK_ATTRIBUTE_STAGE: return "stage";
+    case DUSK_ATTRIBUTE_READ_ONLY: return "read_only";
     case DUSK_ATTRIBUTE_UNKNOWN: return "<unknown>";
     }
     return "<unknown>";
@@ -248,12 +249,14 @@ static void duskCheckGlobalVariableAttributes(
 
     DuskAttribute *set_attribute = NULL;
     DuskAttribute *binding_attribute = NULL;
+    DuskAttribute *read_only_attribute = NULL;
 
     for (size_t i = 0; i < duskArrayLength(attributes_arr); ++i) {
         DuskAttribute *attribute = &attributes_arr[i];
         switch (attribute->kind) {
         case DUSK_ATTRIBUTE_SET: set_attribute = attribute; break;
         case DUSK_ATTRIBUTE_BINDING: binding_attribute = attribute; break;
+        case DUSK_ATTRIBUTE_READ_ONLY: read_only_attribute = attribute; break;
         default: {
             duskAddError(
                 compiler,
@@ -262,6 +265,15 @@ static void duskCheckGlobalVariableAttributes(
                 duskGetAttributeName(attribute->kind));
             break;
         }
+        }
+    }
+
+    if (read_only_attribute) {
+        if (read_only_attribute->value_expr_count != 0) {
+            duskAddError(
+                compiler,
+                var_decl->location,
+                "'read_only' attribute requires 0 parameters");
         }
     }
 

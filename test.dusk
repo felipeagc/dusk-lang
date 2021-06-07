@@ -15,7 +15,7 @@ let(uniform) uniform : struct (std140) {
     some_arr: []float,
 };
 
-[set(0), binding(1)]
+[set(0), binding(1), read_only]
 let(storage) camera_buffers: []struct (std430) {
     cameras: []struct (std430) {
         pos: float4,

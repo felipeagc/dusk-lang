@@ -910,6 +910,14 @@ static void parseAttributes(
                 attrib.kind = DUSK_ATTRIBUTE_BUILTIN;
             } else if (strcmp(attrib_name_token.str, "offset") == 0) {
                 attrib.kind = DUSK_ATTRIBUTE_OFFSET;
+            } else if (strcmp(attrib_name_token.str, "read_only") == 0) {
+                attrib.kind = DUSK_ATTRIBUTE_READ_ONLY;
+            } else {
+                duskAddError(
+                    compiler,
+                    attrib_name_token.location,
+                    "invalid attribute: '%s'",
+                    attrib_name_token.str);
             }
             attrib.name = attrib_name_token.str;
             DuskArray(DuskExpr *) value_exprs =
