@@ -254,6 +254,7 @@ DuskIRValue *duskIRVariableCreate(
     duskTypeMarkNotDead(value->type);
 
     switch (storage_class) {
+    case DUSK_STORAGE_CLASS_WORKGROUP:
     case DUSK_STORAGE_CLASS_STORAGE:
     case DUSK_STORAGE_CLASS_UNIFORM:
     case DUSK_STORAGE_CLASS_INPUT:
@@ -732,6 +733,9 @@ static void duskEmitType(DuskIRModule *module, DuskType *type)
         case DUSK_STORAGE_CLASS_PUSH_CONSTANT:
             storage_class = SpvStorageClassPushConstant;
             break;
+        case DUSK_STORAGE_CLASS_WORKGROUP:
+            storage_class = SpvStorageClassWorkgroup;
+            break;
         case DUSK_STORAGE_CLASS_PARAMETER: DUSK_ASSERT(0); break;
         }
 
@@ -981,6 +985,9 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
             break;
         case DUSK_STORAGE_CLASS_PUSH_CONSTANT:
             storage_class = SpvStorageClassPushConstant;
+            break;
+        case DUSK_STORAGE_CLASS_WORKGROUP:
+            storage_class = SpvStorageClassWorkgroup;
             break;
         case DUSK_STORAGE_CLASS_PARAMETER: DUSK_ASSERT(0); break;
         }

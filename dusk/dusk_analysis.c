@@ -202,7 +202,8 @@ static bool duskIsExprAssignable(DuskAnalyzerState *state, DuskExpr *expr)
             case DUSK_STORAGE_CLASS_FUNCTION:
             case DUSK_STORAGE_CLASS_INPUT:
             case DUSK_STORAGE_CLASS_OUTPUT:
-            case DUSK_STORAGE_CLASS_STORAGE: return true;
+            case DUSK_STORAGE_CLASS_STORAGE:
+            case DUSK_STORAGE_CLASS_WORKGROUP: return true;
             case DUSK_STORAGE_CLASS_UNIFORM:
             case DUSK_STORAGE_CLASS_UNIFORM_CONSTANT:
             case DUSK_STORAGE_CLASS_PUSH_CONSTANT:
@@ -231,10 +232,7 @@ static const char *duskGetAttributeName(DuskAttributeKind kind)
     case DUSK_ATTRIBUTE_BUILTIN: return "builtin";
     case DUSK_ATTRIBUTE_LOCATION: return "location";
     case DUSK_ATTRIBUTE_OFFSET: return "offset";
-    case DUSK_ATTRIBUTE_PUSH_CONSTANT: return "push_constant";
     case DUSK_ATTRIBUTE_STAGE: return "stage";
-    case DUSK_ATTRIBUTE_STORAGE: return "storage";
-    case DUSK_ATTRIBUTE_UNIFORM: return "uniform";
     case DUSK_ATTRIBUTE_UNKNOWN: return "<unknown>";
     }
     return "<unknown>";
@@ -250,20 +248,12 @@ static void duskCheckGlobalVariableAttributes(
 
     DuskAttribute *set_attribute = NULL;
     DuskAttribute *binding_attribute = NULL;
-    DuskAttribute *push_constant_attribute = NULL;
-    DuskAttribute *uniform_attribute = NULL;
-    DuskAttribute *storage_attribute = NULL;
 
     for (size_t i = 0; i < duskArrayLength(attributes_arr); ++i) {
         DuskAttribute *attribute = &attributes_arr[i];
         switch (attribute->kind) {
         case DUSK_ATTRIBUTE_SET: set_attribute = attribute; break;
         case DUSK_ATTRIBUTE_BINDING: binding_attribute = attribute; break;
-        case DUSK_ATTRIBUTE_PUSH_CONSTANT:
-            push_constant_attribute = attribute;
-            break;
-        case DUSK_ATTRIBUTE_UNIFORM: uniform_attribute = attribute; break;
-        case DUSK_ATTRIBUTE_STORAGE: storage_attribute = attribute; break;
         default: {
             duskAddError(
                 compiler,
@@ -311,45 +301,31 @@ static void duskCheckGlobalVariableAttributes(
         }
     }
 
-    if (push_constant_attribute) {
-        if (push_constant_attribute->value_expr_count != 0) {
-            duskAddError(
-                compiler,
-                var_decl->location,
-                "'push_constant' attribute requires exactly 0 parameters");
-        }
-    }
-
-    if (!set_attribute && !binding_attribute && !push_constant_attribute) {
+    if (!set_attribute && !binding_attribute &&
+        (var_decl->var.storage_class != DUSK_STORAGE_CLASS_PUSH_CONSTANT)) {
         duskAddError(
             compiler,
             var_decl->location,
-            "global variable needs either the 'set' and 'binding' attributes "
-            "or a 'push_constant' attribute");
+            "global variable is missing the 'set' and 'binding' attributes");
     }
 
-    if ((set_attribute || binding_attribute) && push_constant_attribute) {
+    if ((set_attribute || binding_attribute) &&
+        (var_decl->var.storage_class == DUSK_STORAGE_CLASS_PUSH_CONSTANT)) {
         duskAddError(
             compiler,
             var_decl->location,
-            "global variable cannot have binding and push constant attributes "
+            "global variable cannot have binding attributes and push constant "
+            "storage class "
             "at the same time");
     }
 
-    if (!push_constant_attribute && ((set_attribute || binding_attribute) &&
-                                     !(set_attribute && binding_attribute))) {
+    if ((var_decl->var.storage_class != DUSK_STORAGE_CLASS_PUSH_CONSTANT) &&
+        ((set_attribute || binding_attribute) &&
+         !(set_attribute && binding_attribute))) {
         duskAddError(
             compiler,
             var_decl->location,
             "global variable needs both 'set' and 'binding' attributes");
-    }
-
-    if (uniform_attribute && storage_attribute) {
-        duskAddError(
-            compiler,
-            var_decl->location,
-            "global variable cannot have both 'uniform' and 'storage' "
-            "attributes");
     }
 }
 
@@ -1653,45 +1629,36 @@ static void duskAnalyzeDecl(
                 state, compiler, decl, decl->attributes_arr);
         }
 
-        // Set the storage class
-
+        // Analyze the storage class
         if (duskArrayLength(state->function_stack_arr) == 0) {
-            decl->var.storage_class = DUSK_STORAGE_CLASS_UNIFORM;
-
             switch (decl->type->kind) {
             case DUSK_TYPE_SAMPLER:
             case DUSK_TYPE_IMAGE:
             case DUSK_TYPE_SAMPLED_IMAGE: {
-                decl->var.storage_class = DUSK_STORAGE_CLASS_UNIFORM_CONSTANT;
+                if (decl->var.storage_class !=
+                    DUSK_STORAGE_CLASS_UNIFORM_CONSTANT) {
+                    duskAddError(
+                        compiler,
+                        decl->location,
+                        "wrong storage class for variable of type image or "
+                        "sampler");
+                }
                 break;
             }
-            default:
-                decl->var.storage_class = DUSK_STORAGE_CLASS_UNIFORM;
+            default: {
+                if (decl->var.storage_class ==
+                    DUSK_STORAGE_CLASS_UNIFORM_CONSTANT) {
+                    duskAddError(
+                        compiler,
+                        decl->location,
+                        "missing storage class for global variable");
+                }
                 break;
             }
-
-            for (size_t i = 0; i < duskArrayLength(decl->attributes_arr); ++i) {
-                DuskAttribute *attribute = &decl->attributes_arr[i];
-                switch (attribute->kind) {
-                case DUSK_ATTRIBUTE_UNIFORM: {
-                    decl->var.storage_class = DUSK_STORAGE_CLASS_UNIFORM;
-                    break;
-                }
-                case DUSK_ATTRIBUTE_STORAGE: {
-                    decl->var.storage_class = DUSK_STORAGE_CLASS_STORAGE;
-                    break;
-                }
-                case DUSK_ATTRIBUTE_PUSH_CONSTANT: {
-                    decl->var.storage_class = DUSK_STORAGE_CLASS_PUSH_CONSTANT;
-                    break;
-                }
-                default: break;
-                }
             }
         }
 
         // Check if struct type has proper layout
-
         if (decl->type->kind == DUSK_TYPE_STRUCT) {
             switch (decl->var.storage_class) {
             case DUSK_STORAGE_CLASS_PUSH_CONSTANT:

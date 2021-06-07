@@ -359,6 +359,7 @@ const char *duskTypeToString(DuskAllocator *allocator, DuskType *type)
         case DUSK_STORAGE_CLASS_PUSH_CONSTANT:
             storage_class = "push_constant";
             break;
+        case DUSK_STORAGE_CLASS_WORKGROUP: storage_class = "workgroup"; break;
         }
         type->string =
             duskSprintf(allocator, "@ptr(%s, %s)", sub_str, storage_class);
