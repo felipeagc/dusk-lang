@@ -539,6 +539,26 @@ typedef enum DuskBuiltinFunctionKind {
 
 const char *duskGetBuiltinFunctionName(DuskBuiltinFunctionKind kind);
 
+typedef enum {
+    DUSK_BINARY_OP_ADD,
+    DUSK_BINARY_OP_SUB,
+    DUSK_BINARY_OP_MUL,
+    DUSK_BINARY_OP_DIV,
+    DUSK_BINARY_OP_MOD,
+    DUSK_BINARY_OP_BITAND,
+    DUSK_BINARY_OP_BITOR,
+    DUSK_BINARY_OP_BITXOR,
+    DUSK_BINARY_OP_LSHIFT,
+    DUSK_BINARY_OP_RSHIFT,
+    DUSK_BINARY_OP_EQ,
+    DUSK_BINARY_OP_NOTEQ,
+    DUSK_BINARY_OP_LESS,
+    DUSK_BINARY_OP_LESSEQ,
+    DUSK_BINARY_OP_GREATER,
+    DUSK_BINARY_OP_GREATEREQ,
+    DUSK_BINARY_OP_MAX,
+} DuskBinaryOp;
+
 typedef enum DuskIRValueKind {
     DUSK_IR_VALUE_CONSTANT_BOOL,
     DUSK_IR_VALUE_CONSTANT,
@@ -558,6 +578,7 @@ typedef enum DuskIRValueKind {
     DUSK_IR_VALUE_COMPOSITE_CONSTRUCT,
     DUSK_IR_VALUE_CAST,
     DUSK_IR_VALUE_BUILTIN_CALL,
+    DUSK_IR_VALUE_BINARY_OPERATION,
 } DuskIRValueKind;
 
 struct DuskIRValue {
@@ -630,6 +651,11 @@ struct DuskIRValue {
             DuskIRValue **params;
             size_t param_count;
         } builtin_call;
+        struct {
+            DuskBinaryOp op;
+            DuskIRValue *left;
+            DuskIRValue *right;
+        } binary;
     };
 };
 
@@ -741,6 +767,13 @@ DuskIRValue *duskIRCreateBuiltinCall(
     DuskType *destination_type,
     size_t param_count,
     DuskIRValue **params);
+DuskIRValue *duskIRCreateBinaryOperation(
+    DuskIRModule *module,
+    DuskIRValue *block,
+    DuskBinaryOp op,
+    DuskType *destination_type,
+    DuskIRValue *left,
+    DuskIRValue *right);
 
 bool duskIRValueIsConstant(DuskIRValue *value);
 bool duskIRIsLvalue(DuskIRValue *value);
@@ -1022,26 +1055,6 @@ struct DuskStmt {
         } return_;
     };
 };
-
-typedef enum {
-    DUSK_BINARY_OP_ADD,
-    DUSK_BINARY_OP_SUB,
-    DUSK_BINARY_OP_MUL,
-    DUSK_BINARY_OP_DIV,
-    DUSK_BINARY_OP_MOD,
-    DUSK_BINARY_OP_BITAND,
-    DUSK_BINARY_OP_BITOR,
-    DUSK_BINARY_OP_BITXOR,
-    DUSK_BINARY_OP_LSHIFT,
-    DUSK_BINARY_OP_RSHIFT,
-    DUSK_BINARY_OP_EQ,
-    DUSK_BINARY_OP_NOTEQ,
-    DUSK_BINARY_OP_LESS,
-    DUSK_BINARY_OP_LESSEQ,
-    DUSK_BINARY_OP_GREATER,
-    DUSK_BINARY_OP_GREATEREQ,
-    DUSK_BINARY_OP_MAX,
-} DuskBinaryOp;
 
 typedef enum DuskExprKind {
     DUSK_EXPR_VOID_TYPE,

@@ -1405,28 +1405,40 @@ static void duskAnalyzeExpr(
             break;
         }
 
-        if (left_scalar_type != right_scalar_type) {
-            duskAddError(
-                compiler,
-                expr->binary.right->location,
-                "mismatched scalar types for binary operation: '%s' and "
-                "'%s'",
-                duskTypeToPrettyString(allocator, left_scalar_type),
-                duskTypeToPrettyString(allocator, right_scalar_type));
-            break;
+        if (expr->binary.op == DUSK_BINARY_OP_MUL) {
+            if (left_type->kind == DUSK_TYPE_VECTOR &&
+                right_type->kind != DUSK_TYPE_VECTOR &&
+                left_type->vector.sub == right_type) {
+                expr->type = left_type;
+            } else if (
+                left_type->kind != DUSK_TYPE_VECTOR &&
+                right_type->kind == DUSK_TYPE_VECTOR &&
+                right_type->vector.sub == left_type) {
+                expr->type = right_type;
+            } else if (left_type == right_type) {
+                expr->type = left_type;
+            } else {
+                duskAddError(
+                    compiler,
+                    expr->binary.right->location,
+                    "mismatched types for binary operation: '%s' and '%s'",
+                    duskTypeToPrettyString(allocator, left_type),
+                    duskTypeToPrettyString(allocator, right_type));
+            }
+        } else {
+            if (left_type != right_type) {
+                duskAddError(
+                    compiler,
+                    expr->binary.right->location,
+                    "mismatched types for binary operation: '%s' and '%s'",
+                    duskTypeToPrettyString(allocator, left_type),
+                    duskTypeToPrettyString(allocator, right_type));
+                break;
+            }
+            expr->type = left_type;
         }
 
-        if (left_type->kind == DUSK_TYPE_VECTOR &&
-            right_type->kind != DUSK_TYPE_VECTOR) {
-            expr->type = left_type;
-        } else if (
-            left_type->kind != DUSK_TYPE_VECTOR &&
-            right_type->kind == DUSK_TYPE_VECTOR) {
-            expr->type = right_type;
-        } else {
-            DUSK_ASSERT(left_type == right_type);
-            expr->type = left_type;
-        }
+        DUSK_ASSERT(expr->type);
 
         switch (expr->binary.op) {
         // Int/float
@@ -1465,7 +1477,6 @@ static void duskAnalyzeExpr(
         case DUSK_BINARY_OP_LESSEQ:
         case DUSK_BINARY_OP_GREATER:
         case DUSK_BINARY_OP_GREATEREQ: {
-
             expr->type = duskTypeNewBasic(compiler, DUSK_TYPE_BOOL);
             break;
         }

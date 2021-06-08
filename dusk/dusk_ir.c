@@ -649,6 +649,27 @@ DuskIRValue *duskIRCreateBuiltinCall(
     return inst;
 }
 
+DuskIRValue *duskIRCreateBinaryOperation(
+    DuskIRModule *module,
+    DuskIRValue *block,
+    DuskBinaryOp op,
+    DuskType *destination_type,
+    DuskIRValue *left,
+    DuskIRValue *right)
+{
+    DuskIRValue *inst = DUSK_NEW(module->allocator, DuskIRValue);
+    inst->kind = DUSK_IR_VALUE_BINARY_OPERATION;
+    inst->binary.op = op;
+    inst->binary.left = left;
+    inst->binary.right = right;
+
+    inst->type = destination_type;
+    duskTypeMarkNotDead(inst->type);
+
+    duskIRBlockAppendInst(block, inst);
+    return inst;
+}
+
 bool duskIRValueIsConstant(DuskIRValue *value)
 {
     return value->kind == DUSK_IR_VALUE_CONSTANT ||
@@ -1382,6 +1403,235 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
         }
 
         duskEncodeInst(module, SpvOpExtInst, params, param_count);
+        break;
+    }
+    case DUSK_IR_VALUE_BINARY_OPERATION: {
+        SpvOp op = 0;
+
+        DuskType *left_type = value->binary.left->type;
+        DuskType *right_type = value->binary.right->type;
+
+        DuskType *left_scalar_type = duskGetVecScalarType(left_type);
+        DuskType *right_scalar_type = duskGetVecScalarType(right_type);
+
+        DUSK_ASSERT(left_scalar_type == right_scalar_type);
+
+        uint32_t left_val_id = value->binary.left->id;
+        uint32_t right_val_id = value->binary.right->id;
+
+        if (left_type != right_type) {
+            DUSK_ASSERT(
+                left_type->kind == DUSK_TYPE_VECTOR ||
+                right_type->kind == DUSK_TYPE_VECTOR);
+            DUSK_ASSERT(value->binary.op == DUSK_BINARY_OP_MUL);
+        }
+
+        DuskType *scalar_type = left_scalar_type;
+
+        switch (value->binary.op) {
+        case DUSK_BINARY_OP_ADD: {
+            if (scalar_type->kind == DUSK_TYPE_FLOAT) {
+                op = SpvOpFAdd;
+            } else if (scalar_type->kind == DUSK_TYPE_INT) {
+                op = SpvOpIAdd;
+            } else {
+                DUSK_ASSERT(0);
+            }
+            break;
+        }
+        case DUSK_BINARY_OP_SUB: {
+            if (scalar_type->kind == DUSK_TYPE_FLOAT) {
+                op = SpvOpFSub;
+            } else if (scalar_type->kind == DUSK_TYPE_INT) {
+                op = SpvOpISub;
+            } else {
+                DUSK_ASSERT(0);
+            }
+            break;
+        }
+        case DUSK_BINARY_OP_MUL: {
+            if (left_type->kind == DUSK_TYPE_VECTOR &&
+                right_type->kind != DUSK_TYPE_VECTOR) {
+                op = SpvOpVectorTimesScalar;
+            } else if (
+                left_type->kind != DUSK_TYPE_VECTOR &&
+                right_type->kind == DUSK_TYPE_VECTOR) {
+                op = SpvOpVectorTimesScalar;
+                uint32_t temp_val_id = left_val_id;
+                left_val_id = right_val_id;
+                right_val_id = temp_val_id;
+            } else if (scalar_type->kind == DUSK_TYPE_FLOAT) {
+                op = SpvOpFMul;
+            } else if (scalar_type->kind == DUSK_TYPE_INT) {
+                op = SpvOpIMul;
+            } else {
+                DUSK_ASSERT(0);
+            }
+            break;
+        }
+        case DUSK_BINARY_OP_DIV: {
+            if (scalar_type->kind == DUSK_TYPE_FLOAT) {
+                op = SpvOpFDiv;
+            } else if (scalar_type->kind == DUSK_TYPE_INT) {
+                if (scalar_type->int_.is_signed) {
+                    op = SpvOpSDiv;
+                } else {
+                    op = SpvOpUDiv;
+                }
+            } else {
+                DUSK_ASSERT(0);
+            }
+            break;
+        }
+        case DUSK_BINARY_OP_MOD: {
+            if (scalar_type->kind == DUSK_TYPE_INT) {
+                if (scalar_type->int_.is_signed) {
+                    op = SpvOpSMod;
+                } else {
+                    op = SpvOpUMod;
+                }
+            } else {
+                DUSK_ASSERT(0);
+            }
+            break;
+        }
+        case DUSK_BINARY_OP_BITAND: {
+            if (scalar_type->kind == DUSK_TYPE_INT) {
+                op = SpvOpBitwiseAnd;
+            } else {
+                DUSK_ASSERT(0);
+            }
+            break;
+        }
+        case DUSK_BINARY_OP_BITOR: {
+            if (scalar_type->kind == DUSK_TYPE_INT) {
+                op = SpvOpBitwiseOr;
+            } else {
+                DUSK_ASSERT(0);
+            }
+            break;
+        }
+        case DUSK_BINARY_OP_BITXOR: {
+            if (scalar_type->kind == DUSK_TYPE_INT) {
+                op = SpvOpBitwiseXor;
+            } else {
+                DUSK_ASSERT(0);
+            }
+            break;
+        }
+        case DUSK_BINARY_OP_LSHIFT: {
+            if (scalar_type->kind == DUSK_TYPE_INT) {
+                op = SpvOpShiftLeftLogical;
+            } else {
+                DUSK_ASSERT(0);
+            }
+            break;
+        }
+        case DUSK_BINARY_OP_RSHIFT: {
+            if (scalar_type->kind == DUSK_TYPE_INT) {
+                if (scalar_type->int_.is_signed) {
+                    op = SpvOpShiftRightArithmetic;
+                } else {
+                    op = SpvOpShiftRightLogical;
+                }
+            } else {
+                DUSK_ASSERT(0);
+            }
+            break;
+        }
+        case DUSK_BINARY_OP_EQ: {
+            if (scalar_type->kind == DUSK_TYPE_FLOAT) {
+                op = SpvOpFOrdEqual;
+            } else if (scalar_type->kind == DUSK_TYPE_INT) {
+                op = SpvOpIEqual;
+            } else {
+                DUSK_ASSERT(0);
+            }
+            break;
+        }
+        case DUSK_BINARY_OP_NOTEQ: {
+            if (scalar_type->kind == DUSK_TYPE_FLOAT) {
+                op = SpvOpFOrdNotEqual;
+            } else if (scalar_type->kind == DUSK_TYPE_INT) {
+                op = SpvOpINotEqual;
+            } else {
+                DUSK_ASSERT(0);
+            }
+            break;
+        }
+        case DUSK_BINARY_OP_LESS: {
+            if (scalar_type->kind == DUSK_TYPE_FLOAT) {
+                op = SpvOpFOrdLessThan;
+            } else if (scalar_type->kind == DUSK_TYPE_INT) {
+                if (scalar_type->int_.is_signed) {
+                    op = SpvOpSLessThan;
+                } else {
+                    op = SpvOpULessThan;
+                }
+            } else {
+                DUSK_ASSERT(0);
+            }
+            break;
+        }
+        case DUSK_BINARY_OP_LESSEQ: {
+            if (scalar_type->kind == DUSK_TYPE_FLOAT) {
+                op = SpvOpFOrdLessThanEqual;
+            } else if (scalar_type->kind == DUSK_TYPE_INT) {
+                if (scalar_type->int_.is_signed) {
+                    op = SpvOpSLessThanEqual;
+                } else {
+                    op = SpvOpULessThanEqual;
+                }
+            } else {
+                DUSK_ASSERT(0);
+            }
+            break;
+        }
+        case DUSK_BINARY_OP_GREATER: {
+            if (scalar_type->kind == DUSK_TYPE_FLOAT) {
+                op = SpvOpFOrdGreaterThan;
+            } else if (scalar_type->kind == DUSK_TYPE_INT) {
+                if (scalar_type->int_.is_signed) {
+                    op = SpvOpSGreaterThan;
+                } else {
+                    op = SpvOpUGreaterThan;
+                }
+            } else {
+                DUSK_ASSERT(0);
+            }
+            break;
+        }
+        case DUSK_BINARY_OP_GREATEREQ: {
+            if (scalar_type->kind == DUSK_TYPE_FLOAT) {
+                op = SpvOpFOrdGreaterThanEqual;
+            } else if (scalar_type->kind == DUSK_TYPE_INT) {
+                if (scalar_type->int_.is_signed) {
+                    op = SpvOpSGreaterThanEqual;
+                } else {
+                    op = SpvOpUGreaterThanEqual;
+                }
+            } else {
+                DUSK_ASSERT(0);
+            }
+            break;
+        }
+
+        case DUSK_BINARY_OP_MAX: DUSK_ASSERT(0); break;
+        }
+
+        DUSK_ASSERT(value->type->id);
+        DUSK_ASSERT(value->id);
+        DUSK_ASSERT(value->binary.left->id);
+        DUSK_ASSERT(value->binary.right->id);
+
+        uint32_t params[4] = {
+            value->type->id,
+            value->id,
+            left_val_id,
+            right_val_id,
+        };
+        duskEncodeInst(module, op, params, DUSK_CARRAY_LENGTH(params));
+
         break;
     }
     }
