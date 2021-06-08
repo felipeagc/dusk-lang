@@ -158,7 +158,11 @@ Used to mark a function as an entry point
 
 |`@cross(v1: V3, v2: V3): V3`
 |`V3` is a vector type with 3 elements
-|Calculates the cross-product of two vectors
+|Calculates the cross product of two vectors
+
+|`@dot(v1: V, v2: V): S`
+|`V` is a vector type with scalar type `S`
+|Calculates the dot product of two vectors
 
 |`@sqrt(v: T): T`
 |`T` is a floating point vector or scalar type
