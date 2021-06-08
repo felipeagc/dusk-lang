@@ -1449,6 +1449,7 @@ static void duskAnalyzeExpr(
                     "mismatched types for binary operation: '%s' and '%s'",
                     duskTypeToPrettyString(allocator, left_type),
                     duskTypeToPrettyString(allocator, right_type));
+                break;
             }
         } else {
             if (left_type != right_type) {

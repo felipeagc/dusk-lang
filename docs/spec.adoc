@@ -1,8 +1,10 @@
 = Dusk shading language
 :url-repo: https://github.com/felipeagc/dusk-lang
+:source-highlighter: rouge
 :sectnums:
 :sectanchors:
 :toc:
+:source-language: rust
 
 == Specification
 
