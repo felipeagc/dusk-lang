@@ -930,6 +930,53 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
     }
 
     case DUSK_EXPR_BINARY: {
+        DuskType *left_scalar_type =
+            duskGetVecScalarType(expr->binary.left->type);
+        DuskType *right_scalar_type =
+            duskGetVecScalarType(expr->binary.right->type);
+
+        DUSK_ASSERT(left_scalar_type);
+        DUSK_ASSERT(right_scalar_type);
+        DUSK_ASSERT(left_scalar_type == right_scalar_type);
+        DUSK_ASSERT(duskTypeIsRuntime(left_scalar_type));
+        DUSK_ASSERT(duskTypeIsRuntime(right_scalar_type));
+
+        switch (expr->binary.op) {
+        case DUSK_BINARY_OP_ADD:
+        case DUSK_BINARY_OP_SUB:
+        case DUSK_BINARY_OP_MUL:
+        case DUSK_BINARY_OP_DIV: {
+            DUSK_ASSERT(!"unimplemented");
+            break;
+        }
+
+        case DUSK_BINARY_OP_MOD: {
+            DUSK_ASSERT(!"unimplemented");
+            break;
+        }
+
+        case DUSK_BINARY_OP_BITAND:
+        case DUSK_BINARY_OP_BITOR:
+        case DUSK_BINARY_OP_BITXOR:
+        case DUSK_BINARY_OP_LSHIFT:
+        case DUSK_BINARY_OP_RSHIFT: {
+            DUSK_ASSERT(!"unimplemented");
+            break;
+        }
+
+        case DUSK_BINARY_OP_EQ:
+        case DUSK_BINARY_OP_NOTEQ:
+        case DUSK_BINARY_OP_LESS:
+        case DUSK_BINARY_OP_LESSEQ:
+        case DUSK_BINARY_OP_GREATER:
+        case DUSK_BINARY_OP_GREATEREQ: {
+            DUSK_ASSERT(!"unimplemented");
+            break;
+        }
+
+        case DUSK_BINARY_OP_MAX: DUSK_ASSERT(0); break;
+        }
+
         DUSK_ASSERT(!"unimplemented");
         break;
     }

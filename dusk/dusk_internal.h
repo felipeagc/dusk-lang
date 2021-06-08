@@ -429,6 +429,7 @@ struct DuskType {
 };
 
 bool duskTypeIsRuntime(DuskType *type);
+DuskType *duskGetVecScalarType(DuskType *type);
 
 // Gets the type's pretty string
 const char *duskTypeToPrettyString(DuskAllocator *allocator, DuskType *type);
@@ -1033,6 +1034,12 @@ typedef enum {
     DUSK_BINARY_OP_BITXOR,
     DUSK_BINARY_OP_LSHIFT,
     DUSK_BINARY_OP_RSHIFT,
+    DUSK_BINARY_OP_EQ,
+    DUSK_BINARY_OP_NOTEQ,
+    DUSK_BINARY_OP_LESS,
+    DUSK_BINARY_OP_LESSEQ,
+    DUSK_BINARY_OP_GREATER,
+    DUSK_BINARY_OP_GREATEREQ,
     DUSK_BINARY_OP_MAX,
 } DuskBinaryOp;
 

@@ -418,6 +418,8 @@ static DuskType *duskTypeGetCached(DuskCompiler *compiler, DuskType *type)
 
 bool duskTypeIsRuntime(DuskType *type)
 {
+    if (!type) return false;
+
     switch (type->kind) {
     case DUSK_TYPE_FUNCTION:
     case DUSK_TYPE_TYPE:
@@ -428,6 +430,23 @@ bool duskTypeIsRuntime(DuskType *type)
     }
 
     return true;
+}
+
+DuskType *duskGetVecScalarType(DuskType *type)
+{
+    if (!type) return NULL;
+
+    switch (type->kind) {
+    case DUSK_TYPE_UNTYPED_INT:
+    case DUSK_TYPE_UNTYPED_FLOAT:
+    case DUSK_TYPE_INT:
+    case DUSK_TYPE_FLOAT: return type;
+
+    case DUSK_TYPE_VECTOR: return type->vector.sub;
+    default: break;
+    }
+
+    return NULL;
 }
 
 DuskType *duskTypeNewBasic(DuskCompiler *compiler, DuskTypeKind kind)

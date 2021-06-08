@@ -119,6 +119,10 @@ static DuskScope *duskCurrentScope(DuskAnalyzerState *state)
 
 static void duskConcretizeExprType(DuskExpr *expr, DuskType *expected_type)
 {
+    if (!expected_type) return;
+    if (expected_type->kind != DUSK_TYPE_INT &&
+        expected_type->kind != DUSK_TYPE_FLOAT)
+        return;
     if (!expr->type) return;
 
     switch (expr->kind) {
@@ -126,7 +130,6 @@ static void duskConcretizeExprType(DuskExpr *expr, DuskType *expected_type)
         if (expr->type->kind == DUSK_TYPE_UNTYPED_INT &&
             (expected_type->kind == DUSK_TYPE_INT ||
              expected_type->kind == DUSK_TYPE_FLOAT)) {
-
             expr->type = expected_type;
         }
         break;
@@ -135,6 +138,23 @@ static void duskConcretizeExprType(DuskExpr *expr, DuskType *expected_type)
         if (expr->type->kind == DUSK_TYPE_UNTYPED_FLOAT &&
             expected_type->kind == DUSK_TYPE_FLOAT) {
             expr->type = expected_type;
+        }
+        break;
+    }
+
+    case DUSK_EXPR_BINARY: {
+        if (expr->type->kind == DUSK_TYPE_UNTYPED_INT &&
+            (expected_type->kind == DUSK_TYPE_INT ||
+             expected_type->kind == DUSK_TYPE_FLOAT)) {
+            expr->type = expected_type;
+            duskConcretizeExprType(expr->binary.left, expected_type);
+            duskConcretizeExprType(expr->binary.right, expected_type);
+        } else if (
+            expr->type->kind == DUSK_TYPE_UNTYPED_FLOAT &&
+            expected_type->kind == DUSK_TYPE_FLOAT) {
+            expr->type = expected_type;
+            duskConcretizeExprType(expr->binary.left, expected_type);
+            duskConcretizeExprType(expr->binary.right, expected_type);
         }
         break;
     }
@@ -167,8 +187,8 @@ static bool duskExprResolveInteger(
     }
 
     case DUSK_EXPR_BINARY: {
-        DUSK_ASSERT(!"unimplemented");
-        break;
+        // TOOD: resolve integer for binary expression
+        return false;
     }
 
     case DUSK_EXPR_ARRAY_ACCESS:
@@ -1326,7 +1346,132 @@ static void duskAnalyzeExpr(
         break;
     }
     case DUSK_EXPR_BINARY: {
-        DUSK_ASSERT(!"unimplemented");
+        duskAnalyzeExpr(compiler, state, expr->binary.left, NULL, false);
+        duskAnalyzeExpr(compiler, state, expr->binary.right, NULL, false);
+
+        DuskType *left_type = expr->binary.left->type;
+        DuskType *right_type = expr->binary.right->type;
+
+        if (!left_type) {
+            DUSK_ASSERT(duskArrayLength(compiler->errors_arr) > 0);
+            break;
+        }
+
+        if (!right_type) {
+            DUSK_ASSERT(duskArrayLength(compiler->errors_arr) > 0);
+            break;
+        }
+
+        DuskType *left_scalar_type = duskGetVecScalarType(left_type);
+        DuskType *right_scalar_type = duskGetVecScalarType(right_type);
+
+        DuskType *expected_scalar_type = duskGetVecScalarType(expected_type);
+
+        if (duskTypeIsRuntime(left_scalar_type) &&
+            !duskTypeIsRuntime(right_scalar_type) && !expected_type) {
+            expected_scalar_type = left_scalar_type;
+        }
+
+        if (!duskTypeIsRuntime(left_scalar_type) &&
+            duskTypeIsRuntime(right_scalar_type) && !expected_type) {
+            expected_scalar_type = right_scalar_type;
+        }
+
+        if (expected_scalar_type) {
+            duskConcretizeExprType(expr->binary.left, expected_scalar_type);
+            duskConcretizeExprType(expr->binary.right, expected_scalar_type);
+
+            left_type = expr->binary.left->type;
+            right_type = expr->binary.right->type;
+            left_scalar_type = duskGetVecScalarType(left_type);
+            right_scalar_type = duskGetVecScalarType(right_type);
+        }
+
+        if (!left_scalar_type) {
+            duskAddError(
+                compiler,
+                expr->binary.left->location,
+                "cannot perform binary operation on type '%s'",
+                duskTypeToPrettyString(allocator, left_type));
+            break;
+        }
+
+        if (!right_scalar_type) {
+            duskAddError(
+                compiler,
+                expr->binary.right->location,
+                "cannot perform binary operation on type '%s'",
+                duskTypeToPrettyString(allocator, right_type));
+            break;
+        }
+
+        if (left_scalar_type != right_scalar_type) {
+            duskAddError(
+                compiler,
+                expr->binary.right->location,
+                "mismatched scalar types for binary operation: '%s' and "
+                "'%s'",
+                duskTypeToPrettyString(allocator, left_scalar_type),
+                duskTypeToPrettyString(allocator, right_scalar_type));
+            break;
+        }
+
+        if (left_type->kind == DUSK_TYPE_VECTOR &&
+            right_type->kind != DUSK_TYPE_VECTOR) {
+            expr->type = left_type;
+        } else if (
+            left_type->kind != DUSK_TYPE_VECTOR &&
+            right_type->kind == DUSK_TYPE_VECTOR) {
+            expr->type = right_type;
+        } else {
+            DUSK_ASSERT(left_type == right_type);
+            expr->type = left_type;
+        }
+
+        switch (expr->binary.op) {
+        // Int/float
+        case DUSK_BINARY_OP_ADD:
+        case DUSK_BINARY_OP_SUB:
+        case DUSK_BINARY_OP_MUL:
+        case DUSK_BINARY_OP_DIV: {
+            break;
+        }
+
+        // Int
+        case DUSK_BINARY_OP_MOD:
+        case DUSK_BINARY_OP_BITAND:
+        case DUSK_BINARY_OP_BITOR:
+        case DUSK_BINARY_OP_BITXOR:
+        case DUSK_BINARY_OP_LSHIFT:
+        case DUSK_BINARY_OP_RSHIFT: {
+            DuskType *expr_scalar_type = duskGetVecScalarType(expr->type);
+            if (expr_scalar_type->kind == DUSK_TYPE_FLOAT ||
+                expr_scalar_type->kind == DUSK_TYPE_UNTYPED_FLOAT) {
+                duskAddError(
+                    compiler,
+                    expr->location,
+                    "binary operation only works on integer types, instead got "
+                    "type: '%s'",
+                    duskTypeToPrettyString(allocator, expr->type));
+            }
+
+            break;
+        }
+
+        // Int/float
+        case DUSK_BINARY_OP_EQ:
+        case DUSK_BINARY_OP_NOTEQ:
+        case DUSK_BINARY_OP_LESS:
+        case DUSK_BINARY_OP_LESSEQ:
+        case DUSK_BINARY_OP_GREATER:
+        case DUSK_BINARY_OP_GREATEREQ: {
+
+            expr->type = duskTypeNewBasic(compiler, DUSK_TYPE_BOOL);
+            break;
+        }
+
+        case DUSK_BINARY_OP_MAX: DUSK_ASSERT(0); break;
+        }
         break;
     }
     }

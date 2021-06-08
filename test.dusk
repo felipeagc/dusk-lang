@@ -106,7 +106,7 @@ fn fs_main([location(0)] in_pos: float3) [location(0)] float4 {
     s = @ceil(s);
     s = @floor(s);
     s = @trunc(s);
-    s = @exp2(s) + s * s;
+    s = @exp2(s) + s * (123 + 123);
 
     let my_arr_arr: [2][2]float;
     let my_arr: [2]float = my_arr_arr[0];
