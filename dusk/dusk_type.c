@@ -432,7 +432,7 @@ bool duskTypeIsRuntime(DuskType *type)
     return true;
 }
 
-DuskType *duskGetVecScalarType(DuskType *type)
+DuskType *duskGetScalarType(DuskType *type)
 {
     if (!type) return NULL;
 
@@ -443,6 +443,7 @@ DuskType *duskGetVecScalarType(DuskType *type)
     case DUSK_TYPE_FLOAT: return type;
 
     case DUSK_TYPE_VECTOR: return type->vector.sub;
+    case DUSK_TYPE_MATRIX: return type->matrix.col_type->vector.sub;
     default: break;
     }
 

@@ -1411,8 +1411,8 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
         DuskType *left_type = value->binary.left->type;
         DuskType *right_type = value->binary.right->type;
 
-        DuskType *left_scalar_type = duskGetVecScalarType(left_type);
-        DuskType *right_scalar_type = duskGetVecScalarType(right_type);
+        DuskType *left_scalar_type = duskGetScalarType(left_type);
+        DuskType *right_scalar_type = duskGetScalarType(right_type);
 
         DUSK_ASSERT(left_scalar_type == right_scalar_type);
 
@@ -1451,15 +1451,41 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
         }
         case DUSK_BINARY_OP_MUL: {
             if (left_type->kind == DUSK_TYPE_VECTOR &&
-                right_type->kind != DUSK_TYPE_VECTOR) {
+                left_type->vector.sub == right_type) {
                 op = SpvOpVectorTimesScalar;
             } else if (
-                left_type->kind != DUSK_TYPE_VECTOR &&
-                right_type->kind == DUSK_TYPE_VECTOR) {
+                right_type->kind == DUSK_TYPE_VECTOR &&
+                right_type->vector.sub == left_type) {
                 op = SpvOpVectorTimesScalar;
                 uint32_t temp_val_id = left_val_id;
                 left_val_id = right_val_id;
                 right_val_id = temp_val_id;
+            } else if (
+                left_type->kind == DUSK_TYPE_MATRIX &&
+                left_type->matrix.col_type->vector.sub == right_type) {
+                op = SpvOpMatrixTimesScalar;
+            } else if (
+                right_type->kind == DUSK_TYPE_MATRIX &&
+                right_type->matrix.col_type->vector.sub == left_type) {
+                uint32_t temp_val_id = left_val_id;
+                left_val_id = right_val_id;
+                right_val_id = temp_val_id;
+                op = SpvOpMatrixTimesScalar;
+            } else if (
+                left_type->kind == DUSK_TYPE_VECTOR &&
+                right_type->kind == DUSK_TYPE_MATRIX &&
+                left_type == right_type->matrix.col_type) {
+                op = SpvOpVectorTimesMatrix;
+            } else if (
+                left_type->kind == DUSK_TYPE_MATRIX &&
+                right_type->kind == DUSK_TYPE_VECTOR &&
+                right_type == left_type->matrix.col_type) {
+                op = SpvOpMatrixTimesVector;
+            } else if (
+                left_type->kind == DUSK_TYPE_MATRIX &&
+                right_type->kind == DUSK_TYPE_MATRIX &&
+                left_type == right_type) {
+                op = SpvOpMatrixTimesMatrix;
             } else if (scalar_type->kind == DUSK_TYPE_FLOAT) {
                 op = SpvOpFMul;
             } else if (scalar_type->kind == DUSK_TYPE_INT) {

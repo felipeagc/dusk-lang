@@ -1362,10 +1362,10 @@ static void duskAnalyzeExpr(
             break;
         }
 
-        DuskType *left_scalar_type = duskGetVecScalarType(left_type);
-        DuskType *right_scalar_type = duskGetVecScalarType(right_type);
+        DuskType *left_scalar_type = duskGetScalarType(left_type);
+        DuskType *right_scalar_type = duskGetScalarType(right_type);
 
-        DuskType *expected_scalar_type = duskGetVecScalarType(expected_type);
+        DuskType *expected_scalar_type = duskGetScalarType(expected_type);
 
         if (duskTypeIsRuntime(left_scalar_type) &&
             !duskTypeIsRuntime(right_scalar_type) && !expected_type) {
@@ -1383,8 +1383,8 @@ static void duskAnalyzeExpr(
 
             left_type = expr->binary.left->type;
             right_type = expr->binary.right->type;
-            left_scalar_type = duskGetVecScalarType(left_type);
-            right_scalar_type = duskGetVecScalarType(right_type);
+            left_scalar_type = duskGetScalarType(left_type);
+            right_scalar_type = duskGetScalarType(right_type);
         }
 
         if (!left_scalar_type) {
@@ -1407,15 +1407,40 @@ static void duskAnalyzeExpr(
 
         if (expr->binary.op == DUSK_BINARY_OP_MUL) {
             if (left_type->kind == DUSK_TYPE_VECTOR &&
-                right_type->kind != DUSK_TYPE_VECTOR &&
                 left_type->vector.sub == right_type) {
+                // vector * scalar
                 expr->type = left_type;
             } else if (
-                left_type->kind != DUSK_TYPE_VECTOR &&
+                // scalar * vector
                 right_type->kind == DUSK_TYPE_VECTOR &&
                 right_type->vector.sub == left_type) {
                 expr->type = right_type;
+            } else if (
+                left_type->kind == DUSK_TYPE_MATRIX &&
+                left_type->matrix.col_type->vector.sub == right_type) {
+                // matrix * scalar
+                expr->type = left_type;
+            } else if (
+                right_type->kind == DUSK_TYPE_MATRIX &&
+                right_type->matrix.col_type->vector.sub == left_type) {
+                // scalar * matrix
+                expr->type = right_type;
+            } else if (
+                left_type->kind == DUSK_TYPE_VECTOR &&
+                right_type->kind == DUSK_TYPE_MATRIX &&
+                left_type == right_type->matrix.col_type) {
+                // vector * matrix
+                expr->type = left_type;
+            } else if (
+                left_type->kind == DUSK_TYPE_MATRIX &&
+                right_type->kind == DUSK_TYPE_VECTOR &&
+                right_type == left_type->matrix.col_type) {
+                // matrix * vector
+                expr->type = right_type;
             } else if (left_type == right_type) {
+                // scalar * scalar
+                // vector * vector
+                // matrix * matrix
                 expr->type = left_type;
             } else {
                 duskAddError(
@@ -1456,7 +1481,7 @@ static void duskAnalyzeExpr(
         case DUSK_BINARY_OP_BITXOR:
         case DUSK_BINARY_OP_LSHIFT:
         case DUSK_BINARY_OP_RSHIFT: {
-            DuskType *expr_scalar_type = duskGetVecScalarType(expr->type);
+            DuskType *expr_scalar_type = duskGetScalarType(expr->type);
             if (expr_scalar_type->kind == DUSK_TYPE_FLOAT ||
                 expr_scalar_type->kind == DUSK_TYPE_UNTYPED_FLOAT) {
                 duskAddError(

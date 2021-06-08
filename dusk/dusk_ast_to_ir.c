@@ -944,9 +944,9 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
         DuskIRValue *right_val = duskIRLoadLvalue(module, block, expr->binary.right->ir_value);
 
         DuskType *left_scalar_type =
-            duskGetVecScalarType(expr->binary.left->type);
+            duskGetScalarType(expr->binary.left->type);
         DuskType *right_scalar_type =
-            duskGetVecScalarType(expr->binary.right->type);
+            duskGetScalarType(expr->binary.right->type);
 
         DUSK_ASSERT(left_scalar_type);
         DUSK_ASSERT(right_scalar_type);

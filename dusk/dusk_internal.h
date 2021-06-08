@@ -429,7 +429,7 @@ struct DuskType {
 };
 
 bool duskTypeIsRuntime(DuskType *type);
-DuskType *duskGetVecScalarType(DuskType *type);
+DuskType *duskGetScalarType(DuskType *type);
 
 // Gets the type's pretty string
 const char *duskTypeToPrettyString(DuskAllocator *allocator, DuskType *type);
