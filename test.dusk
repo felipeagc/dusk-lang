@@ -117,6 +117,8 @@ fn fs_main([location(0)] in_pos: float3) [location(0)] float4 {
     my_mat = my_mat * my_mat;
     my_vec = my_mat * -my_vec;
 
+    my_vec += float4(1);
+
     let other: float3 = float3(1).xxx;
     other.x = 123;
     return float4(float3(1, 2, 3), 1);

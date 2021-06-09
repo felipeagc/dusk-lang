@@ -2123,6 +2123,48 @@ static DuskStmt *parseStmt(DuskCompiler *compiler, TokenizerState *state)
             stmt->assign.value_expr = value_expr;
             break;
         }
+        case DUSK_TOKEN_ADD_ASSIGN:
+        case DUSK_TOKEN_SUB_ASSIGN:
+        case DUSK_TOKEN_MUL_ASSIGN:
+        case DUSK_TOKEN_DIV_ASSIGN:
+        case DUSK_TOKEN_MOD_ASSIGN:
+        case DUSK_TOKEN_BITAND_ASSIGN:
+        case DUSK_TOKEN_BITOR_ASSIGN:
+        case DUSK_TOKEN_BITXOR_ASSIGN:
+        case DUSK_TOKEN_LSHIFT_ASSIGN:
+        case DUSK_TOKEN_RSHIFT_ASSIGN: {
+            DuskBinaryOp op = 0;
+            switch (next_token.type) {
+            case DUSK_TOKEN_ADD_ASSIGN: op = DUSK_BINARY_OP_ADD; break;
+            case DUSK_TOKEN_SUB_ASSIGN: op = DUSK_BINARY_OP_SUB; break;
+            case DUSK_TOKEN_MUL_ASSIGN: op = DUSK_BINARY_OP_MUL; break;
+            case DUSK_TOKEN_DIV_ASSIGN: op = DUSK_BINARY_OP_DIV; break;
+            case DUSK_TOKEN_MOD_ASSIGN: op = DUSK_BINARY_OP_MOD; break;
+            case DUSK_TOKEN_BITAND_ASSIGN: op = DUSK_BINARY_OP_BITAND; break;
+            case DUSK_TOKEN_BITOR_ASSIGN: op = DUSK_BINARY_OP_BITOR; break;
+            case DUSK_TOKEN_BITXOR_ASSIGN: op = DUSK_BINARY_OP_BITXOR; break;
+            case DUSK_TOKEN_LSHIFT_ASSIGN: op = DUSK_BINARY_OP_LSHIFT; break;
+            case DUSK_TOKEN_RSHIFT_ASSIGN: op = DUSK_BINARY_OP_RSHIFT; break;
+            default: DUSK_ASSERT(0);
+            }
+
+            consumeToken(compiler, state, next_token.type);
+
+            DuskExpr *value_expr = parseExpr(compiler, state);
+
+            DuskExpr *bin_expr = DUSK_NEW(allocator, DuskExpr);
+            bin_expr->kind = DUSK_EXPR_BINARY;
+            bin_expr->location = stmt->location;
+            bin_expr->binary.op = op;
+            bin_expr->binary.left = expr;
+            bin_expr->binary.right = value_expr;
+
+            stmt->kind = DUSK_STMT_ASSIGN;
+            stmt->assign.assigned_expr = expr;
+            stmt->assign.value_expr = bin_expr;
+
+            break;
+        }
         default: {
             stmt->kind = DUSK_STMT_EXPR;
             stmt->expr = expr;
