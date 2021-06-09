@@ -186,6 +186,11 @@ static bool duskExprResolveInteger(
         return false;
     }
 
+    case DUSK_EXPR_UNARY: {
+        // TOOD: resolve integer for unary expression
+        return false;
+    }
+
     case DUSK_EXPR_BINARY: {
         // TOOD: resolve integer for binary expression
         return false;
@@ -1510,6 +1515,61 @@ static void duskAnalyzeExpr(
         case DUSK_BINARY_OP_MAX: DUSK_ASSERT(0); break;
         }
         break;
+    }
+    case DUSK_EXPR_UNARY: {
+        duskAnalyzeExpr(
+            compiler, state, expr->unary.right, expected_type, false);
+        DuskType *right_type = expr->unary.right->type;
+        if (!right_type) {
+            DUSK_ASSERT(duskArrayLength(compiler->errors_arr) > 0);
+            break;
+        }
+
+        bool valid = false;
+
+        switch (right_type->kind) {
+        case DUSK_TYPE_BOOL: {
+            if (expr->unary.op == DUSK_UNARY_OP_NOT) {
+                valid = true;
+            }
+            break;
+        }
+        case DUSK_TYPE_INT:
+        case DUSK_TYPE_FLOAT:
+        case DUSK_TYPE_VECTOR: {
+            switch (expr->unary.op) {
+            case DUSK_UNARY_OP_BITNOT: {
+                DuskType *scalar_type = duskGetScalarType(right_type);
+                if (scalar_type && scalar_type->kind == DUSK_TYPE_INT) {
+                    valid = true;
+                }
+                break;
+            }
+            case DUSK_UNARY_OP_NEGATE: {
+                DuskType *scalar_type = duskGetScalarType(right_type);
+                if (scalar_type) {
+                    valid = true;
+                }
+                break;
+            }
+            case DUSK_UNARY_OP_NOT: break;
+            }
+
+            break;
+        }
+        default: break;
+        }
+
+        if (!valid) {
+            duskAddError(
+                compiler,
+                expr->location,
+                "unary operation is invalid for type '%s'",
+                duskTypeToPrettyString(allocator, right_type));
+            break;
+        }
+
+        expr->type = right_type;
     }
     }
 

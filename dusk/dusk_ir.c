@@ -670,6 +670,25 @@ DuskIRValue *duskIRCreateBinaryOperation(
     return inst;
 }
 
+DuskIRValue *duskIRCreateUnaryOperation(
+    DuskIRModule *module,
+    DuskIRValue *block,
+    DuskUnaryOp op,
+    DuskType *destination_type,
+    DuskIRValue *right)
+{
+    DuskIRValue *inst = DUSK_NEW(module->allocator, DuskIRValue);
+    inst->kind = DUSK_IR_VALUE_UNARY_OPERATION;
+    inst->unary.op = op;
+    inst->unary.right = right;
+
+    inst->type = destination_type;
+    duskTypeMarkNotDead(inst->type);
+
+    duskIRBlockAppendInst(block, inst);
+    return inst;
+}
+
 bool duskIRValueIsConstant(DuskIRValue *value)
 {
     return value->kind == DUSK_IR_VALUE_CONSTANT ||
@@ -1658,6 +1677,34 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
         };
         duskEncodeInst(module, op, params, DUSK_CARRAY_LENGTH(params));
 
+        break;
+    }
+    case DUSK_IR_VALUE_UNARY_OPERATION: {
+        SpvOp op = 0;
+
+        DuskType *scalar_type = duskGetScalarType(value->type);
+
+        switch (value->unary.op) {
+        case DUSK_UNARY_OP_NEGATE: {
+            if (scalar_type->kind == DUSK_TYPE_FLOAT) {
+                op = SpvOpFNegate;
+            } else if (scalar_type->kind == DUSK_TYPE_INT) {
+                op = SpvOpSNegate;
+            } else {
+                DUSK_ASSERT(0);
+            }
+            break;
+        }
+        case DUSK_UNARY_OP_NOT: op = SpvOpNot; break;
+        case DUSK_UNARY_OP_BITNOT: op = SpvOpBitReverse; break;
+        }
+
+        uint32_t params[3] = {
+            value->type->id,
+            value->id,
+            value->unary.right->id,
+        };
+        duskEncodeInst(module, op, params, DUSK_CARRAY_LENGTH(params));
         break;
     }
     }

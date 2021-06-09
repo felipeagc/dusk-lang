@@ -940,11 +940,12 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
         duskGenerateExpr(module, func_decl, expr->binary.left);
         duskGenerateExpr(module, func_decl, expr->binary.right);
 
-        DuskIRValue *left_val = duskIRLoadLvalue(module, block, expr->binary.left->ir_value);
-        DuskIRValue *right_val = duskIRLoadLvalue(module, block, expr->binary.right->ir_value);
+        DuskIRValue *left_val =
+            duskIRLoadLvalue(module, block, expr->binary.left->ir_value);
+        DuskIRValue *right_val =
+            duskIRLoadLvalue(module, block, expr->binary.right->ir_value);
 
-        DuskType *left_scalar_type =
-            duskGetScalarType(expr->binary.left->type);
+        DuskType *left_scalar_type = duskGetScalarType(expr->binary.left->type);
         DuskType *right_scalar_type =
             duskGetScalarType(expr->binary.right->type);
 
@@ -955,14 +956,26 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
         DUSK_ASSERT(duskTypeIsRuntime(right_scalar_type));
 
         expr->ir_value = duskIRCreateBinaryOperation(
-                module,
-                block,
-                expr->binary.op,
-                expr->type,
-                left_val,
-                right_val);
+            module, block, expr->binary.op, expr->type, left_val, right_val);
 
         break;
+    }
+
+    case DUSK_EXPR_UNARY: {
+        DUSK_ASSERT(func_decl);
+        DuskIRValue *function = func_decl->ir_value;
+        DUSK_ASSERT(duskArrayLength(function->function.blocks_arr) > 0);
+        DuskIRValue *block =
+            function->function
+                .blocks_arr[duskArrayLength(function->function.blocks_arr) - 1];
+
+        duskGenerateExpr(module, func_decl, expr->unary.right);
+
+        DuskIRValue *right_val =
+            duskIRLoadLvalue(module, block, expr->unary.right->ir_value);
+
+        expr->ir_value = duskIRCreateUnaryOperation(
+            module, block, expr->unary.op, expr->type, right_val);
     }
 
     case DUSK_EXPR_STRING_LITERAL:

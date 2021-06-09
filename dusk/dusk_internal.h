@@ -559,6 +559,12 @@ typedef enum {
     DUSK_BINARY_OP_MAX,
 } DuskBinaryOp;
 
+typedef enum {
+    DUSK_UNARY_OP_NEGATE,
+    DUSK_UNARY_OP_NOT,
+    DUSK_UNARY_OP_BITNOT,
+} DuskUnaryOp;
+
 typedef enum DuskIRValueKind {
     DUSK_IR_VALUE_CONSTANT_BOOL,
     DUSK_IR_VALUE_CONSTANT,
@@ -579,6 +585,7 @@ typedef enum DuskIRValueKind {
     DUSK_IR_VALUE_CAST,
     DUSK_IR_VALUE_BUILTIN_CALL,
     DUSK_IR_VALUE_BINARY_OPERATION,
+    DUSK_IR_VALUE_UNARY_OPERATION,
 } DuskIRValueKind;
 
 struct DuskIRValue {
@@ -656,6 +663,10 @@ struct DuskIRValue {
             DuskIRValue *left;
             DuskIRValue *right;
         } binary;
+        struct {
+            DuskUnaryOp op;
+            DuskIRValue *right;
+        } unary;
     };
 };
 
@@ -773,6 +784,12 @@ DuskIRValue *duskIRCreateBinaryOperation(
     DuskBinaryOp op,
     DuskType *destination_type,
     DuskIRValue *left,
+    DuskIRValue *right);
+DuskIRValue *duskIRCreateUnaryOperation(
+    DuskIRModule *module,
+    DuskIRValue *block,
+    DuskUnaryOp op,
+    DuskType *destination_type,
     DuskIRValue *right);
 
 bool duskIRValueIsConstant(DuskIRValue *value);
@@ -1076,6 +1093,7 @@ typedef enum DuskExprKind {
     DUSK_EXPR_ACCESS,
     DUSK_EXPR_ARRAY_ACCESS,
     DUSK_EXPR_BINARY,
+    DUSK_EXPR_UNARY,
 } DuskExprKind;
 
 struct DuskExpr {
@@ -1142,6 +1160,10 @@ struct DuskExpr {
             DuskExpr *left;
             DuskExpr *right;
         } binary;
+        struct {
+            DuskUnaryOp op;
+            DuskExpr *right;
+        } unary;
     };
 };
 // }}}

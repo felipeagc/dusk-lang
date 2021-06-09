@@ -1799,6 +1799,53 @@ parseAccessOrFunctionCallExpr(DuskCompiler *compiler, TokenizerState *state)
     return expr;
 }
 
+static DuskExpr *parseUnaryExpr(DuskCompiler *compiler, TokenizerState *state)
+{
+    DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
+
+    DuskExpr *expr = NULL;
+
+    DuskToken next_token = {0};
+    tokenizerNextToken(compiler, *state, &next_token);
+    while (next_token.type == DUSK_TOKEN_NOT ||
+           next_token.type == DUSK_TOKEN_SUB ||
+           next_token.type == DUSK_TOKEN_BITNOT) {
+        consumeToken(compiler, state, next_token.type);
+
+        DuskUnaryOp op = 0;
+        switch (next_token.type) {
+        case DUSK_TOKEN_NOT: op = DUSK_UNARY_OP_NOT; break;
+        case DUSK_TOKEN_SUB: op = DUSK_UNARY_OP_NEGATE; break;
+        case DUSK_TOKEN_BITNOT: op = DUSK_UNARY_OP_BITNOT; break;
+        default: DUSK_ASSERT(0); break;
+        }
+
+        DuskExpr *new_expr = DUSK_NEW(allocator, DuskExpr);
+        new_expr->location = next_token.location;
+        new_expr->kind = DUSK_EXPR_UNARY;
+        new_expr->unary.op = op;
+        new_expr->unary.right = NULL;
+
+        if (expr) {
+            DUSK_ASSERT(expr->kind == DUSK_EXPR_UNARY);
+            expr->unary.right = new_expr;
+        }
+
+        expr = new_expr;
+
+        tokenizerNextToken(compiler, *state, &next_token);
+    }
+
+    if (!expr) {
+        expr = parseAccessOrFunctionCallExpr(compiler, state);
+    } else {
+        DUSK_ASSERT(expr->kind == DUSK_EXPR_UNARY);
+        expr->unary.right = parseAccessOrFunctionCallExpr(compiler, state);
+    }
+
+    return expr;
+}
+
 typedef struct {
     enum {
         DUSK_BINARY_OP_SYMBOL_EXPR,
@@ -1814,7 +1861,7 @@ static DuskExpr *parseBinaryExpr(DuskCompiler *compiler, TokenizerState *state)
 {
     DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
 
-    DuskExpr *expr = parseAccessOrFunctionCallExpr(compiler, state);
+    DuskExpr *expr = parseUnaryExpr(compiler, state);
     DUSK_ASSERT(expr);
 
     DuskToken next_token = {0};
@@ -1918,7 +1965,7 @@ static DuskExpr *parseBinaryExpr(DuskCompiler *compiler, TokenizerState *state)
 
         duskArrayPush(&op_stack_arr, op);
 
-        DuskExpr *right_expr = parseAccessOrFunctionCallExpr(compiler, state);
+        DuskExpr *right_expr = parseUnaryExpr(compiler, state);
 
         {
             DuskBinaryOpSymbol expr_symbol = {0};
