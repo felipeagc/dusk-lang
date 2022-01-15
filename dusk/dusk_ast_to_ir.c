@@ -1097,6 +1097,41 @@ duskGenerateStmt(DuskIRModule *module, DuskDecl *func_decl, DuskStmt *stmt)
         }
         break;
     }
+    case DUSK_STMT_IF: {
+        // Create blocks
+        DuskIRValue *true_block = duskIRBlockCreate(module);
+        DuskIRValue *false_block = NULL;
+        if (stmt->if_.false_stmt) {
+            false_block = duskIRBlockCreate(module);
+        }
+        DuskIRValue *merge_block = duskIRBlockCreate(module);
+
+        // Generate conditional branch
+        duskGenerateExpr(module, func_decl, stmt->if_.cond_expr);
+        DuskIRValue *cond = stmt->if_.cond_expr->ir_value;
+        duskIRCreateSelectionMerge(module, block, merge_block);
+        duskIRCreateBranchCond(
+            module,
+            block,
+            cond,
+            true_block,
+            false_block ? false_block : merge_block);
+
+        // Generate code and add blocks
+
+        duskIRFunctionAddBlock(function, true_block);
+        duskGenerateStmt(module, func_decl, stmt->if_.true_stmt);
+        duskIRCreateBranch(module, true_block, merge_block);
+
+        if (false_block) {
+            duskIRFunctionAddBlock(function, false_block);
+            duskGenerateStmt(module, func_decl, stmt->if_.false_stmt);
+            duskIRCreateBranch(module, false_block, merge_block);
+        }
+
+        duskIRFunctionAddBlock(function, merge_block);
+        break;
+    }
     }
 }
 

@@ -586,6 +586,9 @@ typedef enum DuskIRValueKind {
     DUSK_IR_VALUE_BUILTIN_CALL,
     DUSK_IR_VALUE_BINARY_OPERATION,
     DUSK_IR_VALUE_UNARY_OPERATION,
+    DUSK_IR_VALUE_BRANCH,
+    DUSK_IR_VALUE_BRANCH_COND,
+    DUSK_IR_VALUE_SELECTION_MERGE,
 } DuskIRValueKind;
 
 struct DuskIRValue {
@@ -667,6 +670,17 @@ struct DuskIRValue {
             DuskUnaryOp op;
             DuskIRValue *right;
         } unary;
+        struct {
+            DuskIRValue *dest_block;
+        } branch;
+        struct {
+            DuskIRValue *cond;
+            DuskIRValue *true_block;
+            DuskIRValue *false_block;
+        } branch_cond;
+        struct {
+            DuskIRValue *merge_block;
+        } selection_merge;
     };
 };
 
@@ -726,6 +740,18 @@ DuskIRDecoration duskIRCreateDecoration(
 void duskIRCreateReturn(
     DuskIRModule *module, DuskIRValue *block, DuskIRValue *value);
 void duskIRCreateDiscard(DuskIRModule *module, DuskIRValue *block);
+void duskIRCreateBranch(
+    DuskIRModule *module, DuskIRValue *block, DuskIRValue *dest_block);
+void duskIRCreateBranchCond(
+    DuskIRModule *module,
+    DuskIRValue *block,
+    DuskIRValue *condition,
+    DuskIRValue *true_block,
+    DuskIRValue *false_block);
+void duskIRCreateSelectionMerge(
+    DuskIRModule *module,
+    DuskIRValue *block,
+    DuskIRValue *merge_block);
 void duskIRCreateStore(
     DuskIRModule *module,
     DuskIRValue *block,
@@ -1050,6 +1076,7 @@ typedef enum DuskStmtKind {
     DUSK_STMT_BLOCK,
     DUSK_STMT_RETURN,
     DUSK_STMT_DISCARD,
+    DUSK_STMT_IF,
 } DuskStmtKind;
 
 struct DuskStmt {
@@ -1070,6 +1097,11 @@ struct DuskStmt {
         struct {
             DuskExpr *expr;
         } return_;
+        struct {
+            DuskExpr *cond_expr;
+            DuskStmt *true_stmt;
+            DuskStmt *false_stmt;
+        } if_;
     };
 };
 

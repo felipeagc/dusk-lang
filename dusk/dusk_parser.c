@@ -2114,6 +2114,25 @@ static DuskStmt *parseStmt(DuskCompiler *compiler, TokenizerState *state)
         break;
     }
 
+    case DUSK_TOKEN_IF: {
+        stmt->kind = DUSK_STMT_IF;
+
+        consumeToken(compiler, state, DUSK_TOKEN_IF);
+        consumeToken(compiler, state, DUSK_TOKEN_LPAREN);
+        stmt->if_.cond_expr = parseExpr(compiler, state);
+        consumeToken(compiler, state, DUSK_TOKEN_RPAREN);
+
+        stmt->if_.true_stmt = parseStmt(compiler, state);
+        stmt->if_.false_stmt = NULL;
+
+        tokenizerNextToken(compiler, *state, &next_token);
+        if (next_token.type == DUSK_TOKEN_ELSE) {
+            consumeToken(compiler, state, DUSK_TOKEN_ELSE);
+            stmt->if_.false_stmt = parseStmt(compiler, state);
+        }
+        break;
+    }
+
     default: {
         DuskExpr *expr = parseExpr(compiler, state);
 

@@ -165,7 +165,9 @@ bool duskIRBlockIsTerminated(DuskIRValue *block)
     DuskIRValue *inst = block->block.insts_arr[inst_count - 1];
     switch (inst->kind) {
     case DUSK_IR_VALUE_RETURN:
-    case DUSK_IR_VALUE_DISCARD: {
+    case DUSK_IR_VALUE_DISCARD:
+    case DUSK_IR_VALUE_BRANCH:
+    case DUSK_IR_VALUE_BRANCH_COND: {
         return true;
     }
     default: break;
@@ -444,6 +446,42 @@ void duskIRCreateDiscard(DuskIRModule *module, DuskIRValue *block)
     duskIRBlockAppendInst(block, inst);
 }
 
+void duskIRCreateBranch(
+    DuskIRModule *module, DuskIRValue *block, DuskIRValue *dest_block)
+{
+    DuskIRValue *inst = DUSK_NEW(module->allocator, DuskIRValue);
+    inst->type = duskTypeNewBasic(module->compiler, DUSK_TYPE_VOID);
+    inst->kind = DUSK_IR_VALUE_BRANCH;
+    inst->branch.dest_block = dest_block;
+    duskIRBlockAppendInst(block, inst);
+}
+
+void duskIRCreateBranchCond(
+    DuskIRModule *module,
+    DuskIRValue *block,
+    DuskIRValue *condition,
+    DuskIRValue *true_block,
+    DuskIRValue *false_block)
+{
+    DuskIRValue *inst = DUSK_NEW(module->allocator, DuskIRValue);
+    inst->type = duskTypeNewBasic(module->compiler, DUSK_TYPE_VOID);
+    inst->kind = DUSK_IR_VALUE_BRANCH_COND;
+    inst->branch_cond.cond = condition;
+    inst->branch_cond.true_block = true_block;
+    inst->branch_cond.false_block = false_block;
+    duskIRBlockAppendInst(block, inst);
+}
+
+void duskIRCreateSelectionMerge(
+    DuskIRModule *module, DuskIRValue *block, DuskIRValue *merge_block)
+{
+    DuskIRValue *inst = DUSK_NEW(module->allocator, DuskIRValue);
+    inst->type = duskTypeNewBasic(module->compiler, DUSK_TYPE_VOID);
+    inst->kind = DUSK_IR_VALUE_SELECTION_MERGE;
+    inst->selection_merge.merge_block = merge_block;
+    duskIRBlockAppendInst(block, inst);
+}
+
 void duskIRCreateStore(
     DuskIRModule *module,
     DuskIRValue *block,
@@ -520,8 +558,8 @@ DuskIRValue *duskIRCreateAccessChain(
         duskTypeMarkNotDead(indices[i]->type);
     }
 
-    inst->type = duskTypeNewPointer(
-        module->compiler, accessed_type, storage_class);
+    inst->type =
+        duskTypeNewPointer(module->compiler, accessed_type, storage_class);
     duskTypeMarkNotDead(inst->type);
 
     duskIRBlockAppendInst(block, inst);
@@ -1708,6 +1746,30 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
             value->unary.right->id,
         };
         duskEncodeInst(module, op, params, DUSK_CARRAY_LENGTH(params));
+        break;
+    }
+    case DUSK_IR_VALUE_BRANCH: {
+        uint32_t params[1] = {value->branch.dest_block->id};
+        duskEncodeInst(module, SpvOpBranch, params, DUSK_CARRAY_LENGTH(params));
+        break;
+    }
+    case DUSK_IR_VALUE_BRANCH_COND: {
+        uint32_t params[3] = {
+            value->branch_cond.cond->id,
+            value->branch_cond.true_block->id,
+            value->branch_cond.false_block->id,
+        };
+        duskEncodeInst(
+            module, SpvOpBranchConditional, params, DUSK_CARRAY_LENGTH(params));
+        break;
+    }
+    case DUSK_IR_VALUE_SELECTION_MERGE: {
+        uint32_t params[2] = {
+            value->selection_merge.merge_block->id,
+            0x0, // None
+        };
+        duskEncodeInst(
+            module, SpvOpSelectionMerge, params, DUSK_CARRAY_LENGTH(params));
         break;
     }
     }
