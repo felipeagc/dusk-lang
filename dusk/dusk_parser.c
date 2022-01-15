@@ -1876,7 +1876,13 @@ static DuskExpr *parseBinaryExpr(DuskCompiler *compiler, TokenizerState *state)
     case DUSK_TOKEN_BITXOR:
     case DUSK_TOKEN_BITAND:
     case DUSK_TOKEN_LSHIFT:
-    case DUSK_TOKEN_RSHIFT: break;
+    case DUSK_TOKEN_RSHIFT:
+    case DUSK_TOKEN_EQ:
+    case DUSK_TOKEN_NOTEQ:
+    case DUSK_TOKEN_LESS:
+    case DUSK_TOKEN_LESSEQ:
+    case DUSK_TOKEN_GREATER:
+    case DUSK_TOKEN_GREATEREQ: break;
     default: return expr;
     }
 
