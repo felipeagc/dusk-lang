@@ -1367,6 +1367,30 @@ static void duskAnalyzeExpr(
             break;
         }
 
+        bool done_analysis = false;
+
+        switch (expr->binary.op) {
+        case DUSK_BINARY_OP_AND:
+        case DUSK_BINARY_OP_OR: {
+            if (left_type->kind != DUSK_TYPE_BOOL ||
+                right_type->kind != DUSK_TYPE_BOOL) {
+                duskAddError(
+                    compiler,
+                    expr->location,
+                    "logical operation only works on operands of bool type, "
+                    "instead got types: '%s' and '%s'",
+                    duskTypeToPrettyString(allocator, left_type),
+                    duskTypeToPrettyString(allocator, right_type));
+            }
+            expr->type = duskTypeNewBasic(compiler, DUSK_TYPE_BOOL);
+            done_analysis = true;
+            break;
+        }
+        default: break;
+        }
+
+        if (done_analysis) break;
+
         DuskType *left_scalar_type = duskGetScalarType(left_type);
         DuskType *right_scalar_type = duskGetScalarType(right_type);
 
@@ -1511,6 +1535,9 @@ static void duskAnalyzeExpr(
             expr->type = duskTypeNewBasic(compiler, DUSK_TYPE_BOOL);
             break;
         }
+
+        case DUSK_BINARY_OP_AND:
+        case DUSK_BINARY_OP_OR: DUSK_ASSERT(0); break;
 
         case DUSK_BINARY_OP_MAX: DUSK_ASSERT(0); break;
         }

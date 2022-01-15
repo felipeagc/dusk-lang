@@ -937,26 +937,127 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
             function->function
                 .blocks_arr[duskArrayLength(function->function.blocks_arr) - 1];
 
-        duskGenerateExpr(module, func_decl, expr->binary.left);
-        duskGenerateExpr(module, func_decl, expr->binary.right);
+        switch (expr->binary.op) {
+        case DUSK_BINARY_OP_MAX:
+        case DUSK_BINARY_OP_EQ:
+        case DUSK_BINARY_OP_NOTEQ:
+        case DUSK_BINARY_OP_GREATER:
+        case DUSK_BINARY_OP_GREATEREQ:
+        case DUSK_BINARY_OP_LESS:
+        case DUSK_BINARY_OP_LESSEQ: {
+            duskGenerateExpr(module, func_decl, expr->binary.left);
+            duskGenerateExpr(module, func_decl, expr->binary.right);
 
-        DuskIRValue *left_val =
-            duskIRLoadLvalue(module, block, expr->binary.left->ir_value);
-        DuskIRValue *right_val =
-            duskIRLoadLvalue(module, block, expr->binary.right->ir_value);
+            DuskIRValue *left_val =
+                duskIRLoadLvalue(module, block, expr->binary.left->ir_value);
+            DuskIRValue *right_val =
+                duskIRLoadLvalue(module, block, expr->binary.right->ir_value);
 
-        DuskType *left_scalar_type = duskGetScalarType(expr->binary.left->type);
-        DuskType *right_scalar_type =
-            duskGetScalarType(expr->binary.right->type);
+            expr->ir_value = duskIRCreateBinaryOperation(
+                module,
+                block,
+                expr->binary.op,
+                expr->type,
+                left_val,
+                right_val);
+            break;
+        }
 
-        DUSK_ASSERT(left_scalar_type);
-        DUSK_ASSERT(right_scalar_type);
-        DUSK_ASSERT(left_scalar_type == right_scalar_type);
-        DUSK_ASSERT(duskTypeIsRuntime(left_scalar_type));
-        DUSK_ASSERT(duskTypeIsRuntime(right_scalar_type));
+        case DUSK_BINARY_OP_ADD:
+        case DUSK_BINARY_OP_SUB:
+        case DUSK_BINARY_OP_MUL:
+        case DUSK_BINARY_OP_DIV:
+        case DUSK_BINARY_OP_MOD:
+        case DUSK_BINARY_OP_BITAND:
+        case DUSK_BINARY_OP_BITOR:
+        case DUSK_BINARY_OP_BITXOR:
+        case DUSK_BINARY_OP_LSHIFT:
+        case DUSK_BINARY_OP_RSHIFT: {
+            duskGenerateExpr(module, func_decl, expr->binary.left);
+            duskGenerateExpr(module, func_decl, expr->binary.right);
 
-        expr->ir_value = duskIRCreateBinaryOperation(
-            module, block, expr->binary.op, expr->type, left_val, right_val);
+            DuskIRValue *left_val =
+                duskIRLoadLvalue(module, block, expr->binary.left->ir_value);
+            DuskIRValue *right_val =
+                duskIRLoadLvalue(module, block, expr->binary.right->ir_value);
+
+            DuskType *left_scalar_type =
+                duskGetScalarType(expr->binary.left->type);
+            DuskType *right_scalar_type =
+                duskGetScalarType(expr->binary.right->type);
+
+            DUSK_ASSERT(left_scalar_type);
+            DUSK_ASSERT(right_scalar_type);
+            DUSK_ASSERT(left_scalar_type == right_scalar_type);
+            DUSK_ASSERT(duskTypeIsRuntime(left_scalar_type));
+            DUSK_ASSERT(duskTypeIsRuntime(right_scalar_type));
+
+            expr->ir_value = duskIRCreateBinaryOperation(
+                module,
+                block,
+                expr->binary.op,
+                expr->type,
+                left_val,
+                right_val);
+            break;
+        }
+
+        case DUSK_BINARY_OP_AND: {
+            duskGenerateExpr(module, func_decl, expr->binary.left);
+            DuskIRValue *first_cond =
+                duskIRLoadLvalue(module, block, expr->binary.left->ir_value);
+
+            DuskIRValue *first_cond_true_block = duskIRBlockCreate(module);
+            DuskIRValue *merge_block = duskIRBlockCreate(module);
+
+            duskIRCreateSelectionMerge(module, block, merge_block);
+            duskIRCreateBranchCond(
+                module, block, first_cond, first_cond_true_block, merge_block);
+
+            duskIRFunctionAddBlock(function, first_cond_true_block);
+            duskGenerateExpr(module, func_decl, expr->binary.right);
+            DuskIRValue *second_cond =
+                duskIRLoadLvalue(module, block, expr->binary.right->ir_value);
+            duskIRCreateBranch(module, first_cond_true_block, merge_block);
+
+            duskIRFunctionAddBlock(function, merge_block);
+            DuskIRPhiPair pairs[2] = {
+                {block, first_cond},
+                {first_cond_true_block, second_cond},
+            };
+            expr->ir_value =
+                duskIRCreatePhi(module, merge_block, expr->type, 2, pairs);
+            break;
+        }
+
+        case DUSK_BINARY_OP_OR: {
+            duskGenerateExpr(module, func_decl, expr->binary.left);
+            DuskIRValue *first_cond =
+                duskIRLoadLvalue(module, block, expr->binary.left->ir_value);
+
+            DuskIRValue *first_cond_false_block = duskIRBlockCreate(module);
+            DuskIRValue *merge_block = duskIRBlockCreate(module);
+
+            duskIRCreateSelectionMerge(module, block, merge_block);
+            duskIRCreateBranchCond(
+                module, block, first_cond, merge_block, first_cond_false_block);
+
+            duskIRFunctionAddBlock(function, first_cond_false_block);
+            duskGenerateExpr(module, func_decl, expr->binary.right);
+            DuskIRValue *second_cond =
+                duskIRLoadLvalue(module, block, expr->binary.right->ir_value);
+            duskIRCreateBranch(module, first_cond_false_block, merge_block);
+
+            duskIRFunctionAddBlock(function, merge_block);
+            DuskIRPhiPair pairs[2] = {
+                {block, first_cond},
+                {first_cond_false_block, second_cond},
+            };
+            expr->ir_value =
+                duskIRCreatePhi(module, merge_block, expr->type, 2, pairs);
+            break;
+        }
+        }
 
         break;
     }
@@ -1152,7 +1253,8 @@ duskGenerateStmt(DuskIRModule *module, DuskDecl *func_decl, DuskStmt *stmt)
         duskIRFunctionAddBlock(function, cond_block);
         duskGenerateExpr(module, func_decl, stmt->while_.cond_expr);
         DuskIRValue *cond = stmt->while_.cond_expr->ir_value;
-        duskIRCreateBranchCond(module, cond_block, cond, body_block, merge_block);
+        duskIRCreateBranchCond(
+            module, cond_block, cond, body_block, merge_block);
 
         // Body block
         duskIRFunctionAddBlock(function, body_block);

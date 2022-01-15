@@ -556,6 +556,8 @@ typedef enum {
     DUSK_BINARY_OP_LESSEQ,
     DUSK_BINARY_OP_GREATER,
     DUSK_BINARY_OP_GREATEREQ,
+    DUSK_BINARY_OP_AND,
+    DUSK_BINARY_OP_OR,
     DUSK_BINARY_OP_MAX,
 } DuskBinaryOp;
 
@@ -564,6 +566,11 @@ typedef enum {
     DUSK_UNARY_OP_NOT,
     DUSK_UNARY_OP_BITNOT,
 } DuskUnaryOp;
+
+typedef struct DuskIRPhiPair {
+    DuskIRValue *block;
+    DuskIRValue *value;
+} DuskIRPhiPair;
 
 typedef enum DuskIRValueKind {
     DUSK_IR_VALUE_CONSTANT_BOOL,
@@ -590,6 +597,7 @@ typedef enum DuskIRValueKind {
     DUSK_IR_VALUE_BRANCH_COND,
     DUSK_IR_VALUE_SELECTION_MERGE,
     DUSK_IR_VALUE_LOOP_MERGE,
+    DUSK_IR_VALUE_PHI,
 } DuskIRValueKind;
 
 struct DuskIRValue {
@@ -686,6 +694,10 @@ struct DuskIRValue {
             DuskIRValue *merge_block;
             DuskIRValue *continue_block;
         } loop_merge;
+        struct {
+            DuskIRPhiPair *pairs;
+            size_t pair_count;
+        } phi;
     };
 };
 
@@ -762,6 +774,12 @@ void duskIRCreateLoopMerge(
     DuskIRValue *block,
     DuskIRValue *merge_block,
     DuskIRValue *continue_block);
+DuskIRValue *duskIRCreatePhi(
+    DuskIRModule *module,
+    DuskIRValue *block,
+    DuskType *type,
+    size_t pair_count,
+    const DuskIRPhiPair *pairs);
 void duskIRCreateStore(
     DuskIRModule *module,
     DuskIRValue *block,

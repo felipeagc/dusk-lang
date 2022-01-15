@@ -496,6 +496,27 @@ void duskIRCreateLoopMerge(
     duskIRBlockAppendInst(block, inst);
 }
 
+DuskIRValue *duskIRCreatePhi(
+    DuskIRModule *module,
+    DuskIRValue *block,
+    DuskType *type,
+    size_t pair_count,
+    const DuskIRPhiPair *pairs)
+{
+    DuskIRValue *inst = DUSK_NEW(module->allocator, DuskIRValue);
+    inst->type = type;
+    inst->kind = DUSK_IR_VALUE_PHI;
+
+    inst->phi.pair_count = pair_count;
+    inst->phi.pairs =
+        DUSK_NEW_ARRAY(module->allocator, DuskIRPhiPair, pair_count);
+
+    memcpy(inst->phi.pairs, pairs, sizeof(DuskIRPhiPair) * pair_count);
+
+    duskIRBlockAppendInst(block, inst);
+    return inst;
+}
+
 void duskIRCreateStore(
     DuskIRModule *module,
     DuskIRValue *block,
@@ -1716,6 +1737,9 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
             break;
         }
 
+        case DUSK_BINARY_OP_AND:
+        case DUSK_BINARY_OP_OR: DUSK_ASSERT(0); break;
+
         case DUSK_BINARY_OP_MAX: DUSK_ASSERT(0); break;
         }
 
@@ -1794,6 +1818,18 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
         };
         duskEncodeInst(
             module, SpvOpLoopMerge, params, DUSK_CARRAY_LENGTH(params));
+        break;
+    }
+    case DUSK_IR_VALUE_PHI: {
+        size_t param_count = 2 + value->phi.pair_count * 2;
+        uint32_t *params = DUSK_NEW_ARRAY(allocator, uint32_t, param_count);
+        params[0] = value->type->id;
+        params[1] = value->id;
+        for (size_t i = 0; i < value->phi.pair_count; ++i) {
+            params[2 + i * 2] = value->phi.pairs[i].value->id;
+            params[2 + i * 2 + 1] = value->phi.pairs[i].block->id;
+        }
+        duskEncodeInst(module, SpvOpPhi, params, param_count);
         break;
     }
     }

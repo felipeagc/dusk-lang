@@ -1882,7 +1882,9 @@ static DuskExpr *parseBinaryExpr(DuskCompiler *compiler, TokenizerState *state)
     case DUSK_TOKEN_LESS:
     case DUSK_TOKEN_LESSEQ:
     case DUSK_TOKEN_GREATER:
-    case DUSK_TOKEN_GREATEREQ: break;
+    case DUSK_TOKEN_GREATEREQ:
+    case DUSK_TOKEN_AND:
+    case DUSK_TOKEN_OR: break;
     default: return expr;
     }
 
@@ -1908,6 +1910,8 @@ static DuskExpr *parseBinaryExpr(DuskCompiler *compiler, TokenizerState *state)
         [DUSK_BINARY_OP_LESSEQ] = 6,
         [DUSK_BINARY_OP_GREATER] = 6,
         [DUSK_BINARY_OP_GREATEREQ] = 6,
+        [DUSK_BINARY_OP_AND] = 11,
+        [DUSK_BINARY_OP_OR] = 12,
     };
 
     {
@@ -1932,7 +1936,9 @@ static DuskExpr *parseBinaryExpr(DuskCompiler *compiler, TokenizerState *state)
            next_token.type == DUSK_TOKEN_LESS ||
            next_token.type == DUSK_TOKEN_LESSEQ ||
            next_token.type == DUSK_TOKEN_GREATER ||
-           next_token.type == DUSK_TOKEN_GREATEREQ) {
+           next_token.type == DUSK_TOKEN_GREATEREQ ||
+           next_token.type == DUSK_TOKEN_AND ||
+           next_token.type == DUSK_TOKEN_OR) {
         consumeToken(compiler, state, next_token.type);
 
         DuskBinaryOp op = 0;
@@ -1953,6 +1959,8 @@ static DuskExpr *parseBinaryExpr(DuskCompiler *compiler, TokenizerState *state)
         case DUSK_TOKEN_LESSEQ: op = DUSK_BINARY_OP_LESSEQ; break;
         case DUSK_TOKEN_GREATER: op = DUSK_BINARY_OP_GREATER; break;
         case DUSK_TOKEN_GREATEREQ: op = DUSK_BINARY_OP_GREATEREQ; break;
+        case DUSK_TOKEN_AND: op = DUSK_BINARY_OP_AND; break;
+        case DUSK_TOKEN_OR: op = DUSK_BINARY_OP_OR; break;
         default: DUSK_ASSERT(0); break;
         }
 
