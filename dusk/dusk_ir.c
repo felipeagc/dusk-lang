@@ -502,6 +502,9 @@ DuskIRValue *duskIRCreateAccessChain(
     size_t index_count,
     DuskIRValue **indices)
 {
+    DUSK_ASSERT(base->type->kind == DUSK_TYPE_POINTER);
+    DuskStorageClass storage_class = base->type->pointer.storage_class;
+
     DuskIRValue *inst = DUSK_NEW(module->allocator, DuskIRValue);
     inst->kind = DUSK_IR_VALUE_ACCESS_CHAIN;
     inst->access_chain.base = base;
@@ -518,7 +521,7 @@ DuskIRValue *duskIRCreateAccessChain(
     }
 
     inst->type = duskTypeNewPointer(
-        module->compiler, accessed_type, DUSK_STORAGE_CLASS_FUNCTION);
+        module->compiler, accessed_type, storage_class);
     duskTypeMarkNotDead(inst->type);
 
     duskIRBlockAppendInst(block, inst);
