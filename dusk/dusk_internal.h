@@ -589,6 +589,7 @@ typedef enum DuskIRValueKind {
     DUSK_IR_VALUE_BRANCH,
     DUSK_IR_VALUE_BRANCH_COND,
     DUSK_IR_VALUE_SELECTION_MERGE,
+    DUSK_IR_VALUE_LOOP_MERGE,
 } DuskIRValueKind;
 
 struct DuskIRValue {
@@ -681,6 +682,10 @@ struct DuskIRValue {
         struct {
             DuskIRValue *merge_block;
         } selection_merge;
+        struct {
+            DuskIRValue *merge_block;
+            DuskIRValue *continue_block;
+        } loop_merge;
     };
 };
 
@@ -752,6 +757,11 @@ void duskIRCreateSelectionMerge(
     DuskIRModule *module,
     DuskIRValue *block,
     DuskIRValue *merge_block);
+void duskIRCreateLoopMerge(
+    DuskIRModule *module,
+    DuskIRValue *block,
+    DuskIRValue *merge_block,
+    DuskIRValue *continue_block);
 void duskIRCreateStore(
     DuskIRModule *module,
     DuskIRValue *block,
@@ -1077,6 +1087,7 @@ typedef enum DuskStmtKind {
     DUSK_STMT_RETURN,
     DUSK_STMT_DISCARD,
     DUSK_STMT_IF,
+    DUSK_STMT_WHILE,
 } DuskStmtKind;
 
 struct DuskStmt {
@@ -1102,6 +1113,10 @@ struct DuskStmt {
             DuskStmt *true_stmt;
             DuskStmt *false_stmt;
         } if_;
+        struct {
+            DuskExpr *cond_expr;
+            DuskStmt *stmt;
+        } while_;
     };
 };
 

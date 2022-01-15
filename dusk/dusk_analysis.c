@@ -1685,6 +1685,14 @@ static void duskAnalyzeStmt(
 
         break;
     }
+    case DUSK_STMT_WHILE: {
+        DuskType *bool_ty = duskTypeNewBasic(compiler, DUSK_TYPE_BOOL);
+        duskAnalyzeExpr(
+            compiler, state, stmt->while_.cond_expr, bool_ty, false);
+        duskAnalyzeStmt(compiler, state, stmt->while_.stmt);
+
+        break;
+    }
     }
 }
 

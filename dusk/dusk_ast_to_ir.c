@@ -1132,6 +1132,40 @@ duskGenerateStmt(DuskIRModule *module, DuskDecl *func_decl, DuskStmt *stmt)
         duskIRFunctionAddBlock(function, merge_block);
         break;
     }
+    case DUSK_STMT_WHILE: {
+        // Create blocks
+        DuskIRValue *header_block = duskIRBlockCreate(module);
+        DuskIRValue *cond_block = duskIRBlockCreate(module);
+        DuskIRValue *body_block = duskIRBlockCreate(module);
+        DuskIRValue *continue_block = duskIRBlockCreate(module);
+        DuskIRValue *merge_block = duskIRBlockCreate(module);
+
+        duskIRCreateBranch(module, block, header_block);
+
+        // Header block
+        duskIRFunctionAddBlock(function, header_block);
+        duskIRCreateLoopMerge(
+            module, header_block, merge_block, continue_block);
+        duskIRCreateBranch(module, header_block, cond_block);
+
+        // Cond block
+        duskIRFunctionAddBlock(function, cond_block);
+        duskGenerateExpr(module, func_decl, stmt->while_.cond_expr);
+        DuskIRValue *cond = stmt->while_.cond_expr->ir_value;
+        duskIRCreateBranchCond(module, cond_block, cond, body_block, merge_block);
+
+        // Body block
+        duskIRFunctionAddBlock(function, body_block);
+        duskGenerateStmt(module, func_decl, stmt->while_.stmt);
+        duskIRCreateBranch(module, body_block, continue_block);
+
+        // Continue block
+        duskIRFunctionAddBlock(function, continue_block);
+        duskIRCreateBranch(module, continue_block, header_block);
+
+        duskIRFunctionAddBlock(function, merge_block);
+        break;
+    }
     }
 }
 
@@ -1351,6 +1385,7 @@ static void duskGenerateGlobalDecl(DuskIRModule *module, DuskDecl *decl)
                 if (decl->type->function.return_type->kind == DUSK_TYPE_VOID) {
                     duskIRCreateReturn(module, block, NULL);
                 } else {
+                    printf("%zu\n", duskArrayLength(block->block.insts_arr));
                     DUSK_ASSERT(0); // Missing terminator instruction
                 }
             }

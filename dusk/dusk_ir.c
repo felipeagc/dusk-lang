@@ -482,6 +482,20 @@ void duskIRCreateSelectionMerge(
     duskIRBlockAppendInst(block, inst);
 }
 
+void duskIRCreateLoopMerge(
+    DuskIRModule *module,
+    DuskIRValue *block,
+    DuskIRValue *merge_block,
+    DuskIRValue *continue_block)
+{
+    DuskIRValue *inst = DUSK_NEW(module->allocator, DuskIRValue);
+    inst->type = duskTypeNewBasic(module->compiler, DUSK_TYPE_VOID);
+    inst->kind = DUSK_IR_VALUE_LOOP_MERGE;
+    inst->loop_merge.merge_block = merge_block;
+    inst->loop_merge.continue_block = continue_block;
+    duskIRBlockAppendInst(block, inst);
+}
+
 void duskIRCreateStore(
     DuskIRModule *module,
     DuskIRValue *block,
@@ -1770,6 +1784,16 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
         };
         duskEncodeInst(
             module, SpvOpSelectionMerge, params, DUSK_CARRAY_LENGTH(params));
+        break;
+    }
+    case DUSK_IR_VALUE_LOOP_MERGE: {
+        uint32_t params[3] = {
+            value->loop_merge.merge_block->id,
+            value->loop_merge.continue_block->id,
+            0x0, // None
+        };
+        duskEncodeInst(
+            module, SpvOpLoopMerge, params, DUSK_CARRAY_LENGTH(params));
         break;
     }
     }

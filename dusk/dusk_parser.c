@@ -2133,6 +2133,19 @@ static DuskStmt *parseStmt(DuskCompiler *compiler, TokenizerState *state)
         break;
     }
 
+    case DUSK_TOKEN_WHILE: {
+        stmt->kind = DUSK_STMT_WHILE;
+
+        consumeToken(compiler, state, DUSK_TOKEN_WHILE);
+        consumeToken(compiler, state, DUSK_TOKEN_LPAREN);
+        stmt->while_.cond_expr = parseExpr(compiler, state);
+        consumeToken(compiler, state, DUSK_TOKEN_RPAREN);
+
+        stmt->while_.stmt = parseStmt(compiler, state);
+
+        break;
+    }
+
     default: {
         DuskExpr *expr = parseExpr(compiler, state);
 
