@@ -59,6 +59,7 @@ static const char *DUSK_BUILTIN_FUNCTION_NAMES[DUSK_BUILTIN_FUNCTION_COUNT] = {
     [DUSK_BUILTIN_FUNCTION_MIX] = "mix",
     [DUSK_BUILTIN_FUNCTION_CLAMP] = "clamp",
     [DUSK_BUILTIN_FUNCTION_DETERMINANT] = "determinant",
+    [DUSK_BUILTIN_FUNCTION_INVERSE] = "inverse",
 };
 
 DuskCompiler *duskCompilerCreate(void)

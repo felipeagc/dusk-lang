@@ -57,6 +57,7 @@ static size_t DUSK_BUILTIN_FUNCTION_PARAM_COUNTS[DUSK_BUILTIN_FUNCTION_COUNT] =
         [DUSK_BUILTIN_FUNCTION_CLAMP] = 3,
 
         [DUSK_BUILTIN_FUNCTION_DETERMINANT] = 1,
+        [DUSK_BUILTIN_FUNCTION_INVERSE] = 1,
 };
 
 typedef struct DuskAnalyzerState {
@@ -1469,6 +1470,31 @@ static void duskAnalyzeExpr(
             }
 
             expr->type = param0->type->matrix.col_type->vector.sub;
+
+            break;
+        }
+
+        case DUSK_BUILTIN_FUNCTION_INVERSE: {
+            DUSK_ASSERT(duskArrayLength(expr->builtin_call.params_arr) == 1);
+            DuskExpr *param0 = expr->builtin_call.params_arr[0];
+
+            duskAnalyzeExpr(compiler, state, param0, NULL, false);
+            if (!param0->type) break;
+
+            if (param0->type->kind != DUSK_TYPE_MATRIX ||
+                param0->type->matrix.cols !=
+                    param0->type->matrix.col_type->vector.size) {
+                duskAddError(
+                    compiler,
+                    expr->location,
+                    "invalid parameter type for '@%s' call: expected square "
+                    "matrix, instead got '%s'",
+                    duskGetBuiltinFunctionName(expr->builtin_call.kind),
+                    duskTypeToPrettyString(allocator, param0->type));
+                break;
+            }
+
+            expr->type = param0->type;
 
             break;
         }

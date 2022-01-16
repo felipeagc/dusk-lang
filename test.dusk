@@ -152,5 +152,12 @@ fn fs_main2([location(0)] in_pos: float3) [location(0)] float4 {
     let clamp: float3 = @clamp(norm, float3(0.1), float3(0.2));
     let len2: uint = uniform.some_arr.len;
 
+    let mat: float3x3 = float3x3(
+        float3(1),
+        float3(2),
+        float3(3),
+    );
+    let determinant: float = @determinant(@inverse(mat));
+
     return float4(float3(1, 2, 3), 1);
 }

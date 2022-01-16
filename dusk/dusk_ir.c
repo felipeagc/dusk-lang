@@ -1576,6 +1576,10 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
             glsl_inst = GLSLstd450Determinant;
             break;
 
+        case DUSK_BUILTIN_FUNCTION_INVERSE:
+            glsl_inst = GLSLstd450MatrixInverse;
+            break;
+
         case DUSK_BUILTIN_FUNCTION_SAMPLER_TYPE:
         case DUSK_BUILTIN_FUNCTION_IMAGE_1D_TYPE:
         case DUSK_BUILTIN_FUNCTION_IMAGE_2D_TYPE:
