@@ -1526,6 +1526,19 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
 
         case DUSK_BUILTIN_FUNCTION_MIX: glsl_inst = GLSLstd450FMix; break;
 
+        case DUSK_BUILTIN_FUNCTION_CLAMP: {
+            if (value->type->kind == DUSK_TYPE_INT) {
+                if (value->type->int_.is_signed) {
+                    glsl_inst = GLSLstd450SClamp;
+                } else {
+                    glsl_inst = GLSLstd450UClamp;
+                }
+            } else {
+                glsl_inst = GLSLstd450FClamp;
+            }
+            break;
+        }
+
         case DUSK_BUILTIN_FUNCTION_SAMPLER_TYPE:
         case DUSK_BUILTIN_FUNCTION_IMAGE_1D_TYPE:
         case DUSK_BUILTIN_FUNCTION_IMAGE_2D_TYPE:
