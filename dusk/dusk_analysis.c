@@ -45,6 +45,7 @@ static size_t DUSK_BUILTIN_FUNCTION_PARAM_COUNTS[DUSK_BUILTIN_FUNCTION_MAX] = {
     [DUSK_BUILTIN_FUNCTION_ABS] = 1,
     [DUSK_BUILTIN_FUNCTION_DISTANCE] = 2,
     [DUSK_BUILTIN_FUNCTION_NORMALIZE] = 1,
+    [DUSK_BUILTIN_FUNCTION_DOT] = 2,
 };
 
 typedef struct DuskAnalyzerState {
@@ -1083,6 +1084,7 @@ static void duskAnalyzeExpr(
             break;
         }
 
+        case DUSK_BUILTIN_FUNCTION_DOT:
         case DUSK_BUILTIN_FUNCTION_DISTANCE: {
             DUSK_ASSERT(duskArrayLength(expr->builtin_call.params_arr) == 2);
             DuskExpr *param0 = expr->builtin_call.params_arr[0];

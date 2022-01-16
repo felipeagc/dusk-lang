@@ -1431,6 +1431,7 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
     }
     case DUSK_IR_VALUE_BUILTIN_CALL: {
         uint32_t glsl_inst = 0;
+        SpvOp op = 0;
 
         switch (value->builtin_call.builtin_kind) {
         case DUSK_BUILTIN_FUNCTION_RADIANS:
@@ -1483,6 +1484,8 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
             glsl_inst = GLSLstd450Normalize;
             break;
 
+        case DUSK_BUILTIN_FUNCTION_DOT: op = SpvOpDot; break;
+
         case DUSK_BUILTIN_FUNCTION_SAMPLER_TYPE:
         case DUSK_BUILTIN_FUNCTION_IMAGE_1D_TYPE:
         case DUSK_BUILTIN_FUNCTION_IMAGE_2D_TYPE:
@@ -1502,19 +1505,35 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
         }
         }
 
-        size_t param_count = 4 + value->builtin_call.param_count;
-        uint32_t *params = DUSK_NEW_ARRAY(allocator, uint32_t, param_count);
-        params[0] = value->type->id;
-        params[1] = value->id;
-        params[2] = module->glsl_ext_inst_id;
-        params[3] = glsl_inst;
+        if (glsl_inst != 0) {
+            size_t param_count = 4 + value->builtin_call.param_count;
+            uint32_t *params = DUSK_NEW_ARRAY(allocator, uint32_t, param_count);
+            params[0] = value->type->id;
+            params[1] = value->id;
+            params[2] = module->glsl_ext_inst_id;
+            params[3] = glsl_inst;
 
-        for (size_t i = 0; i < value->builtin_call.param_count; ++i) {
-            params[4 + i] = value->builtin_call.params[i]->id;
-            DUSK_ASSERT(params[4 + i] > 0);
+            for (size_t i = 0; i < value->builtin_call.param_count; ++i) {
+                params[4 + i] = value->builtin_call.params[i]->id;
+                DUSK_ASSERT(params[4 + i] > 0);
+            }
+
+            duskEncodeInst(module, SpvOpExtInst, params, param_count);
+        } else {
+            DUSK_ASSERT(op != 0);
+
+            size_t param_count = 2 + value->builtin_call.param_count;
+            uint32_t *params = DUSK_NEW_ARRAY(allocator, uint32_t, param_count);
+            params[0] = value->type->id;
+            params[1] = value->id;
+
+            for (size_t i = 0; i < value->builtin_call.param_count; ++i) {
+                params[2 + i] = value->builtin_call.params[i]->id;
+                DUSK_ASSERT(params[2 + i] > 0);
+            }
+
+            duskEncodeInst(module, op, params, param_count);
         }
-
-        duskEncodeInst(module, SpvOpExtInst, params, param_count);
         break;
     }
     case DUSK_IR_VALUE_BINARY_OPERATION: {
