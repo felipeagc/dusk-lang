@@ -836,7 +836,8 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
         case DUSK_BUILTIN_FUNCTION_MIN:
         case DUSK_BUILTIN_FUNCTION_MAX:
         case DUSK_BUILTIN_FUNCTION_MIX:
-        case DUSK_BUILTIN_FUNCTION_CLAMP: {
+        case DUSK_BUILTIN_FUNCTION_CLAMP:
+        case DUSK_BUILTIN_FUNCTION_DETERMINANT: {
             DUSK_ASSERT(func_decl);
             DuskIRValue *function = func_decl->ir_value;
             DUSK_ASSERT(duskArrayLength(function->function.blocks_arr) > 0);

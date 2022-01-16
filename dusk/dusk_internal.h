@@ -548,6 +548,8 @@ typedef enum DuskBuiltinFunctionKind {
     DUSK_BUILTIN_FUNCTION_MIX,
     DUSK_BUILTIN_FUNCTION_CLAMP,
 
+    DUSK_BUILTIN_FUNCTION_DETERMINANT,
+
     DUSK_BUILTIN_FUNCTION_COUNT,
 } DuskBuiltinFunctionKind;
 
