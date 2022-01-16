@@ -2212,8 +2212,31 @@ static void duskAnalyzeStmt(
         DuskType *bool_ty = duskTypeNewBasic(compiler, DUSK_TYPE_BOOL);
         duskAnalyzeExpr(
             compiler, state, stmt->while_.cond_expr, bool_ty, false);
+
+        duskArrayPush(&state->break_stack_arr, stmt);
+        duskArrayPush(&state->continue_stack_arr, stmt);
+
         duskAnalyzeStmt(compiler, state, stmt->while_.stmt);
 
+        duskArrayPop(&state->continue_stack_arr);
+        duskArrayPop(&state->break_stack_arr);
+
+        break;
+    }
+    case DUSK_STMT_CONTINUE: {
+        if (duskArrayLength(state->continue_stack_arr) == 0) {
+            duskAddError(
+                compiler, stmt->location, "continue statement outside loop");
+            break;
+        }
+        break;
+    }
+    case DUSK_STMT_BREAK: {
+        if (duskArrayLength(state->break_stack_arr) == 0) {
+            duskAddError(
+                compiler, stmt->location, "break statement outside loop");
+            break;
+        }
         break;
     }
     }

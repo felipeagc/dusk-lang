@@ -1134,6 +1134,8 @@ typedef enum DuskStmtKind {
     DUSK_STMT_DISCARD,
     DUSK_STMT_IF,
     DUSK_STMT_WHILE,
+    DUSK_STMT_CONTINUE,
+    DUSK_STMT_BREAK,
 } DuskStmtKind;
 
 struct DuskStmt {

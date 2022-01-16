@@ -2154,6 +2154,20 @@ static DuskStmt *parseStmt(DuskCompiler *compiler, TokenizerState *state)
         break;
     }
 
+    case DUSK_TOKEN_CONTINUE: {
+        stmt->kind = DUSK_STMT_CONTINUE;
+        consumeToken(compiler, state, DUSK_TOKEN_CONTINUE);
+        consumeToken(compiler, state, DUSK_TOKEN_SEMICOLON);
+        break;
+    }
+
+    case DUSK_TOKEN_BREAK: {
+        stmt->kind = DUSK_STMT_BREAK;
+        consumeToken(compiler, state, DUSK_TOKEN_BREAK);
+        consumeToken(compiler, state, DUSK_TOKEN_SEMICOLON);
+        break;
+    }
+
     default: {
         DuskExpr *expr = parseExpr(compiler, state);
 

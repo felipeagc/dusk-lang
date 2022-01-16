@@ -1,6 +1,11 @@
 #include "dusk_internal.h"
 #include "spirv.h"
 
+typedef struct DuskAstToIRState {
+    DuskArray(DuskIRValue *) break_block_stack_arr;
+    DuskArray(DuskIRValue *) continue_block_stack_arr;
+} DuskAstToIRState;
+
 static void duskGenerateLocalDecl(
     DuskIRModule *module, DuskDecl *func_decl, DuskDecl *decl);
 
@@ -1270,8 +1275,11 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
     }
 }
 
-static void
-duskGenerateStmt(DuskIRModule *module, DuskDecl *func_decl, DuskStmt *stmt)
+static void duskGenerateStmt(
+    DuskIRModule *module,
+    DuskAstToIRState *state,
+    DuskDecl *func_decl,
+    DuskStmt *stmt)
 {
     DuskIRValue *function = func_decl->ir_value;
 
@@ -1372,7 +1380,8 @@ duskGenerateStmt(DuskIRModule *module, DuskDecl *func_decl, DuskStmt *stmt)
     }
     case DUSK_STMT_BLOCK: {
         for (size_t i = 0; i < duskArrayLength(stmt->block.stmts_arr); ++i) {
-            duskGenerateStmt(module, func_decl, stmt->block.stmts_arr[i]);
+            duskGenerateStmt(
+                module, state, func_decl, stmt->block.stmts_arr[i]);
         }
         break;
     }
@@ -1401,12 +1410,12 @@ duskGenerateStmt(DuskIRModule *module, DuskDecl *func_decl, DuskStmt *stmt)
         // Generate code and add blocks
 
         duskIRFunctionAddBlock(function, true_block);
-        duskGenerateStmt(module, func_decl, stmt->if_.true_stmt);
+        duskGenerateStmt(module, state, func_decl, stmt->if_.true_stmt);
         duskIRCreateBranch(module, duskGetLastBlock(function), merge_block);
 
         if (false_block) {
             duskIRFunctionAddBlock(function, false_block);
-            duskGenerateStmt(module, func_decl, stmt->if_.false_stmt);
+            duskGenerateStmt(module, state, func_decl, stmt->if_.false_stmt);
             duskIRCreateBranch(module, duskGetLastBlock(function), merge_block);
         }
 
@@ -1440,15 +1449,40 @@ duskGenerateStmt(DuskIRModule *module, DuskDecl *func_decl, DuskStmt *stmt)
             module, duskGetLastBlock(function), cond, body_block, merge_block);
 
         // Body block
+        duskArrayPush(&state->break_block_stack_arr, merge_block);
+        duskArrayPush(&state->continue_block_stack_arr, continue_block);
+
         duskIRFunctionAddBlock(function, body_block);
-        duskGenerateStmt(module, func_decl, stmt->while_.stmt);
+        duskGenerateStmt(module, state, func_decl, stmt->while_.stmt);
         duskIRCreateBranch(module, duskGetLastBlock(function), continue_block);
+
+        duskArrayPop(&state->continue_block_stack_arr);
+        duskArrayPop(&state->break_block_stack_arr);
 
         // Continue block
         duskIRFunctionAddBlock(function, continue_block);
         duskIRCreateBranch(module, continue_block, header_block);
 
         duskIRFunctionAddBlock(function, merge_block);
+        break;
+    }
+    case DUSK_STMT_CONTINUE: {
+        DUSK_ASSERT(duskArrayLength(state->continue_block_stack_arr) > 0);
+        DuskIRValue *dest_block =
+            state->continue_block_stack_arr
+                [duskArrayLength(state->continue_block_stack_arr) - 1];
+
+        duskIRCreateBranch(module, block, dest_block);
+
+        break;
+    }
+    case DUSK_STMT_BREAK: {
+        DUSK_ASSERT(duskArrayLength(state->break_block_stack_arr) > 0);
+        DuskIRValue *dest_block =
+            state->break_block_stack_arr
+                [duskArrayLength(state->break_block_stack_arr) - 1];
+
+        duskIRCreateBranch(module, block, dest_block);
         break;
     }
     }
@@ -1509,7 +1543,8 @@ duskGenerateLocalDecl(DuskIRModule *module, DuskDecl *func_decl, DuskDecl *decl)
     }
 }
 
-static void duskGenerateGlobalDecl(DuskIRModule *module, DuskDecl *decl)
+static void duskGenerateGlobalDecl(
+    DuskIRModule *module, DuskAstToIRState *state, DuskDecl *decl)
 {
     if (decl->type) {
         duskTypeMarkNotDead(decl->type);
@@ -1687,7 +1722,7 @@ static void duskGenerateGlobalDecl(DuskIRModule *module, DuskDecl *decl)
         size_t stmt_count = duskArrayLength(decl->function.stmts_arr);
         for (size_t i = 0; i < stmt_count; ++i) {
             DuskStmt *stmt = decl->function.stmts_arr[i];
-            duskGenerateStmt(module, decl, stmt);
+            duskGenerateStmt(module, state, decl, stmt);
         }
 
         // Reference the globals in the function
@@ -1753,9 +1788,16 @@ DuskIRModule *duskGenerateIRModule(DuskCompiler *compiler, DuskFile *file)
 
     DuskIRModule *module = duskIRModuleCreate(compiler);
 
+    DuskAstToIRState state = {
+        .break_block_stack_arr =
+            duskArrayCreate(module->allocator, DuskIRValue *),
+        .continue_block_stack_arr =
+            duskArrayCreate(module->allocator, DuskIRValue *),
+    };
+
     for (size_t i = 0; i < duskArrayLength(file->decls_arr); ++i) {
         DuskDecl *decl = file->decls_arr[i];
-        duskGenerateGlobalDecl(module, decl);
+        duskGenerateGlobalDecl(module, &state, decl);
     }
 
     return module;
