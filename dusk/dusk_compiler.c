@@ -56,6 +56,7 @@ static const char *DUSK_BUILTIN_FUNCTION_NAMES[DUSK_BUILTIN_FUNCTION_COUNT] = {
     [DUSK_BUILTIN_FUNCTION_REFRACT] = "refract",
     [DUSK_BUILTIN_FUNCTION_MIN] = "min",
     [DUSK_BUILTIN_FUNCTION_MAX] = "max",
+    [DUSK_BUILTIN_FUNCTION_MIX] = "mix",
 };
 
 DuskCompiler *duskCompilerCreate(void)

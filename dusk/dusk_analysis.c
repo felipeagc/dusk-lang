@@ -53,6 +53,7 @@ static size_t DUSK_BUILTIN_FUNCTION_PARAM_COUNTS[DUSK_BUILTIN_FUNCTION_COUNT] =
         [DUSK_BUILTIN_FUNCTION_REFRACT] = 3,
         [DUSK_BUILTIN_FUNCTION_MIN] = 2,
         [DUSK_BUILTIN_FUNCTION_MAX] = 2,
+        [DUSK_BUILTIN_FUNCTION_MIX] = 3,
 };
 
 typedef struct DuskAnalyzerState {
@@ -1340,6 +1341,51 @@ static void duskAnalyzeExpr(
                     duskGetBuiltinFunctionName(expr->builtin_call.kind),
                     duskTypeToPrettyString(allocator, param0->type),
                     duskTypeToPrettyString(allocator, param1->type));
+                break;
+            }
+
+            expr->type = param0->type;
+
+            break;
+        }
+
+        case DUSK_BUILTIN_FUNCTION_MIX: {
+            DUSK_ASSERT(duskArrayLength(expr->builtin_call.params_arr) == 3);
+            DuskExpr *param0 = expr->builtin_call.params_arr[0];
+            DuskExpr *param1 = expr->builtin_call.params_arr[1];
+            DuskExpr *param2 = expr->builtin_call.params_arr[2];
+
+            duskAnalyzeExpr(compiler, state, param0, NULL, false);
+            duskAnalyzeExpr(compiler, state, param1, NULL, false);
+            duskAnalyzeExpr(compiler, state, param2, NULL, false);
+            if (!param0->type) break;
+            if (!param1->type) break;
+            if (!param2->type) break;
+
+            DuskType *float_type =
+                duskTypeNewScalar(compiler, DUSK_SCALAR_TYPE_FLOAT);
+
+            duskConcretizeExprType(param0, float_type);
+            duskConcretizeExprType(param1, float_type);
+            duskConcretizeExprType(param2, float_type);
+
+            const bool is_param_float_or_vector =
+                param0->type->kind == DUSK_TYPE_FLOAT ||
+                (param0->type->kind == DUSK_TYPE_VECTOR &&
+                 param0->type->vector.sub->kind == DUSK_TYPE_FLOAT);
+
+            if (param0->type != param1->type || param0->type != param2->type ||
+                !is_param_float_or_vector) {
+                duskAddError(
+                    compiler,
+                    expr->location,
+                    "invalid parameter types for '@%s' call: expected the same "
+                    "scalar or vector types for all parameters, instead got "
+                    "'%s', '%s', '%s'",
+                    duskGetBuiltinFunctionName(expr->builtin_call.kind),
+                    duskTypeToPrettyString(allocator, param0->type),
+                    duskTypeToPrettyString(allocator, param1->type),
+                    duskTypeToPrettyString(allocator, param2->type));
                 break;
             }
 
