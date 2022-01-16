@@ -48,6 +48,7 @@ static const char *DUSK_BUILTIN_FUNCTION_NAMES[DUSK_BUILTIN_FUNCTION_MAX] = {
 
     [DUSK_BUILTIN_FUNCTION_ABS] = "abs",
     [DUSK_BUILTIN_FUNCTION_DISTANCE] = "distance",
+    [DUSK_BUILTIN_FUNCTION_NORMALIZE] = "normalize",
 };
 
 DuskCompiler *duskCompilerCreate(void)

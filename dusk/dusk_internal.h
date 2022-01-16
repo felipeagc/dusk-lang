@@ -536,6 +536,7 @@ typedef enum DuskBuiltinFunctionKind {
 
     DUSK_BUILTIN_FUNCTION_ABS,
     DUSK_BUILTIN_FUNCTION_DISTANCE,
+    DUSK_BUILTIN_FUNCTION_NORMALIZE,
 
     DUSK_BUILTIN_FUNCTION_MAX,
 } DuskBuiltinFunctionKind;
