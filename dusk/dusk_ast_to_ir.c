@@ -4,6 +4,12 @@
 static void duskGenerateLocalDecl(
     DuskIRModule *module, DuskDecl *func_decl, DuskDecl *decl);
 
+static DuskIRValue *duskGetLastBlock(DuskIRValue *function)
+{
+    return function->function
+        .blocks_arr[duskArrayLength(function->function.blocks_arr) - 1];
+}
+
 uint32_t duskTypeAlignOf(
     DuskAllocator *allocator, DuskType *type, DuskStructLayout layout)
 {
@@ -500,9 +506,8 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
         } else {
             DuskIRValue *function = func_decl->ir_value;
             DUSK_ASSERT(duskArrayLength(function->function.blocks_arr) > 0);
-            DuskIRValue *block =
-                function->function.blocks_arr
-                    [duskArrayLength(function->function.blocks_arr) - 1];
+
+            DuskIRValue *block = duskGetLastBlock(function);
 
             for (size_t i = 0; i < field_value_count; ++i) {
                 field_values[i] =
@@ -536,9 +541,7 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
 
             DuskIRValue *function = func_decl->ir_value;
             DUSK_ASSERT(duskArrayLength(function->function.blocks_arr) > 0);
-            DuskIRValue *block =
-                function->function.blocks_arr
-                    [duskArrayLength(function->function.blocks_arr) - 1];
+            DuskIRValue *block = duskGetLastBlock(function);
 
             expr->ir_value = duskIRCreateFunctionCall(
                 module,
@@ -567,10 +570,7 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
                     DuskIRValue *function = func_decl->ir_value;
                     DUSK_ASSERT(
                         duskArrayLength(function->function.blocks_arr) > 0);
-                    DuskIRValue *block =
-                        function->function.blocks_arr
-                            [duskArrayLength(function->function.blocks_arr) -
-                             1];
+                    DuskIRValue *block = duskGetLastBlock(function);
 
                     value = duskIRLoadLvalue(module, block, value);
                 }
@@ -580,10 +580,7 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
                     DuskIRValue *function = func_decl->ir_value;
                     DUSK_ASSERT(
                         duskArrayLength(function->function.blocks_arr) > 0);
-                    DuskIRValue *block =
-                        function->function.blocks_arr
-                            [duskArrayLength(function->function.blocks_arr) -
-                             1];
+                    DuskIRValue *block = duskGetLastBlock(function);
 
                     expr->ir_value = duskIRCreateCast(
                         module, block, constructed_type, value);
@@ -602,10 +599,7 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
                     DuskIRValue *function = func_decl->ir_value;
                     DUSK_ASSERT(
                         duskArrayLength(function->function.blocks_arr) > 0);
-                    DuskIRValue *block =
-                        function->function.blocks_arr
-                            [duskArrayLength(function->function.blocks_arr) -
-                             1];
+                    DuskIRValue *block = duskGetLastBlock(function);
 
                     bool all_constants = true;
                     if (param_count == 1 && value_count != param_count) {
@@ -711,10 +705,7 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
                     DuskIRValue *function = func_decl->ir_value;
                     DUSK_ASSERT(
                         duskArrayLength(function->function.blocks_arr) > 0);
-                    DuskIRValue *block =
-                        function->function.blocks_arr
-                            [duskArrayLength(function->function.blocks_arr) -
-                             1];
+                    DuskIRValue *block = duskGetLastBlock(function);
 
                     bool all_constants = true;
                     if (param_count == 1 && value_count != param_count) {
@@ -842,9 +833,7 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
             DUSK_ASSERT(func_decl);
             DuskIRValue *function = func_decl->ir_value;
             DUSK_ASSERT(duskArrayLength(function->function.blocks_arr) > 0);
-            DuskIRValue *block =
-                function->function.blocks_arr
-                    [duskArrayLength(function->function.blocks_arr) - 1];
+            DuskIRValue *block = duskGetLastBlock(function);
 
             size_t param_count = duskArrayLength(expr->builtin_call.params_arr);
             DuskIRValue **params =
@@ -890,9 +879,7 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
     case DUSK_EXPR_ACCESS: {
         DuskIRValue *function = func_decl->ir_value;
         DUSK_ASSERT(duskArrayLength(function->function.blocks_arr) > 0);
-        DuskIRValue *block =
-            function->function
-                .blocks_arr[duskArrayLength(function->function.blocks_arr) - 1];
+        DuskIRValue *block = duskGetLastBlock(function);
 
         DuskExpr *left_expr = expr->access.base_expr;
         duskGenerateExpr(module, func_decl, left_expr);
@@ -1073,9 +1060,7 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
     case DUSK_EXPR_ARRAY_ACCESS: {
         DuskIRValue *function = func_decl->ir_value;
         DUSK_ASSERT(duskArrayLength(function->function.blocks_arr) > 0);
-        DuskIRValue *block =
-            function->function
-                .blocks_arr[duskArrayLength(function->function.blocks_arr) - 1];
+        DuskIRValue *block = duskGetLastBlock(function);
 
         duskGenerateExpr(module, func_decl, expr->access.base_expr);
         DuskIRValue *base_value = expr->access.base_expr->ir_value;
@@ -1110,9 +1095,7 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
         DUSK_ASSERT(func_decl);
         DuskIRValue *function = func_decl->ir_value;
         DUSK_ASSERT(duskArrayLength(function->function.blocks_arr) > 0);
-        DuskIRValue *block =
-            function->function
-                .blocks_arr[duskArrayLength(function->function.blocks_arr) - 1];
+        DuskIRValue *block = duskGetLastBlock(function);
 
         switch (expr->binary.op) {
         case DUSK_BINARY_OP_MAX:
@@ -1180,23 +1163,34 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
         }
 
         case DUSK_BINARY_OP_AND: {
-            duskGenerateExpr(module, func_decl, expr->binary.left);
-            DuskIRValue *first_cond =
-                duskIRLoadLvalue(module, block, expr->binary.left->ir_value);
-
             DuskIRValue *first_cond_true_block = duskIRBlockCreate(module);
             DuskIRValue *merge_block = duskIRBlockCreate(module);
 
-            duskIRCreateSelectionMerge(module, block, merge_block);
+            // First condition
+            duskGenerateExpr(module, func_decl, expr->binary.left);
+            DuskIRValue *first_cond = duskIRLoadLvalue(
+                module,
+                duskGetLastBlock(function),
+                expr->binary.left->ir_value);
+            duskIRCreateSelectionMerge(
+                module, duskGetLastBlock(function), merge_block);
             duskIRCreateBranchCond(
-                module, block, first_cond, first_cond_true_block, merge_block);
+                module,
+                duskGetLastBlock(function),
+                first_cond,
+                first_cond_true_block,
+                merge_block);
 
+            // First condition is true
             duskIRFunctionAddBlock(function, first_cond_true_block);
             duskGenerateExpr(module, func_decl, expr->binary.right);
-            DuskIRValue *second_cond =
-                duskIRLoadLvalue(module, block, expr->binary.right->ir_value);
-            duskIRCreateBranch(module, first_cond_true_block, merge_block);
+            DuskIRValue *second_cond = duskIRLoadLvalue(
+                module,
+                duskGetLastBlock(function),
+                expr->binary.right->ir_value);
+            duskIRCreateBranch(module, duskGetLastBlock(function), merge_block);
 
+            // Merge block
             duskIRFunctionAddBlock(function, merge_block);
             DuskIRPhiPair pairs[2] = {
                 {block, first_cond},
@@ -1208,23 +1202,34 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
         }
 
         case DUSK_BINARY_OP_OR: {
-            duskGenerateExpr(module, func_decl, expr->binary.left);
-            DuskIRValue *first_cond =
-                duskIRLoadLvalue(module, block, expr->binary.left->ir_value);
-
             DuskIRValue *first_cond_false_block = duskIRBlockCreate(module);
             DuskIRValue *merge_block = duskIRBlockCreate(module);
 
-            duskIRCreateSelectionMerge(module, block, merge_block);
+            // First condition
+            duskGenerateExpr(module, func_decl, expr->binary.left);
+            DuskIRValue *first_cond = duskIRLoadLvalue(
+                module,
+                duskGetLastBlock(function),
+                expr->binary.left->ir_value);
+            duskIRCreateSelectionMerge(
+                module, duskGetLastBlock(function), merge_block);
             duskIRCreateBranchCond(
-                module, block, first_cond, merge_block, first_cond_false_block);
+                module,
+                duskGetLastBlock(function),
+                first_cond,
+                merge_block,
+                first_cond_false_block);
 
+            // First condition false
             duskIRFunctionAddBlock(function, first_cond_false_block);
             duskGenerateExpr(module, func_decl, expr->binary.right);
-            DuskIRValue *second_cond =
-                duskIRLoadLvalue(module, block, expr->binary.right->ir_value);
-            duskIRCreateBranch(module, first_cond_false_block, merge_block);
+            DuskIRValue *second_cond = duskIRLoadLvalue(
+                module,
+                duskGetLastBlock(function),
+                expr->binary.right->ir_value);
+            duskIRCreateBranch(module, duskGetLastBlock(function), merge_block);
 
+            // Merge block
             duskIRFunctionAddBlock(function, merge_block);
             DuskIRPhiPair pairs[2] = {
                 {block, first_cond},
@@ -1243,9 +1248,7 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
         DUSK_ASSERT(func_decl);
         DuskIRValue *function = func_decl->ir_value;
         DUSK_ASSERT(duskArrayLength(function->function.blocks_arr) > 0);
-        DuskIRValue *block =
-            function->function
-                .blocks_arr[duskArrayLength(function->function.blocks_arr) - 1];
+        DuskIRValue *block = duskGetLastBlock(function);
 
         duskGenerateExpr(module, func_decl, expr->unary.right);
 
@@ -1273,9 +1276,7 @@ duskGenerateStmt(DuskIRModule *module, DuskDecl *func_decl, DuskStmt *stmt)
     DuskIRValue *function = func_decl->ir_value;
 
     DUSK_ASSERT(duskArrayLength(function->function.blocks_arr) > 0);
-    DuskIRValue *block =
-        function->function
-            .blocks_arr[duskArrayLength(function->function.blocks_arr) - 1];
+    DuskIRValue *block = duskGetLastBlock(function);
 
     switch (stmt->kind) {
     case DUSK_STMT_RETURN: {
@@ -1386,12 +1387,13 @@ duskGenerateStmt(DuskIRModule *module, DuskDecl *func_decl, DuskStmt *stmt)
 
         // Generate conditional branch
         duskGenerateExpr(module, func_decl, stmt->if_.cond_expr);
-        DuskIRValue *cond =
-            duskIRLoadLvalue(module, block, stmt->if_.cond_expr->ir_value);
-        duskIRCreateSelectionMerge(module, block, merge_block);
+        DuskIRValue *cond = duskIRLoadLvalue(
+            module, duskGetLastBlock(function), stmt->if_.cond_expr->ir_value);
+        duskIRCreateSelectionMerge(
+            module, duskGetLastBlock(function), merge_block);
         duskIRCreateBranchCond(
             module,
-            block,
+            duskGetLastBlock(function),
             cond,
             true_block,
             false_block ? false_block : merge_block);
@@ -1400,12 +1402,12 @@ duskGenerateStmt(DuskIRModule *module, DuskDecl *func_decl, DuskStmt *stmt)
 
         duskIRFunctionAddBlock(function, true_block);
         duskGenerateStmt(module, func_decl, stmt->if_.true_stmt);
-        duskIRCreateBranch(module, true_block, merge_block);
+        duskIRCreateBranch(module, duskGetLastBlock(function), merge_block);
 
         if (false_block) {
             duskIRFunctionAddBlock(function, false_block);
             duskGenerateStmt(module, func_decl, stmt->if_.false_stmt);
-            duskIRCreateBranch(module, false_block, merge_block);
+            duskIRCreateBranch(module, duskGetLastBlock(function), merge_block);
         }
 
         duskIRFunctionAddBlock(function, merge_block);
@@ -1431,14 +1433,16 @@ duskGenerateStmt(DuskIRModule *module, DuskDecl *func_decl, DuskStmt *stmt)
         duskIRFunctionAddBlock(function, cond_block);
         duskGenerateExpr(module, func_decl, stmt->while_.cond_expr);
         DuskIRValue *cond = duskIRLoadLvalue(
-            module, cond_block, stmt->while_.cond_expr->ir_value);
+            module,
+            duskGetLastBlock(function),
+            stmt->while_.cond_expr->ir_value);
         duskIRCreateBranchCond(
-            module, cond_block, cond, body_block, merge_block);
+            module, duskGetLastBlock(function), cond, body_block, merge_block);
 
         // Body block
         duskIRFunctionAddBlock(function, body_block);
         duskGenerateStmt(module, func_decl, stmt->while_.stmt);
-        duskIRCreateBranch(module, body_block, continue_block);
+        duskIRCreateBranch(module, duskGetLastBlock(function), continue_block);
 
         // Continue block
         duskIRFunctionAddBlock(function, continue_block);
@@ -1569,11 +1573,8 @@ static void duskGenerateGlobalDecl(DuskIRModule *module, DuskDecl *decl)
                     DUSK_ASSERT(
                         duskArrayLength(decl->ir_value->function.blocks_arr) >
                         0);
-                    DuskIRValue *block =
-                        decl->ir_value->function.blocks_arr
-                            [duskArrayLength(
-                                 decl->ir_value->function.blocks_arr) -
-                             1];
+
+                    DuskIRValue *block = duskGetLastBlock(decl->ir_value);
 
                     for (size_t j = 0; j < field_count; ++j) {
                         field_values[j] =
