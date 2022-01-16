@@ -1466,6 +1466,15 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
         case DUSK_BUILTIN_FUNCTION_ACOSH: glsl_inst = GLSLstd450Acosh; break;
         case DUSK_BUILTIN_FUNCTION_ATANH: glsl_inst = GLSLstd450Atanh; break;
 
+        case DUSK_BUILTIN_FUNCTION_ABS: {
+            if (value->type->kind == DUSK_TYPE_INT) {
+                glsl_inst = GLSLstd450SAbs;
+            } else {
+                glsl_inst = GLSLstd450FAbs;
+            }
+            break;
+        }
+
         case DUSK_BUILTIN_FUNCTION_SAMPLER_TYPE:
         case DUSK_BUILTIN_FUNCTION_IMAGE_1D_TYPE:
         case DUSK_BUILTIN_FUNCTION_IMAGE_2D_TYPE:

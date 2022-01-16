@@ -41,6 +41,8 @@ static size_t DUSK_BUILTIN_FUNCTION_PARAM_COUNTS[DUSK_BUILTIN_FUNCTION_MAX] = {
     [DUSK_BUILTIN_FUNCTION_LOG2] = 1,
     [DUSK_BUILTIN_FUNCTION_EXP] = 1,
     [DUSK_BUILTIN_FUNCTION_EXP2] = 1,
+
+    [DUSK_BUILTIN_FUNCTION_ABS] = 1,
 };
 
 typedef struct DuskAnalyzerState {
@@ -1013,6 +1015,8 @@ static void duskAnalyzeExpr(
         case DUSK_BUILTIN_FUNCTION_ASINH:
         case DUSK_BUILTIN_FUNCTION_ACOSH:
         case DUSK_BUILTIN_FUNCTION_ATANH: {
+            // Single parameter float -> float functions
+
             DUSK_ASSERT(duskArrayLength(expr->builtin_call.params_arr) == 1);
             DuskExpr *param = expr->builtin_call.params_arr[0];
 
@@ -1025,6 +1029,43 @@ static void duskAnalyzeExpr(
             if (param->type->kind != DUSK_TYPE_FLOAT &&
                 !(param->type->kind == DUSK_TYPE_VECTOR &&
                   param->type->vector.sub->kind == DUSK_TYPE_FLOAT)) {
+                duskAddError(
+                    compiler,
+                    expr->location,
+                    "invalid parameter type for '@%s' call: expected floating "
+                    "point scalar or vector, instead got '%s'",
+                    duskGetBuiltinFunctionName(expr->builtin_call.kind),
+                    duskTypeToPrettyString(allocator, param->type));
+                break;
+            }
+
+            expr->type = param->type;
+
+            break;
+        }
+
+        case DUSK_BUILTIN_FUNCTION_ABS: {
+            // Single parameter float -> float or int -> int functions
+            DUSK_ASSERT(duskArrayLength(expr->builtin_call.params_arr) == 1);
+            DuskExpr *param = expr->builtin_call.params_arr[0];
+
+            DuskType *float_type =
+                duskTypeNewScalar(compiler, DUSK_SCALAR_TYPE_FLOAT);
+
+            duskAnalyzeExpr(compiler, state, param, NULL, false);
+            duskConcretizeExprType(param, float_type);
+
+            const bool is_param_float_ty =
+                param->type->kind != DUSK_TYPE_FLOAT &&
+                !(param->type->kind == DUSK_TYPE_VECTOR &&
+                  param->type->vector.sub->kind == DUSK_TYPE_FLOAT);
+
+            const bool is_param_int_ty =
+                param->type->kind != DUSK_TYPE_INT &&
+                !(param->type->kind == DUSK_TYPE_VECTOR &&
+                  param->type->vector.sub->kind == DUSK_TYPE_INT);
+
+            if (!is_param_float_ty && !is_param_int_ty) {
                 duskAddError(
                     compiler,
                     expr->location,

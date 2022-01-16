@@ -696,7 +696,9 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
         case DUSK_BUILTIN_FUNCTION_TANH:
         case DUSK_BUILTIN_FUNCTION_ASINH:
         case DUSK_BUILTIN_FUNCTION_ACOSH:
-        case DUSK_BUILTIN_FUNCTION_ATANH: {
+        case DUSK_BUILTIN_FUNCTION_ATANH:
+
+        case DUSK_BUILTIN_FUNCTION_ABS: {
             DUSK_ASSERT(func_decl);
             DuskIRValue *function = func_decl->ir_value;
             DUSK_ASSERT(duskArrayLength(function->function.blocks_arr) > 0);

@@ -45,6 +45,8 @@ static const char *DUSK_BUILTIN_FUNCTION_NAMES[DUSK_BUILTIN_FUNCTION_MAX] = {
     [DUSK_BUILTIN_FUNCTION_LOG2] = "log2",
     [DUSK_BUILTIN_FUNCTION_EXP] = "exp",
     [DUSK_BUILTIN_FUNCTION_EXP2] = "exp2",
+
+    [DUSK_BUILTIN_FUNCTION_ABS] = "abs",
 };
 
 DuskCompiler *duskCompilerCreate(void)
