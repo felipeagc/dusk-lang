@@ -702,7 +702,8 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
         case DUSK_BUILTIN_FUNCTION_DISTANCE:
         case DUSK_BUILTIN_FUNCTION_NORMALIZE:
         case DUSK_BUILTIN_FUNCTION_DOT:
-        case DUSK_BUILTIN_FUNCTION_LENGTH: {
+        case DUSK_BUILTIN_FUNCTION_LENGTH:
+        case DUSK_BUILTIN_FUNCTION_CROSS: {
             DUSK_ASSERT(func_decl);
             DuskIRValue *function = func_decl->ir_value;
             DUSK_ASSERT(duskArrayLength(function->function.blocks_arr) > 0);

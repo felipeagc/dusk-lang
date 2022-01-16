@@ -47,6 +47,7 @@ static size_t DUSK_BUILTIN_FUNCTION_PARAM_COUNTS[DUSK_BUILTIN_FUNCTION_MAX] = {
     [DUSK_BUILTIN_FUNCTION_NORMALIZE] = 1,
     [DUSK_BUILTIN_FUNCTION_DOT] = 2,
     [DUSK_BUILTIN_FUNCTION_LENGTH] = 1,
+    [DUSK_BUILTIN_FUNCTION_CROSS] = 2,
 };
 
 typedef struct DuskAnalyzerState {
@@ -1167,6 +1168,39 @@ static void duskAnalyzeExpr(
             }
 
             expr->type = param0->type->vector.sub;
+
+            break;
+        }
+
+        case DUSK_BUILTIN_FUNCTION_CROSS: {
+            DUSK_ASSERT(duskArrayLength(expr->builtin_call.params_arr) == 2);
+            DuskExpr *param0 = expr->builtin_call.params_arr[0];
+            DuskExpr *param1 = expr->builtin_call.params_arr[1];
+
+            duskAnalyzeExpr(compiler, state, param0, NULL, false);
+            duskAnalyzeExpr(compiler, state, param1, NULL, false);
+            if (!param0->type) break;
+            if (!param1->type) break;
+
+            const bool is_param_float3_vector =
+                param0->type->kind == DUSK_TYPE_VECTOR &&
+                param0->type->vector.sub->kind == DUSK_TYPE_FLOAT &&
+                param0->type->vector.size == 3;
+
+            if (param0->type != param1->type || !is_param_float3_vector) {
+                duskAddError(
+                    compiler,
+                    expr->location,
+                    "invalid parameter types for '@%s' call: expected "
+                    "3-dimensional floating point vectors, instead got '%s' "
+                    "and '%s'",
+                    duskGetBuiltinFunctionName(expr->builtin_call.kind),
+                    duskTypeToPrettyString(allocator, param0->type),
+                    duskTypeToPrettyString(allocator, param1->type));
+                break;
+            }
+
+            expr->type = param0->type;
 
             break;
         }
