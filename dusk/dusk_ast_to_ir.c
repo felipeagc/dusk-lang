@@ -188,6 +188,133 @@ uint32_t duskTypeSizeOf(
     return size;
 }
 
+static void duskReferenceGlobalOperands(void *user_data, DuskIRValue *operand)
+{
+    DuskIREntryPoint *entry_point = (DuskIREntryPoint *)user_data;
+    if (operand->kind == DUSK_IR_VALUE_VARIABLE) {
+        switch (operand->var.storage_class) {
+        case DUSK_STORAGE_CLASS_PUSH_CONSTANT:
+        case DUSK_STORAGE_CLASS_UNIFORM:
+        case DUSK_STORAGE_CLASS_UNIFORM_CONSTANT:
+        case DUSK_STORAGE_CLASS_STORAGE:
+        case DUSK_STORAGE_CLASS_WORKGROUP: {
+            duskIREntryPointReferenceGlobal(entry_point, operand);
+            break;
+        }
+
+        case DUSK_STORAGE_CLASS_PARAMETER:
+        case DUSK_STORAGE_CLASS_FUNCTION:
+        case DUSK_STORAGE_CLASS_INPUT:
+        case DUSK_STORAGE_CLASS_OUTPUT: break;
+        }
+    }
+}
+
+static void duskWithOperands(
+    DuskIRValue **values,
+    size_t value_count,
+    void *user_data,
+    void (*callback)(void *user_data, DuskIRValue *operand))
+{
+    for (size_t i = 0; i < value_count; ++i) {
+        DuskIRValue *value = values[i];
+        switch (value->kind) {
+        case DUSK_IR_VALUE_CONSTANT_BOOL:
+        case DUSK_IR_VALUE_CONSTANT:
+        case DUSK_IR_VALUE_CONSTANT_COMPOSITE:
+        case DUSK_IR_VALUE_FUNCTION:
+        case DUSK_IR_VALUE_FUNCTION_PARAMETER:
+        case DUSK_IR_VALUE_BLOCK:
+        case DUSK_IR_VALUE_VARIABLE:
+        case DUSK_IR_VALUE_DISCARD:
+        case DUSK_IR_VALUE_BRANCH:
+        case DUSK_IR_VALUE_SELECTION_MERGE:
+        case DUSK_IR_VALUE_LOOP_MERGE: break;
+
+        case DUSK_IR_VALUE_RETURN: {
+            if (value->return_.value) callback(user_data, value->return_.value);
+            break;
+        }
+        case DUSK_IR_VALUE_STORE: {
+            callback(user_data, value->store.value);
+            callback(user_data, value->store.pointer);
+            break;
+        }
+        case DUSK_IR_VALUE_LOAD: {
+            callback(user_data, value->load.pointer);
+            break;
+        }
+        case DUSK_IR_VALUE_FUNCTION_CALL: {
+            for (size_t j = 0;
+                 j < duskArrayLength(value->function_call.params_arr);
+                 j++) {
+                DuskIRValue *param = value->function_call.params_arr[j];
+                callback(user_data, param);
+            }
+            break;
+        }
+        case DUSK_IR_VALUE_ACCESS_CHAIN: {
+            callback(user_data, value->access_chain.base);
+            break;
+        }
+        case DUSK_IR_VALUE_COMPOSITE_EXTRACT: {
+            callback(user_data, value->composite_extract.composite);
+            break;
+        }
+        case DUSK_IR_VALUE_VECTOR_SHUFFLE: {
+            callback(user_data, value->vector_shuffle.vec1);
+            callback(user_data, value->vector_shuffle.vec2);
+            break;
+        }
+        case DUSK_IR_VALUE_COMPOSITE_CONSTRUCT: {
+            for (size_t j = 0;
+                 j < duskArrayLength(value->composite_construct.values_arr);
+                 j++) {
+                DuskIRValue *component =
+                    value->composite_construct.values_arr[j];
+                callback(user_data, component);
+            }
+            break;
+        }
+        case DUSK_IR_VALUE_CAST: {
+            callback(user_data, value->cast.value);
+            break;
+        }
+        case DUSK_IR_VALUE_BUILTIN_CALL: {
+            for (size_t j = 0; j < value->builtin_call.param_count; j++) {
+                DuskIRValue *param = value->builtin_call.params[j];
+                callback(user_data, param);
+            }
+            break;
+        }
+        case DUSK_IR_VALUE_BINARY_OPERATION: {
+            callback(user_data, value->binary.left);
+            callback(user_data, value->binary.right);
+            break;
+        }
+        case DUSK_IR_VALUE_UNARY_OPERATION: {
+            callback(user_data, value->unary.right);
+            break;
+        }
+        case DUSK_IR_VALUE_BRANCH_COND: {
+            callback(user_data, value->branch_cond.cond);
+            break;
+        }
+        case DUSK_IR_VALUE_PHI: {
+            for (size_t j = 0; j < value->phi.pair_count; j++) {
+                DuskIRPhiPair pair = value->phi.pairs[j];
+                callback(user_data, pair.value);
+            }
+            break;
+        }
+        case DUSK_IR_VALUE_ARRAY_LENGTH: {
+            callback(user_data, value->array_length.struct_ptr);
+            break;
+        }
+        }
+    }
+}
+
 static void duskDecorateFromAttributes(
     DuskIRModule *module,
     DuskArray(DuskIRDecoration) * decorations_arr,
@@ -1376,8 +1503,7 @@ duskGenerateLocalDecl(DuskIRModule *module, DuskDecl *func_decl, DuskDecl *decl)
     }
 }
 
-static void
-duskGenerateGlobalDecl(DuskIRModule *module, DuskFile *file, DuskDecl *decl)
+static void duskGenerateGlobalDecl(DuskIRModule *module, DuskDecl *decl)
 {
     if (decl->type) {
         duskTypeMarkNotDead(decl->type);
@@ -1524,26 +1650,7 @@ duskGenerateGlobalDecl(DuskIRModule *module, DuskFile *file, DuskDecl *decl)
             }
         }
 
-        size_t stmt_count = duskArrayLength(decl->function.stmts_arr);
-        for (size_t i = 0; i < stmt_count; ++i) {
-            DuskStmt *stmt = decl->function.stmts_arr[i];
-            duskGenerateStmt(module, decl, stmt);
-        }
-
-        for (size_t i = 0;
-             i < duskArrayLength(decl->ir_value->function.blocks_arr);
-             ++i) {
-            DuskIRValue *block = decl->ir_value->function.blocks_arr[i];
-            if (!duskIRBlockIsTerminated(block)) {
-                if (decl->type->function.return_type->kind == DUSK_TYPE_VOID) {
-                    duskIRCreateReturn(module, block, NULL);
-                } else {
-                    printf("%zu\n", duskArrayLength(block->block.insts_arr));
-                    DUSK_ASSERT(0); // Missing terminator instruction
-                }
-            }
-        }
-
+        // Create entry point
         if (decl->function.is_entry_point) {
             DuskArray(DuskIRValue *) referenced_globals_arr =
                 duskArrayCreate(module->allocator, DuskIRValue *);
@@ -1564,15 +1671,6 @@ duskGenerateGlobalDecl(DuskIRModule *module, DuskFile *file, DuskDecl *decl)
                     decl->function.entry_point_outputs_arr[i]);
             }
 
-            for (size_t i = 0; i < duskArrayLength(file->decls_arr); ++i) {
-                DuskDecl *global_decl = file->decls_arr[i];
-                if (global_decl->ir_value &&
-                    global_decl->ir_value->kind == DUSK_IR_VALUE_VARIABLE) {
-                    duskArrayPush(
-                        &referenced_globals_arr, global_decl->ir_value);
-                }
-            }
-
             decl->function.entry_point = duskIRModuleAddEntryPoint(
                 module,
                 decl->ir_value,
@@ -1580,6 +1678,43 @@ duskGenerateGlobalDecl(DuskIRModule *module, DuskFile *file, DuskDecl *decl)
                 decl->function.entry_point_stage,
                 duskArrayLength(referenced_globals_arr),
                 referenced_globals_arr);
+        }
+
+        // Generate function body
+        size_t stmt_count = duskArrayLength(decl->function.stmts_arr);
+        for (size_t i = 0; i < stmt_count; ++i) {
+            DuskStmt *stmt = decl->function.stmts_arr[i];
+            duskGenerateStmt(module, decl, stmt);
+        }
+
+        // Reference the globals in the function
+        if (decl->function.is_entry_point) {
+            for (size_t i = 0;
+                 i < duskArrayLength(decl->ir_value->function.blocks_arr);
+                 ++i) {
+                DuskIRValue *block = decl->ir_value->function.blocks_arr[i];
+
+                duskWithOperands(
+                    block->block.insts_arr,
+                    duskArrayLength(block->block.insts_arr),
+                    (void *)decl->function.entry_point,
+                    duskReferenceGlobalOperands);
+            }
+        }
+
+        // Insert void returns where needed
+        for (size_t i = 0;
+             i < duskArrayLength(decl->ir_value->function.blocks_arr);
+             ++i) {
+            DuskIRValue *block = decl->ir_value->function.blocks_arr[i];
+
+            if (!duskIRBlockIsTerminated(block)) {
+                if (decl->type->function.return_type->kind == DUSK_TYPE_VOID) {
+                    duskIRCreateReturn(module, block, NULL);
+                } else {
+                    DUSK_ASSERT(0); // Missing terminator instruction
+                }
+            }
         }
 
         break;
@@ -1617,7 +1752,7 @@ DuskIRModule *duskGenerateIRModule(DuskCompiler *compiler, DuskFile *file)
 
     for (size_t i = 0; i < duskArrayLength(file->decls_arr); ++i) {
         DuskDecl *decl = file->decls_arr[i];
-        duskGenerateGlobalDecl(module, file, decl);
+        duskGenerateGlobalDecl(module, decl);
     }
 
     return module;
