@@ -1693,6 +1693,43 @@ static void duskAnalyzeExpr(
 
                 break;
             }
+            case DUSK_TYPE_RUNTIME_ARRAY: {
+                if (strcmp(accessed_field_name, "len") == 0) {
+                    right_expr->type =
+                        duskTypeNewScalar(compiler, DUSK_SCALAR_TYPE_UINT);
+
+                    bool is_array_struct_member = true;
+                    if (i >= 2) {
+                        DuskExpr *struct_expr = expr->access.chain_arr[i - 2];
+                        if (struct_expr->type->kind != DUSK_TYPE_STRUCT) {
+                            is_array_struct_member = false;
+                        }
+                    } else if (i >= 1) {
+                        DuskExpr *struct_expr = expr->access.base_expr;
+                        if (struct_expr->type->kind != DUSK_TYPE_STRUCT) {
+                            is_array_struct_member = false;
+                        }
+                    } else {
+                        is_array_struct_member = false;
+                    }
+
+                    if (!is_array_struct_member) {
+                        duskAddError(
+                            compiler,
+                            left_expr->location,
+                            "a runtime-sized array's size must be accessed "
+                            "starting from the struct where it is located");
+                    }
+                } else {
+                    duskAddError(
+                        compiler,
+                        left_expr->location,
+                        "expression of type '%s' only has 'len' field",
+                        duskTypeToPrettyString(allocator, left_expr->type));
+                }
+
+                break;
+            }
             default: {
                 duskAddError(
                     compiler,

@@ -273,7 +273,7 @@ DuskIRValue *duskIRVariableCreate(
     return value;
 }
 
-void duskIRModuleAddEntryPoint(
+DuskIREntryPoint *duskIRModuleAddEntryPoint(
     DuskIRModule *module,
     DuskIRValue *function,
     const char *name,
@@ -297,6 +297,22 @@ void duskIRModuleAddEntryPoint(
         sizeof(DuskIRValue *) * referenced_global_count);
 
     duskArrayPush(&module->entry_points_arr, entry_point);
+
+    return entry_point;
+}
+
+void duskIREntryPointReferenceGlobal(
+    DuskIREntryPoint *entry_point, DuskIRValue *global)
+{
+    for (size_t i = 0; i < duskArrayLength(entry_point->referenced_globals_arr);
+         ++i) {
+        if (global == entry_point->referenced_globals_arr[i]) {
+            // Already referenced
+            return;
+        }
+    }
+
+    duskArrayPush(&entry_point->referenced_globals_arr, global);
 }
 
 DuskIRValue *duskIRConstBoolCreate(DuskIRModule *module, bool bool_value)
@@ -512,6 +528,23 @@ DuskIRValue *duskIRCreatePhi(
         DUSK_NEW_ARRAY(module->allocator, DuskIRPhiPair, pair_count);
 
     memcpy(inst->phi.pairs, pairs, sizeof(DuskIRPhiPair) * pair_count);
+
+    duskIRBlockAppendInst(block, inst);
+    return inst;
+}
+
+DuskIRValue *duskIRCreateArrayLength(
+    DuskIRModule *module,
+    DuskIRValue *block,
+    DuskIRValue *struct_ptr,
+    uint32_t struct_member_index)
+{
+    DuskIRValue *inst = DUSK_NEW(module->allocator, DuskIRValue);
+    inst->type = duskTypeNewScalar(module->compiler, DUSK_SCALAR_TYPE_UINT);
+    inst->kind = DUSK_IR_VALUE_ARRAY_LENGTH;
+
+    inst->array_length.struct_ptr = struct_ptr;
+    inst->array_length.struct_member_index = struct_member_index;
 
     duskIRBlockAppendInst(block, inst);
     return inst;
@@ -1919,6 +1952,17 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
             params[2 + i * 2 + 1] = value->phi.pairs[i].block->id;
         }
         duskEncodeInst(module, SpvOpPhi, params, param_count);
+        break;
+    }
+    case DUSK_IR_VALUE_ARRAY_LENGTH: {
+        uint32_t params[4] = {
+            value->type->id,
+            value->id,
+            value->array_length.struct_ptr->id,
+            value->array_length.struct_member_index,
+        };
+        duskEncodeInst(
+            module, SpvOpArrayLength, params, DUSK_CARRAY_LENGTH(params));
         break;
     }
     }

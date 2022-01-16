@@ -612,6 +612,7 @@ typedef enum DuskIRValueKind {
     DUSK_IR_VALUE_SELECTION_MERGE,
     DUSK_IR_VALUE_LOOP_MERGE,
     DUSK_IR_VALUE_PHI,
+    DUSK_IR_VALUE_ARRAY_LENGTH,
 } DuskIRValueKind;
 
 struct DuskIRValue {
@@ -712,6 +713,10 @@ struct DuskIRValue {
             DuskIRPhiPair *pairs;
             size_t pair_count;
         } phi;
+        struct {
+            DuskIRValue *struct_ptr;
+            uint32_t struct_member_index;
+        } array_length;
     };
 };
 
@@ -742,13 +747,15 @@ duskIRFunctionCreate(DuskIRModule *module, DuskType *type, const char *name);
 void duskIRFunctionAddBlock(DuskIRValue *function, DuskIRValue *block);
 DuskIRValue *duskIRVariableCreate(
     DuskIRModule *module, DuskType *type, DuskStorageClass storage_class);
-void duskIRModuleAddEntryPoint(
+DuskIREntryPoint *duskIRModuleAddEntryPoint(
     DuskIRModule *module,
     DuskIRValue *function,
     const char *name,
     DuskShaderStage stage,
     size_t referenced_global_count,
     DuskIRValue **referenced_globals);
+void duskIREntryPointReferenceGlobal(
+    DuskIREntryPoint *entry_point, DuskIRValue *global);
 DuskIRModule *duskIRModuleCreate(DuskCompiler *compiler);
 
 DuskIRValue *duskIRConstBoolCreate(DuskIRModule *module, bool bool_value);
@@ -780,9 +787,7 @@ void duskIRCreateBranchCond(
     DuskIRValue *true_block,
     DuskIRValue *false_block);
 void duskIRCreateSelectionMerge(
-    DuskIRModule *module,
-    DuskIRValue *block,
-    DuskIRValue *merge_block);
+    DuskIRModule *module, DuskIRValue *block, DuskIRValue *merge_block);
 void duskIRCreateLoopMerge(
     DuskIRModule *module,
     DuskIRValue *block,
@@ -794,6 +799,11 @@ DuskIRValue *duskIRCreatePhi(
     DuskType *type,
     size_t pair_count,
     const DuskIRPhiPair *pairs);
+DuskIRValue *duskIRCreateArrayLength(
+    DuskIRModule *module,
+    DuskIRValue *block,
+    DuskIRValue *struct_ptr,
+    uint32_t struct_member_index);
 void duskIRCreateStore(
     DuskIRModule *module,
     DuskIRValue *block,
@@ -1084,6 +1094,7 @@ struct DuskDecl {
     union {
         struct {
             bool is_entry_point;
+            DuskIREntryPoint *entry_point;
             DuskShaderStage entry_point_stage;
             DuskArray(DuskIRValue *) entry_point_inputs_arr;
             DuskArray(DuskIRValue *) entry_point_outputs_arr;

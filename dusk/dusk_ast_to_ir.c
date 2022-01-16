@@ -772,6 +772,7 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
             DUSK_ASSERT(left_expr->ir_value);
 
             DuskExpr *right_expr = expr->access.chain_arr[i];
+            const char *accessed_field_name = right_expr->identifier.str;
 
             switch (left_expr->type->kind) {
             case DUSK_TYPE_VECTOR: {
@@ -860,6 +861,40 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
                         &index);
                 }
 
+                break;
+            }
+            case DUSK_TYPE_RUNTIME_ARRAY: {
+                if (strcmp(accessed_field_name, "len") == 0) {
+                    DuskExpr *struct_expr = NULL;
+                    if (i >= 2) {
+                        struct_expr = expr->access.chain_arr[i - 2];
+                    } else if (i >= 1) {
+                        struct_expr = expr->access.base_expr;
+                    } else {
+                        DUSK_ASSERT(0);
+                    }
+
+                    DuskIRValue *struct_ptr = struct_expr->ir_value;
+                    DUSK_ASSERT(struct_ptr->type->kind == DUSK_TYPE_POINTER);
+                    DUSK_ASSERT(
+                        struct_ptr->type->pointer.sub->kind ==
+                        DUSK_TYPE_STRUCT);
+
+                    DuskType *struct_ty = struct_ptr->type->pointer.sub;
+
+                    uintptr_t struct_member_index = 0;
+                    if (!duskMapGet(
+                            struct_ty->struct_.index_map,
+                            left_expr->identifier.str,
+                            (void *)&struct_member_index)) {
+                        DUSK_ASSERT(0);
+                    }
+
+                    right_expr->ir_value = duskIRCreateArrayLength(
+                        module, block, struct_ptr, struct_member_index);
+                } else {
+                    DUSK_ASSERT(0);
+                }
                 break;
             }
             default: {
@@ -1341,7 +1376,8 @@ duskGenerateLocalDecl(DuskIRModule *module, DuskDecl *func_decl, DuskDecl *decl)
     }
 }
 
-static void duskGenerateGlobalDecl(DuskIRModule *module, DuskDecl *decl)
+static void
+duskGenerateGlobalDecl(DuskIRModule *module, DuskFile *file, DuskDecl *decl)
 {
     if (decl->type) {
         duskTypeMarkNotDead(decl->type);
@@ -1528,7 +1564,16 @@ static void duskGenerateGlobalDecl(DuskIRModule *module, DuskDecl *decl)
                     decl->function.entry_point_outputs_arr[i]);
             }
 
-            duskIRModuleAddEntryPoint(
+            for (size_t i = 0; i < duskArrayLength(file->decls_arr); ++i) {
+                DuskDecl *global_decl = file->decls_arr[i];
+                if (global_decl->ir_value &&
+                    global_decl->ir_value->kind == DUSK_IR_VALUE_VARIABLE) {
+                    duskArrayPush(
+                        &referenced_globals_arr, global_decl->ir_value);
+                }
+            }
+
+            decl->function.entry_point = duskIRModuleAddEntryPoint(
                 module,
                 decl->ir_value,
                 decl->function.link_name,
@@ -1572,7 +1617,7 @@ DuskIRModule *duskGenerateIRModule(DuskCompiler *compiler, DuskFile *file)
 
     for (size_t i = 0; i < duskArrayLength(file->decls_arr); ++i) {
         DuskDecl *decl = file->decls_arr[i];
-        duskGenerateGlobalDecl(module, decl);
+        duskGenerateGlobalDecl(module, file, decl);
     }
 
     return module;

@@ -123,3 +123,34 @@ fn fs_main([location(0)] in_pos: float3) [location(0)] float4 {
     other.x = 123;
     return float4(float3(1, 2, 3), 1);
 }
+
+[stage(fragment)]
+fn fs_main2([location(0)] in_pos: float3) [location(0)] float4 {
+    let some_var: int = 123;
+    if (int(1) == int(0)) {
+
+    }
+
+    while (some_var == int(0)) {
+    }
+
+    let some_bool : bool = true || false;
+    if (some_bool) {
+        let asdasdasd: uint = @abs(uint(123));
+    }
+
+    let dist: float = @distance(float3(1, 2, 3), float3(3, 2, 1));
+    let norm: float3 = @normalize(float3(1, 2, 3));
+    let dot: float = @dot(norm, float3(3, 2, 1));
+    let len: float = @length(norm);
+    let cross: float3 = @cross(norm, norm);
+    let reflect: float3 = @reflect(norm, norm);
+    let refract: float3 = @refract(norm, norm, 0.5);
+    let min: float = @min(0.5, 0.3);
+    let max: float3 = @max(norm, norm);
+    let mix: float3 = @mix(norm, norm, float3(0.2));
+    let clamp: float3 = @clamp(norm, float3(0.1), float3(0.2));
+    let len2: uint = uniform.some_arr.len;
+
+    return float4(float3(1, 2, 3), 1);
+}
