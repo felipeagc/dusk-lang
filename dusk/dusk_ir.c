@@ -1475,6 +1475,10 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
             break;
         }
 
+        case DUSK_BUILTIN_FUNCTION_DISTANCE:
+            glsl_inst = GLSLstd450Distance;
+            break;
+
         case DUSK_BUILTIN_FUNCTION_SAMPLER_TYPE:
         case DUSK_BUILTIN_FUNCTION_IMAGE_1D_TYPE:
         case DUSK_BUILTIN_FUNCTION_IMAGE_2D_TYPE:

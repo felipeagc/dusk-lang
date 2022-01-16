@@ -43,6 +43,7 @@ static size_t DUSK_BUILTIN_FUNCTION_PARAM_COUNTS[DUSK_BUILTIN_FUNCTION_MAX] = {
     [DUSK_BUILTIN_FUNCTION_EXP2] = 1,
 
     [DUSK_BUILTIN_FUNCTION_ABS] = 1,
+    [DUSK_BUILTIN_FUNCTION_DISTANCE] = 2,
 };
 
 typedef struct DuskAnalyzerState {
@@ -1056,27 +1057,58 @@ static void duskAnalyzeExpr(
             duskConcretizeExprType(param, float_type);
 
             const bool is_param_float_ty =
-                param->type->kind != DUSK_TYPE_FLOAT &&
-                !(param->type->kind == DUSK_TYPE_VECTOR &&
-                  param->type->vector.sub->kind == DUSK_TYPE_FLOAT);
+                param->type->kind == DUSK_TYPE_FLOAT ||
+                (param->type->kind == DUSK_TYPE_VECTOR &&
+                 param->type->vector.sub->kind == DUSK_TYPE_FLOAT);
 
             const bool is_param_int_ty =
-                param->type->kind != DUSK_TYPE_INT &&
-                !(param->type->kind == DUSK_TYPE_VECTOR &&
-                  param->type->vector.sub->kind == DUSK_TYPE_INT);
+                param->type->kind == DUSK_TYPE_INT ||
+                (param->type->kind == DUSK_TYPE_VECTOR &&
+                 param->type->vector.sub->kind == DUSK_TYPE_INT);
 
             if (!is_param_float_ty && !is_param_int_ty) {
                 duskAddError(
                     compiler,
                     expr->location,
                     "invalid parameter type for '@%s' call: expected floating "
-                    "point scalar or vector, instead got '%s'",
+                    "point or integer scalar or vector, instead got '%s'",
                     duskGetBuiltinFunctionName(expr->builtin_call.kind),
                     duskTypeToPrettyString(allocator, param->type));
                 break;
             }
 
             expr->type = param->type;
+
+            break;
+        }
+
+        case DUSK_BUILTIN_FUNCTION_DISTANCE: {
+            DUSK_ASSERT(duskArrayLength(expr->builtin_call.params_arr) == 2);
+            DuskExpr *param0 = expr->builtin_call.params_arr[0];
+            DuskExpr *param1 = expr->builtin_call.params_arr[1];
+
+            duskAnalyzeExpr(compiler, state, param0, NULL, false);
+            duskAnalyzeExpr(compiler, state, param1, NULL, false);
+            if (!param0->type) break;
+            if (!param1->type) break;
+
+            const bool is_param_float_vector =
+                param0->type->kind == DUSK_TYPE_VECTOR &&
+                param0->type->vector.sub->kind == DUSK_TYPE_FLOAT;
+
+            if (param0->type != param1->type || !is_param_float_vector) {
+                duskAddError(
+                    compiler,
+                    expr->location,
+                    "invalid parameter types for '@%s' call: expected floating "
+                    "point vectors, instead got '%s' and '%s'",
+                    duskGetBuiltinFunctionName(expr->builtin_call.kind),
+                    duskTypeToPrettyString(allocator, param0->type),
+                    duskTypeToPrettyString(allocator, param1->type));
+                break;
+            }
+
+            expr->type = param0->type->vector.sub;
 
             break;
         }
