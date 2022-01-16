@@ -543,7 +543,10 @@ typedef enum DuskBuiltinFunctionKind {
     DUSK_BUILTIN_FUNCTION_REFLECT,
     DUSK_BUILTIN_FUNCTION_REFRACT,
 
+    DUSK_BUILTIN_FUNCTION_MIN,
     DUSK_BUILTIN_FUNCTION_MAX,
+
+    DUSK_BUILTIN_FUNCTION_COUNT,
 } DuskBuiltinFunctionKind;
 
 const char *duskGetBuiltinFunctionName(DuskBuiltinFunctionKind kind);

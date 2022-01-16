@@ -1,55 +1,58 @@
 #include "dusk_internal.h"
 
-static size_t DUSK_BUILTIN_FUNCTION_PARAM_COUNTS[DUSK_BUILTIN_FUNCTION_MAX] = {
-    [DUSK_BUILTIN_FUNCTION_SAMPLER_TYPE] = 0,
-    [DUSK_BUILTIN_FUNCTION_IMAGE_1D_TYPE] = 1,
-    [DUSK_BUILTIN_FUNCTION_IMAGE_2D_TYPE] = 1,
-    [DUSK_BUILTIN_FUNCTION_IMAGE_2D_ARRAY_TYPE] = 1,
-    [DUSK_BUILTIN_FUNCTION_IMAGE_3D_TYPE] = 1,
-    [DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_TYPE] = 1,
-    [DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_TYPE] = 1,
-    [DUSK_BUILTIN_FUNCTION_IMAGE_1D_SAMPLER_TYPE] = 1,
-    [DUSK_BUILTIN_FUNCTION_IMAGE_2D_SAMPLER_TYPE] = 1,
-    [DUSK_BUILTIN_FUNCTION_IMAGE_2D_ARRAY_SAMPLER_TYPE] = 1,
-    [DUSK_BUILTIN_FUNCTION_IMAGE_3D_SAMPLER_TYPE] = 1,
-    [DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_SAMPLER_TYPE] = 1,
-    [DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_SAMPLER_TYPE] = 1,
+static size_t DUSK_BUILTIN_FUNCTION_PARAM_COUNTS[DUSK_BUILTIN_FUNCTION_COUNT] =
+    {
+        [DUSK_BUILTIN_FUNCTION_SAMPLER_TYPE] = 0,
+        [DUSK_BUILTIN_FUNCTION_IMAGE_1D_TYPE] = 1,
+        [DUSK_BUILTIN_FUNCTION_IMAGE_2D_TYPE] = 1,
+        [DUSK_BUILTIN_FUNCTION_IMAGE_2D_ARRAY_TYPE] = 1,
+        [DUSK_BUILTIN_FUNCTION_IMAGE_3D_TYPE] = 1,
+        [DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_TYPE] = 1,
+        [DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_TYPE] = 1,
+        [DUSK_BUILTIN_FUNCTION_IMAGE_1D_SAMPLER_TYPE] = 1,
+        [DUSK_BUILTIN_FUNCTION_IMAGE_2D_SAMPLER_TYPE] = 1,
+        [DUSK_BUILTIN_FUNCTION_IMAGE_2D_ARRAY_SAMPLER_TYPE] = 1,
+        [DUSK_BUILTIN_FUNCTION_IMAGE_3D_SAMPLER_TYPE] = 1,
+        [DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_SAMPLER_TYPE] = 1,
+        [DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_SAMPLER_TYPE] = 1,
 
-    [DUSK_BUILTIN_FUNCTION_SIN] = 1,
-    [DUSK_BUILTIN_FUNCTION_COS] = 1,
-    [DUSK_BUILTIN_FUNCTION_TAN] = 1,
-    [DUSK_BUILTIN_FUNCTION_ASIN] = 1,
-    [DUSK_BUILTIN_FUNCTION_ACOS] = 1,
-    [DUSK_BUILTIN_FUNCTION_ATAN] = 1,
-    [DUSK_BUILTIN_FUNCTION_SINH] = 1,
-    [DUSK_BUILTIN_FUNCTION_COSH] = 1,
-    [DUSK_BUILTIN_FUNCTION_TANH] = 1,
-    [DUSK_BUILTIN_FUNCTION_ASINH] = 1,
-    [DUSK_BUILTIN_FUNCTION_ACOSH] = 1,
-    [DUSK_BUILTIN_FUNCTION_ATANH] = 1,
+        [DUSK_BUILTIN_FUNCTION_SIN] = 1,
+        [DUSK_BUILTIN_FUNCTION_COS] = 1,
+        [DUSK_BUILTIN_FUNCTION_TAN] = 1,
+        [DUSK_BUILTIN_FUNCTION_ASIN] = 1,
+        [DUSK_BUILTIN_FUNCTION_ACOS] = 1,
+        [DUSK_BUILTIN_FUNCTION_ATAN] = 1,
+        [DUSK_BUILTIN_FUNCTION_SINH] = 1,
+        [DUSK_BUILTIN_FUNCTION_COSH] = 1,
+        [DUSK_BUILTIN_FUNCTION_TANH] = 1,
+        [DUSK_BUILTIN_FUNCTION_ASINH] = 1,
+        [DUSK_BUILTIN_FUNCTION_ACOSH] = 1,
+        [DUSK_BUILTIN_FUNCTION_ATANH] = 1,
 
-    [DUSK_BUILTIN_FUNCTION_RADIANS] = 1,
-    [DUSK_BUILTIN_FUNCTION_DEGREES] = 1,
-    [DUSK_BUILTIN_FUNCTION_ROUND] = 1,
-    [DUSK_BUILTIN_FUNCTION_TRUNC] = 1,
-    [DUSK_BUILTIN_FUNCTION_FLOOR] = 1,
-    [DUSK_BUILTIN_FUNCTION_CEIL] = 1,
-    [DUSK_BUILTIN_FUNCTION_FRACT] = 1,
-    [DUSK_BUILTIN_FUNCTION_SQRT] = 1,
-    [DUSK_BUILTIN_FUNCTION_INVERSE_SQRT] = 1,
-    [DUSK_BUILTIN_FUNCTION_LOG] = 1,
-    [DUSK_BUILTIN_FUNCTION_LOG2] = 1,
-    [DUSK_BUILTIN_FUNCTION_EXP] = 1,
-    [DUSK_BUILTIN_FUNCTION_EXP2] = 1,
+        [DUSK_BUILTIN_FUNCTION_RADIANS] = 1,
+        [DUSK_BUILTIN_FUNCTION_DEGREES] = 1,
+        [DUSK_BUILTIN_FUNCTION_ROUND] = 1,
+        [DUSK_BUILTIN_FUNCTION_TRUNC] = 1,
+        [DUSK_BUILTIN_FUNCTION_FLOOR] = 1,
+        [DUSK_BUILTIN_FUNCTION_CEIL] = 1,
+        [DUSK_BUILTIN_FUNCTION_FRACT] = 1,
+        [DUSK_BUILTIN_FUNCTION_SQRT] = 1,
+        [DUSK_BUILTIN_FUNCTION_INVERSE_SQRT] = 1,
+        [DUSK_BUILTIN_FUNCTION_LOG] = 1,
+        [DUSK_BUILTIN_FUNCTION_LOG2] = 1,
+        [DUSK_BUILTIN_FUNCTION_EXP] = 1,
+        [DUSK_BUILTIN_FUNCTION_EXP2] = 1,
 
-    [DUSK_BUILTIN_FUNCTION_ABS] = 1,
-    [DUSK_BUILTIN_FUNCTION_DISTANCE] = 2,
-    [DUSK_BUILTIN_FUNCTION_NORMALIZE] = 1,
-    [DUSK_BUILTIN_FUNCTION_DOT] = 2,
-    [DUSK_BUILTIN_FUNCTION_LENGTH] = 1,
-    [DUSK_BUILTIN_FUNCTION_CROSS] = 2,
-    [DUSK_BUILTIN_FUNCTION_REFLECT] = 2,
-    [DUSK_BUILTIN_FUNCTION_REFRACT] = 3,
+        [DUSK_BUILTIN_FUNCTION_ABS] = 1,
+        [DUSK_BUILTIN_FUNCTION_DISTANCE] = 2,
+        [DUSK_BUILTIN_FUNCTION_NORMALIZE] = 1,
+        [DUSK_BUILTIN_FUNCTION_DOT] = 2,
+        [DUSK_BUILTIN_FUNCTION_LENGTH] = 1,
+        [DUSK_BUILTIN_FUNCTION_CROSS] = 2,
+        [DUSK_BUILTIN_FUNCTION_REFLECT] = 2,
+        [DUSK_BUILTIN_FUNCTION_REFRACT] = 3,
+        [DUSK_BUILTIN_FUNCTION_MIN] = 2,
+        [DUSK_BUILTIN_FUNCTION_MAX] = 2,
 };
 
 typedef struct DuskAnalyzerState {
@@ -1300,6 +1303,51 @@ static void duskAnalyzeExpr(
             break;
         }
 
+        case DUSK_BUILTIN_FUNCTION_MIN:
+        case DUSK_BUILTIN_FUNCTION_MAX: {
+            DUSK_ASSERT(duskArrayLength(expr->builtin_call.params_arr) == 2);
+            DuskExpr *param0 = expr->builtin_call.params_arr[0];
+            DuskExpr *param1 = expr->builtin_call.params_arr[1];
+
+            duskAnalyzeExpr(compiler, state, param0, NULL, false);
+            duskAnalyzeExpr(compiler, state, param1, NULL, false);
+            if (!param0->type) break;
+            if (!param1->type) break;
+
+            DuskType *float_type =
+                duskTypeNewScalar(compiler, DUSK_SCALAR_TYPE_FLOAT);
+
+            duskConcretizeExprType(param0, float_type);
+            duskConcretizeExprType(param1, float_type);
+
+            const bool is_param_float_or_vector =
+                param0->type->kind == DUSK_TYPE_FLOAT ||
+                (param0->type->kind == DUSK_TYPE_VECTOR &&
+                 param0->type->vector.sub->kind == DUSK_TYPE_FLOAT);
+
+            const bool is_param_int_or_vector =
+                param0->type->kind == DUSK_TYPE_INT ||
+                (param0->type->kind == DUSK_TYPE_VECTOR &&
+                 param0->type->vector.sub->kind == DUSK_TYPE_INT);
+
+            if (param0->type != param1->type ||
+                (!is_param_int_or_vector && !is_param_float_or_vector)) {
+                duskAddError(
+                    compiler,
+                    expr->location,
+                    "invalid parameter types for '@%s' call: expected the same "
+                    "scalar or vector types, instead got '%s' and '%s'",
+                    duskGetBuiltinFunctionName(expr->builtin_call.kind),
+                    duskTypeToPrettyString(allocator, param0->type),
+                    duskTypeToPrettyString(allocator, param1->type));
+                break;
+            }
+
+            expr->type = param0->type;
+
+            break;
+        }
+
         case DUSK_BUILTIN_FUNCTION_SAMPLER_TYPE: {
             expr->type = duskTypeNewBasic(compiler, DUSK_TYPE_TYPE);
             expr->as_type = duskTypeNewBasic(compiler, DUSK_TYPE_SAMPLER);
@@ -1430,7 +1478,7 @@ static void duskAnalyzeExpr(
             }
             break;
         }
-        case DUSK_BUILTIN_FUNCTION_MAX: DUSK_ASSERT(0); break;
+        case DUSK_BUILTIN_FUNCTION_COUNT: DUSK_ASSERT(0); break;
         }
         break;
     }

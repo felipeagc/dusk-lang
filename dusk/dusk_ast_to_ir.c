@@ -705,7 +705,9 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
         case DUSK_BUILTIN_FUNCTION_LENGTH:
         case DUSK_BUILTIN_FUNCTION_CROSS:
         case DUSK_BUILTIN_FUNCTION_REFLECT:
-        case DUSK_BUILTIN_FUNCTION_REFRACT: {
+        case DUSK_BUILTIN_FUNCTION_REFRACT:
+        case DUSK_BUILTIN_FUNCTION_MIN:
+        case DUSK_BUILTIN_FUNCTION_MAX: {
             DUSK_ASSERT(func_decl);
             DuskIRValue *function = func_decl->ir_value;
             DUSK_ASSERT(duskArrayLength(function->function.blocks_arr) > 0);
@@ -749,7 +751,7 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
             DUSK_ASSERT(!"not a runtime value");
             break;
         }
-        case DUSK_BUILTIN_FUNCTION_MAX: DUSK_ASSERT(0); break;
+        case DUSK_BUILTIN_FUNCTION_COUNT: DUSK_ASSERT(0); break;
         }
         break;
     }

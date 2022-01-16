@@ -1500,6 +1500,32 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
             glsl_inst = GLSLstd450Refract;
             break;
 
+        case DUSK_BUILTIN_FUNCTION_MIN: {
+            if (value->type->kind == DUSK_TYPE_INT) {
+                if (value->type->int_.is_signed) {
+                    glsl_inst = GLSLstd450SMin;
+                } else {
+                    glsl_inst = GLSLstd450UMin;
+                }
+            } else {
+                glsl_inst = GLSLstd450FMin;
+            }
+            break;
+        }
+
+        case DUSK_BUILTIN_FUNCTION_MAX: {
+            if (value->type->kind == DUSK_TYPE_INT) {
+                if (value->type->int_.is_signed) {
+                    glsl_inst = GLSLstd450SMax;
+                } else {
+                    glsl_inst = GLSLstd450UMax;
+                }
+            } else {
+                glsl_inst = GLSLstd450FMax;
+            }
+            break;
+        }
+
         case DUSK_BUILTIN_FUNCTION_SAMPLER_TYPE:
         case DUSK_BUILTIN_FUNCTION_IMAGE_1D_TYPE:
         case DUSK_BUILTIN_FUNCTION_IMAGE_2D_TYPE:
@@ -1513,7 +1539,7 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
         case DUSK_BUILTIN_FUNCTION_IMAGE_3D_SAMPLER_TYPE:
         case DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_SAMPLER_TYPE:
         case DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_SAMPLER_TYPE:
-        case DUSK_BUILTIN_FUNCTION_MAX: {
+        case DUSK_BUILTIN_FUNCTION_COUNT: {
             DUSK_ASSERT(0);
             break;
         }

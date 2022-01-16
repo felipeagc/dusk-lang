@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-static const char *DUSK_BUILTIN_FUNCTION_NAMES[DUSK_BUILTIN_FUNCTION_MAX] = {
+static const char *DUSK_BUILTIN_FUNCTION_NAMES[DUSK_BUILTIN_FUNCTION_COUNT] = {
     [DUSK_BUILTIN_FUNCTION_SAMPLER_TYPE] = "Sampler",
     [DUSK_BUILTIN_FUNCTION_IMAGE_1D_TYPE] = "Image1D",
     [DUSK_BUILTIN_FUNCTION_IMAGE_2D_TYPE] = "Image2D",
@@ -54,6 +54,8 @@ static const char *DUSK_BUILTIN_FUNCTION_NAMES[DUSK_BUILTIN_FUNCTION_MAX] = {
     [DUSK_BUILTIN_FUNCTION_CROSS] = "cross",
     [DUSK_BUILTIN_FUNCTION_REFLECT] = "reflect",
     [DUSK_BUILTIN_FUNCTION_REFRACT] = "refract",
+    [DUSK_BUILTIN_FUNCTION_MIN] = "min",
+    [DUSK_BUILTIN_FUNCTION_MAX] = "max",
 };
 
 DuskCompiler *duskCompilerCreate(void)
@@ -186,7 +188,7 @@ DuskCompiler *duskCompilerCreate(void)
     duskMapSet(compiler->keyword_map, "ulong3x3", (void *)DUSK_TOKEN_ULONG3X3);
     duskMapSet(compiler->keyword_map, "ulong4x4", (void *)DUSK_TOKEN_ULONG4X4);
 
-    for (size_t i = 0; i < DUSK_BUILTIN_FUNCTION_MAX; ++i) {
+    for (size_t i = 0; i < DUSK_BUILTIN_FUNCTION_COUNT; ++i) {
         duskMapSet(
             compiler->builtin_function_map,
             duskGetBuiltinFunctionName((DuskBuiltinFunctionKind)i),
@@ -274,6 +276,6 @@ uint8_t *duskCompile(
 
 const char *duskGetBuiltinFunctionName(DuskBuiltinFunctionKind kind)
 {
-    if (kind >= DUSK_BUILTIN_FUNCTION_MAX) return NULL;
+    if (kind >= DUSK_BUILTIN_FUNCTION_COUNT) return NULL;
     return DUSK_BUILTIN_FUNCTION_NAMES[kind];
 }
