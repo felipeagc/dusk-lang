@@ -1209,7 +1209,8 @@ duskGenerateStmt(DuskIRModule *module, DuskDecl *func_decl, DuskStmt *stmt)
 
         // Generate conditional branch
         duskGenerateExpr(module, func_decl, stmt->if_.cond_expr);
-        DuskIRValue *cond = stmt->if_.cond_expr->ir_value;
+        DuskIRValue *cond =
+            duskIRLoadLvalue(module, block, stmt->if_.cond_expr->ir_value);
         duskIRCreateSelectionMerge(module, block, merge_block);
         duskIRCreateBranchCond(
             module,
@@ -1252,7 +1253,8 @@ duskGenerateStmt(DuskIRModule *module, DuskDecl *func_decl, DuskStmt *stmt)
         // Cond block
         duskIRFunctionAddBlock(function, cond_block);
         duskGenerateExpr(module, func_decl, stmt->while_.cond_expr);
-        DuskIRValue *cond = stmt->while_.cond_expr->ir_value;
+        DuskIRValue *cond = duskIRLoadLvalue(
+            module, cond_block, stmt->while_.cond_expr->ir_value);
         duskIRCreateBranchCond(
             module, cond_block, cond, body_block, merge_block);
 
