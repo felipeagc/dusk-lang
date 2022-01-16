@@ -1492,6 +1492,10 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
             glsl_inst = GLSLstd450Cross;
             break;
 
+        case DUSK_BUILTIN_FUNCTION_REFLECT:
+            glsl_inst = GLSLstd450Reflect;
+            break;
+
         case DUSK_BUILTIN_FUNCTION_SAMPLER_TYPE:
         case DUSK_BUILTIN_FUNCTION_IMAGE_1D_TYPE:
         case DUSK_BUILTIN_FUNCTION_IMAGE_2D_TYPE:

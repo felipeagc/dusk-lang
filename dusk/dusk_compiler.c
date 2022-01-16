@@ -52,6 +52,7 @@ static const char *DUSK_BUILTIN_FUNCTION_NAMES[DUSK_BUILTIN_FUNCTION_MAX] = {
     [DUSK_BUILTIN_FUNCTION_DOT] = "dot",
     [DUSK_BUILTIN_FUNCTION_LENGTH] = "length",
     [DUSK_BUILTIN_FUNCTION_CROSS] = "cross",
+    [DUSK_BUILTIN_FUNCTION_REFLECT] = "reflect",
 };
 
 DuskCompiler *duskCompilerCreate(void)
