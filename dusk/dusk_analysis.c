@@ -2546,21 +2546,23 @@ static void duskAnalyzeDecl(
     case DUSK_DECL_VAR: {
         DuskType *type_type = duskTypeNewBasic(compiler, DUSK_TYPE_TYPE);
 
-        DUSK_ASSERT(decl->var.type_expr);
-        duskAnalyzeExpr(compiler, state, decl->var.type_expr, type_type, false);
-        DuskType *var_type = decl->var.type_expr->as_type;
-
-        if (!var_type) {
-            DUSK_ASSERT(duskArrayLength(compiler->errors_arr) > 0);
-            break;
+        DuskType *var_type = NULL;
+        if (decl->var.type_expr) {
+            duskAnalyzeExpr(compiler, state, decl->var.type_expr, type_type, false);
+            var_type = decl->var.type_expr->as_type;
         }
 
         if (decl->var.value_expr) {
             duskAnalyzeExpr(
                 compiler, state, decl->var.value_expr, var_type, false);
-            if (var_type == NULL) {
+            if (!var_type) {
                 var_type = decl->var.value_expr->type;
             }
+        }
+
+        if (!var_type) {
+            DUSK_ASSERT(duskArrayLength(compiler->errors_arr) > 0);
+            break;
         }
 
         if (!duskTypeIsRuntime(var_type)) {

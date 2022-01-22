@@ -2089,9 +2089,13 @@ static DuskStmt *parseStmt(DuskCompiler *compiler, TokenizerState *state)
         DuskToken name_token = consumeToken(compiler, state, DUSK_TOKEN_IDENT);
 
         DuskExpr *value_expr = NULL;
+        DuskExpr *type_expr = NULL;
 
-        consumeToken(compiler, state, DUSK_TOKEN_COLON);
-        DuskExpr *type_expr = parseExpr(compiler, state, true);
+        tokenizerNextToken(compiler, *state, &next_token);
+        if (next_token.type == DUSK_TOKEN_COLON) {
+            consumeToken(compiler, state, DUSK_TOKEN_COLON);
+            type_expr = parseExpr(compiler, state, true);
+        }
 
         tokenizerNextToken(compiler, *state, &next_token);
         if (next_token.type == DUSK_TOKEN_ASSIGN) {
