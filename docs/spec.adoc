@@ -29,10 +29,10 @@ fn vs_main(
 	[location(0)] pos: float3,
 	[location(1)] uv: float2,
 ) VsOutput {
-	let out: VsOutput;
-	out.pos = pos;
-	out.uv = uv;
-	return out;
+	return VsOutput{
+		.pos = pos,
+		.uv = uv,
+	};
 }
 
 [stage(fragment)]

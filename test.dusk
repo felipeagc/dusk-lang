@@ -63,12 +63,12 @@ fn vs_main(
     );
     let f: float3x3 = float3x3(d);
 
-    let str: Hello = Hello.{
-        a: 123,
-        b: d.x,
+    let str: Hello = Hello{
+        .a = 123,
+        .b = d.x,
     };
 
-    str = Hello.{ a: 123, b: 321 };
+    str = Hello{ .a = 123, .b = 321 };
 
     str.a = 123;
 
@@ -78,8 +78,8 @@ fn vs_main(
 
     // out_uv = in_uv;
     // out_position = float4(in_pos, 1);
-    return VsOutput.{
-        pos: input.pos,
+    return VsOutput{
+        .pos = input.pos,
     };
 }
 
@@ -170,4 +170,23 @@ fn fs_main3([location(0)] in_pos: float3) [location(0)] float4 {
     }
 
     return float4(float3(1, 2, 3), 1);
+}
+
+type VsOutput2 struct {
+    [builtin(position)] pos: float4,
+};
+
+type VsInput2 struct {
+    [builtin(vertex_index)] index: uint,
+};
+
+[stage(vertex)]
+fn test_vertex(in: VsInput2) VsOutput2 {
+    let vertices: [3]float4;
+    vertices[0] = float4(1, 0, 0, 1);
+    vertices[1] = float4(0, 1, 0, 1);
+    vertices[2] = float4(1, 1, 0,1 );
+    return VsOutput2{
+        .pos = vertices[in.index],
+    };
 }
