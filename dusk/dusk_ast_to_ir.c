@@ -531,6 +531,56 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
         break;
     }
 
+    case DUSK_EXPR_ARRAY_LITERAL: {
+        DuskType *array_type = expr->type;
+        if (array_type->kind == DUSK_TYPE_STRUCT) {
+            expr->ir_value =
+                duskIRConstCompositeCreate(module, array_type, 0, NULL);
+        } else {
+            DUSK_ASSERT(array_type->kind == DUSK_TYPE_ARRAY);
+        }
+
+        size_t field_value_count =
+            duskArrayLength(expr->array_literal.field_values_arr);
+        DuskIRValue **field_values = duskAllocateZeroed(
+            module->allocator, sizeof(DuskIRValue *) * field_value_count);
+
+        for (size_t i = 0; i < field_value_count; ++i) {
+            duskGenerateExpr(
+                module, func_decl, expr->array_literal.field_values_arr[i]);
+            field_values[i] = expr->array_literal.field_values_arr[i]->ir_value;
+            DUSK_ASSERT(field_values[i]);
+        }
+
+        bool all_fields_constant = true;
+        for (size_t i = 0; i < field_value_count; ++i) {
+            DUSK_ASSERT(field_values[i]);
+            if (!duskIRValueIsConstant(field_values[i])) {
+                all_fields_constant = false;
+            }
+        }
+
+        if (all_fields_constant) {
+            expr->ir_value = duskIRConstCompositeCreate(
+                module, array_type, field_value_count, field_values);
+        } else {
+            DuskIRValue *function = func_decl->ir_value;
+            DUSK_ASSERT(duskArrayLength(function->function.blocks_arr) > 0);
+
+            DuskIRValue *block = duskGetLastBlock(function);
+
+            for (size_t i = 0; i < field_value_count; ++i) {
+                field_values[i] =
+                    duskIRLoadLvalue(module, block, field_values[i]);
+            }
+
+            expr->ir_value = duskIRCreateCompositeConstruct(
+                module, block, array_type, field_value_count, field_values);
+        }
+
+        break;
+    }
+
     case DUSK_EXPR_FUNCTION_CALL: {
         DuskType *func_type = expr->function_call.func_expr->type;
         switch (func_type->kind) {
@@ -1088,7 +1138,15 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
             duskArrayPush(&index_values_arr, index_expr->ir_value);
         }
 
-        DUSK_ASSERT(duskIRIsLvalue(base_value));
+        if (!duskIRIsLvalue(base_value)) {
+            DuskIRValue *tmp_var = duskIRVariableCreate(
+                module, base_value->type, DUSK_STORAGE_CLASS_FUNCTION);
+            duskArrayPush(&function->function.variables_arr, tmp_var);
+
+            duskIRCreateStore(module, block, tmp_var, base_value);
+
+            base_value = tmp_var;
+        }
 
         expr->ir_value = duskIRCreateAccessChain(
             module,

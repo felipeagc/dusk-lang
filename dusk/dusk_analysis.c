@@ -215,6 +215,7 @@ static bool duskExprResolveInteger(
 
     case DUSK_EXPR_ARRAY_ACCESS:
     case DUSK_EXPR_STRUCT_LITERAL:
+    case DUSK_EXPR_ARRAY_LITERAL:
     case DUSK_EXPR_ACCESS:
     case DUSK_EXPR_FUNCTION_CALL:
     case DUSK_EXPR_BUILTIN_FUNCTION_CALL:
@@ -589,6 +590,69 @@ static void duskAnalyzeExpr(
         }
 
         expr->type = struct_type;
+
+        break;
+    }
+    case DUSK_EXPR_ARRAY_LITERAL: {
+        DuskType *type_type = duskTypeNewBasic(compiler, DUSK_TYPE_TYPE);
+
+        duskAnalyzeExpr(
+            compiler, state, expr->array_literal.type_expr, type_type, false);
+
+        DuskType *array_type = expr->array_literal.type_expr->as_type;
+        if (!array_type) {
+            DUSK_ASSERT(duskArrayLength(compiler->errors_arr) > 0);
+            break;
+        }
+
+        if (array_type->kind == DUSK_TYPE_STRUCT) {
+            if (array_type->struct_.field_count > 0) {
+                duskAddError(
+                    compiler,
+                    expr->location,
+                    "expected %zu fields for struct literal of type '%s', "
+                    "instead got 0",
+                    array_type->struct_.field_count,
+                    duskTypeToPrettyString(allocator, array_type));
+            }
+            expr->type = array_type;
+            break;
+        }
+
+        if (array_type->kind != DUSK_TYPE_ARRAY) {
+            duskAddError(
+                compiler,
+                expr->location,
+                "expected a array type for array literal, instead got: '%s'",
+                duskTypeToPrettyString(allocator, array_type));
+            break;
+        }
+
+        expr->type = array_type;
+
+        if (array_type->array.size !=
+            duskArrayLength(expr->array_literal.field_values_arr)) {
+            duskAddError(
+                compiler,
+                expr->location,
+                "expected %zu fields for array literal of type '%s', "
+                "instead got %zu",
+                array_type->array.size,
+                duskTypeToPrettyString(allocator, array_type),
+                duskArrayLength(expr->array_literal.field_values_arr));
+            break;
+        }
+
+        for (size_t i = 0;
+             i < duskArrayLength(expr->array_literal.field_values_arr);
+             ++i) {
+            duskAnalyzeExpr(
+                compiler,
+                state,
+                expr->array_literal.field_values_arr[i],
+                array_type->array.sub,
+                false);
+        }
 
         break;
     }

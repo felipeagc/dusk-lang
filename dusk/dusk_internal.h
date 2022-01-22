@@ -1179,6 +1179,7 @@ typedef enum DuskExprKind {
     DUSK_EXPR_FLOAT_LITERAL,
     DUSK_EXPR_BOOL_LITERAL,
     DUSK_EXPR_STRUCT_LITERAL,
+    DUSK_EXPR_ARRAY_LITERAL,
     DUSK_EXPR_IDENT,
     DUSK_EXPR_STRUCT_TYPE,
     DUSK_EXPR_ARRAY_TYPE,
@@ -1218,6 +1219,10 @@ struct DuskExpr {
             DuskArray(const char *) field_names_arr;
             DuskArray(DuskExpr *) field_values_arr;
         } struct_literal;
+        struct {
+            DuskExpr *type_expr;
+            DuskArray(DuskExpr *) field_values_arr;
+        } array_literal;
         struct {
             const char *str;
             DuskDecl *decl;
