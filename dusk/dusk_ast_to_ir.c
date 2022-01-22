@@ -452,8 +452,13 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
         DUSK_ASSERT(
             expr->type->kind != DUSK_TYPE_UNTYPED_INT &&
             expr->type->kind != DUSK_TYPE_UNTYPED_FLOAT);
-        expr->ir_value = duskIRConstIntCreate(
-            module, expr->type, (uint64_t)expr->int_literal);
+        if (expr->type->kind == DUSK_TYPE_INT) {
+            expr->ir_value = duskIRConstIntCreate(
+                module, expr->type, (uint64_t)expr->int_literal);
+        } else if (expr->type->kind == DUSK_TYPE_FLOAT) {
+            expr->ir_value = duskIRConstFloatCreate(
+                module, expr->type, (double)expr->int_literal);
+        }
         break;
     }
 

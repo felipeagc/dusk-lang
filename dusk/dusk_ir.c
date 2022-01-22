@@ -78,18 +78,18 @@ duskIRConstToString(DuskAllocator *allocator, DuskIRValue *value)
         }
         case DUSK_TYPE_FLOAT: {
             switch (value->type->float_.bits) {
-            case 32:
-                value->const_string = duskSprintf(
-                    allocator,
-                    "@f32(%f)",
-                    *(float *)value->constant.value_words);
+            case 32: {
+                float val = 0.0f;
+                memcpy(&val, value->constant.value_words, sizeof(float));
+                value->const_string = duskSprintf(allocator, "@f32(%f)", val);
                 break;
-            case 64:
-                value->const_string = duskSprintf(
-                    allocator,
-                    "@f64(%lf)",
-                    *(double *)value->constant.value_words);
+            }
+            case 64: {
+                double val = 0.0f;
+                memcpy(&val, value->constant.value_words, sizeof(double));
+                value->const_string = duskSprintf(allocator, "@f64(%lf)", val);
                 break;
+            }
             }
             break;
         }
@@ -100,7 +100,7 @@ duskIRConstToString(DuskAllocator *allocator, DuskIRValue *value)
     case DUSK_IR_VALUE_CONSTANT_COMPOSITE: {
         DuskStringBuilder *sb = duskStringBuilderCreate(allocator, 1024);
         duskStringBuilderAppend(sb, duskTypeToString(allocator, value->type));
-        duskStringBuilderAppend(sb, "(");
+        duskStringBuilderAppend(sb, "{");
         for (size_t i = 0;
              i < duskArrayLength(value->constant_composite.values_arr);
              ++i) {
@@ -109,10 +109,12 @@ duskIRConstToString(DuskAllocator *allocator, DuskIRValue *value)
             const char *elem_str = duskIRConstToString(allocator, elem_value);
             duskStringBuilderAppend(sb, elem_str);
         }
-        duskStringBuilderAppend(sb, ")");
+        duskStringBuilderAppend(sb, "}");
 
         value->const_string = duskStringBuilderBuild(sb, allocator);
+
         duskStringBuilderDestroy(sb);
+
         break;
     }
     default: DUSK_ASSERT(0); break;
