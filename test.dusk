@@ -3,12 +3,12 @@ type Hello struct {
     b: float,
 };
 
-let(push_constant) pc : struct (std140) {
+var(push_constant) pc : struct (std140) {
     a: float3,
 };
 
 [set(0), binding(0)]
-let(uniform) uniform : struct (std140) {
+var(uniform) uniform : struct (std140) {
     a: int,
     b: float,
     c: float3,
@@ -16,7 +16,7 @@ let(uniform) uniform : struct (std140) {
 };
 
 [set(0), binding(1), read_only]
-let(storage) camera_buffers: []struct (std430) {
+var(storage) camera_buffers: []struct (std430) {
     cameras: []struct (std430) {
         pos: float4,
         view: float4x4,
@@ -24,12 +24,12 @@ let(storage) camera_buffers: []struct (std430) {
     },
 };
 
-[set(0), binding(2)] let image : @Image2D(float);
-[set(0), binding(3)] let image2 : @Image3DSampler(float);
-[set(0), binding(4)] let sampler : @Sampler();
+[set(0), binding(2)] var image : @Image2D(float);
+[set(0), binding(3)] var image2 : @Image3DSampler(float);
+[set(0), binding(4)] var sampler : @Sampler();
 
 fn test(param: int) int {
-    let a: int = param;
+    var a: int = param;
     return a;
 }
 
@@ -50,20 +50,20 @@ type VsInput struct {
 fn vs_main(
     input: VsInput,
 ) VsOutput {
-    let my_image: @Image2D(float) = image;
-    let a: float3;
-    let b: float = a.xyz.z;
-    let c: int = test(1);
+    var my_image: @Image2D(float) = image;
+    var a: float3;
+    var b: float = a.xyz.z;
+    var c: int = test(1);
     c = test2(1);
-    let d: float3 = float3(0.1123);
-    let e: float3x3 = float3x3(
+    var d: float3 = float3(0.1123);
+    var e: float3x3 = float3x3(
         float3(0.1123),
         float3(0.1123),
         float3(0.1123),
     );
-    let f: float3x3 = float3x3(d);
+    var f: float3x3 = float3x3(d);
 
-    let str: Hello = Hello{
+    var str: Hello = Hello{
         .a = 123,
         .b = d.x,
     };
@@ -73,7 +73,7 @@ fn vs_main(
     str.a = 123;
 
     {
-        let member: float = str.b;
+        var member: float = str.b;
     }
 
     // out_uv = in_uv;
@@ -85,18 +85,18 @@ fn vs_main(
 
 [stage(fragment)]
 fn fs_main([location(0)] in_pos: float3) [location(0)] float4 {
-    // let color: float4 = @sample(sampler, image, uv);
+    // var color: float4 = @sample(sampler, image, uv);
 
     // out_color = float4(color, 1.0);
 
-    // let a: float3 = in_pos;
+    // var a: float3 = in_pos;
 
-    let i: int = 123;
-    let u: uint = uint(i);
+    var i: int = 123;
+    var u: uint = uint(i);
     i = 321;
-    let f: float = float(i);
+    var f: float = float(i);
 
-    let s: float2 = @sin(float2(123,123));
+    var s: float2 = @sin(float2(123,123));
     s = @tan(s);
     s = @atanh(s);
     s = @sqrt(s);
@@ -108,25 +108,25 @@ fn fs_main([location(0)] in_pos: float3) [location(0)] float4 {
     s = @trunc(s);
     s = @exp2(s) + s * (123 + 123);
 
-    let my_arr_arr: [2][2]float;
-    let my_arr: [2]float = my_arr_arr[0];
+    var my_arr_arr: [2][2]float;
+    var my_arr: [2]float = my_arr_arr[0];
     my_arr_arr[0][0] = 123;
 
-    let my_mat: float4x4;
-    let my_vec: float4;
+    var my_mat: float4x4;
+    var my_vec: float4;
     my_mat = my_mat * my_mat;
     my_vec = my_mat * -my_vec;
 
     my_vec += float4(1);
 
-    let other: float3 = float3(1).xxx;
+    var other: float3 = float3(1).xxx;
     other.x = 123;
     return float4(float3(1, 2, 3), 1);
 }
 
 [stage(fragment)]
 fn fs_main2([location(0)] in_pos: float3) [location(0)] float4 {
-    let some_var: int = 123;
+    var some_var: int = 123;
     if (int(1) == int(0)) {
 
     }
@@ -134,37 +134,37 @@ fn fs_main2([location(0)] in_pos: float3) [location(0)] float4 {
     while (some_var == int(0)) {
     }
 
-    let some_bool : bool = true || false;
+    var some_bool : bool = true || false;
     if (some_bool) {
-        let asdasdasd: uint = @abs(uint(123));
+        var asdasdasd: uint = @abs(uint(123));
     }
 
-    let dist: float = @distance(float3(1, 2, 3), float3(3, 2, 1));
-    let norm: float3 = @normalize(float3(1, 2, 3));
-    let dot: float = @dot(norm, float3(3, 2, 1));
-    let len: float = @length(norm);
-    let cross: float3 = @cross(norm, norm);
-    let reflect: float3 = @reflect(norm, norm);
-    let refract: float3 = @refract(norm, norm, 0.5);
-    let min: float = @min(0.5, 0.3);
-    let max: float3 = @max(norm, norm);
-    let mix: float3 = @mix(norm, norm, float3(0.2));
-    let clamp: float3 = @clamp(norm, float3(0.1), float3(0.2));
-    let len2: uint = uniform.some_arr.len;
+    var dist: float = @distance(float3(1, 2, 3), float3(3, 2, 1));
+    var norm: float3 = @normalize(float3(1, 2, 3));
+    var dot: float = @dot(norm, float3(3, 2, 1));
+    var len: float = @length(norm);
+    var cross: float3 = @cross(norm, norm);
+    var reflect: float3 = @reflect(norm, norm);
+    var refract: float3 = @refract(norm, norm, 0.5);
+    var min: float = @min(0.5, 0.3);
+    var max: float3 = @max(norm, norm);
+    var mix: float3 = @mix(norm, norm, float3(0.2));
+    var clamp: float3 = @clamp(norm, float3(0.1), float3(0.2));
+    var len2: uint = uniform.some_arr.len;
 
-    let mat: float3x3 = float3x3(
+    var mat: float3x3 = float3x3(
         float3(1),
         float3(2),
         float3(3),
     );
-    let determinant: float = @determinant(@inverse(mat));
+    var determinant: float = @determinant(@inverse(mat));
 
     return float4(float3(1, 2, 3), 1);
 }
 
 [stage(fragment)]
 fn fs_main3([location(0)] in_pos: float3) [location(0)] float4 {
-    let count: int = 0;
+    var count: int = 0;
     while (true) {
         if (count > int(5)) break;
     }
@@ -182,7 +182,7 @@ type VsInput2 struct {
 
 [stage(vertex)]
 fn test_vertex(in: VsInput2) VsOutput2 {
-    let vertices: [3]float4;
+    var vertices: [3]float4;
     vertices[0] = float4(1, 0, 0, 1);
     vertices[1] = float4(0, 1, 0, 1);
     vertices[2] = float4(1, 1, 0,1 );

@@ -86,7 +86,7 @@ Attributes represent additional properties given to variables or functions.
 They are used as follows:
 [source]
 ----
-[set(0), binding(0)] let sampler : @Sampler();
+[set(0), binding(0)] var sampler : @Sampler();
 
 type MyStruct struct {
 	[offset(0)] a: int,

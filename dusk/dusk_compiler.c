@@ -79,7 +79,7 @@ DuskCompiler *duskCompilerCreate(void)
         .builtin_function_map = duskMapCreate(allocator, 32),
     };
 
-    duskMapSet(compiler->keyword_map, "let", (void *)DUSK_TOKEN_LET);
+    duskMapSet(compiler->keyword_map, "var", (void *)DUSK_TOKEN_VAR);
     duskMapSet(compiler->keyword_map, "fn", (void *)DUSK_TOKEN_FN);
     duskMapSet(compiler->keyword_map, "const", (void *)DUSK_TOKEN_CONST);
     duskMapSet(compiler->keyword_map, "struct", (void *)DUSK_TOKEN_STRUCT);

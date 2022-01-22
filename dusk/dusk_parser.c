@@ -21,7 +21,7 @@ static const char *tokenTypeToString(DuskTokenType token_type)
     case DUSK_TOKEN_INT_LITERAL: return "integer literal";
     case DUSK_TOKEN_FLOAT_LITERAL: return "float literal";
 
-    case DUSK_TOKEN_LET: return "let";
+    case DUSK_TOKEN_VAR: return "let";
     case DUSK_TOKEN_FN: return "fn";
     case DUSK_TOKEN_CONST: return "const";
     case DUSK_TOKEN_STRUCT: return "struct";
@@ -210,7 +210,7 @@ tokenToString(DuskAllocator *allocator, const DuskToken *token)
     case DUSK_TOKEN_FLOAT_LITERAL:
         return duskSprintf(allocator, "%lf", token->float_);
 
-    case DUSK_TOKEN_LET: return "let";
+    case DUSK_TOKEN_VAR: return "let";
     case DUSK_TOKEN_FN: return "fn";
     case DUSK_TOKEN_CONST: return "const";
     case DUSK_TOKEN_STRUCT: return "struct";
@@ -2049,8 +2049,8 @@ static DuskStmt *parseStmt(DuskCompiler *compiler, TokenizerState *state)
     stmt->location = next_token.location;
 
     switch (next_token.type) {
-    case DUSK_TOKEN_LET: {
-        consumeToken(compiler, state, DUSK_TOKEN_LET);
+    case DUSK_TOKEN_VAR: {
+        consumeToken(compiler, state, DUSK_TOKEN_VAR);
 
         DuskDecl *decl = DUSK_NEW(allocator, DuskDecl);
 
@@ -2320,8 +2320,8 @@ parseTopLevelDecl(DuskCompiler *compiler, TokenizerState *state)
         consumeToken(compiler, state, DUSK_TOKEN_RCURLY);
         break;
     }
-    case DUSK_TOKEN_LET: {
-        consumeToken(compiler, state, DUSK_TOKEN_LET);
+    case DUSK_TOKEN_VAR: {
+        consumeToken(compiler, state, DUSK_TOKEN_VAR);
 
         DuskStorageClass storage_class = DUSK_STORAGE_CLASS_UNIFORM_CONSTANT;
 
