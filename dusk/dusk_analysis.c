@@ -159,6 +159,21 @@ static void duskConcretizeExprType(DuskExpr *expr, DuskType *expected_type)
         break;
     }
 
+    case DUSK_EXPR_UNARY: {
+        if (expr->type->kind == DUSK_TYPE_UNTYPED_INT &&
+            (expected_type->kind == DUSK_TYPE_INT ||
+             expected_type->kind == DUSK_TYPE_FLOAT)) {
+            expr->type = expected_type;
+            duskConcretizeExprType(expr->unary.right, expected_type);
+        } else if (
+            expr->type->kind == DUSK_TYPE_UNTYPED_FLOAT &&
+            expected_type->kind == DUSK_TYPE_FLOAT) {
+            expr->type = expected_type;
+            duskConcretizeExprType(expr->unary.right, expected_type);
+        }
+        break;
+    }
+
     case DUSK_EXPR_BINARY: {
         if (expr->type->kind == DUSK_TYPE_UNTYPED_INT &&
             (expected_type->kind == DUSK_TYPE_INT ||
@@ -2122,7 +2137,9 @@ static void duskAnalyzeExpr(
             break;
         }
         case DUSK_TYPE_INT:
+        case DUSK_TYPE_UNTYPED_INT:
         case DUSK_TYPE_FLOAT:
+        case DUSK_TYPE_UNTYPED_FLOAT:
         case DUSK_TYPE_VECTOR: {
             switch (expr->unary.op) {
             case DUSK_UNARY_OP_BITNOT: {
