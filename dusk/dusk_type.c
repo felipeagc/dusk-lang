@@ -703,8 +703,7 @@ void duskTypeMarkNotDead(DuskType *type)
     }
     case DUSK_TYPE_FUNCTION: {
         duskTypeMarkNotDead(type->function.return_type);
-        for (size_t i = 0; i < duskArrayLength(type->function.param_types);
-             ++i) {
+        for (size_t i = 0; i < type->function.param_type_count; ++i) {
             duskTypeMarkNotDead(type->function.param_types[i]);
         }
         break;
