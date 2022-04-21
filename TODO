@@ -1,0 +1,38 @@
+- Compute shader entry point group size attribute
+- Throw ICE with DUSK_ASSERT()
+- Builtin functions:
+	- @pow
+	- @atan2
+
+	- @modf
+	- @step
+	- @smoothstep
+	- @fma
+
+	- @bitcast(T2, value: T1): T2
+
+	- @atomicAdd
+	- @atomicMin
+	- @atomicMax
+	- @atomicAnd
+	- @atomicOr
+	- @atomicXor
+	- @atomicExchange
+	- @atomicCompareExchange
+
+	- @imageSize(image): intN
+	- @imageSizeLod(image, lod: int): intN
+
+	- @imageLoad(image, coords: intN): float4
+	- @imageStore(image, coords: intN, value: float4)
+
+	- @imageSample(image_sampler, coords: floatN): float4
+		=> OpImageSampleImplicitLod / OpImageSampleExplicitLod if stage is not fragment
+	- @imageSampleLevel(image_sampler, coords: floatN, level: float): float4
+		=> OpImageSampleExplicitLod
+
+	- @imageNumLevels(image): int
+		=> OpImageQueryLevels
+
+	- @storageBarrier()
+	- @workgroupBarrier()
