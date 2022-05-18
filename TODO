@@ -1,5 +1,9 @@
 - Compute shader entry point group size attribute
 - Throw ICE with DUSK_ASSERT()
+- OpName
+- Import
+- More rigorous testing
+- Debug info dumps
 - Builtin functions:
 	- @pow
 	- @atan2
