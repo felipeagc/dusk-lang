@@ -406,6 +406,14 @@ static void duskCheckGlobalVariableAttributes(
             var_decl->location,
             "global variable needs both 'set' and 'binding' attributes");
     }
+
+    if ((var_decl->var.storage_class != DUSK_STORAGE_CLASS_STORAGE) &&
+        read_only_attribute) {
+        duskAddError(
+            compiler,
+            var_decl->location,
+            "only storage variables can have the 'read_only' attribute");
+    }
 }
 
 static void duskCheckEntryPointInterfaceAttributes(
@@ -476,6 +484,113 @@ static void duskCheckEntryPointInterfaceAttributes(
             location,
             "entry point interface needs either a location or builtin "
             "attribute");
+    }
+}
+
+static bool duskGetTypeLayout(DuskType *type, DuskStructLayout *out_layout)
+{
+    switch (type->kind) {
+    case DUSK_TYPE_STRUCT: {
+        *out_layout = type->struct_.layout;
+        return true;
+    }
+    case DUSK_TYPE_ARRAY:
+    case DUSK_TYPE_RUNTIME_ARRAY: {
+        *out_layout = type->array.layout;
+        return true;
+    }
+    default: break;
+    }
+    return false;
+}
+
+static void duskCheckSubtypeLayouts(
+    DuskCompiler *compiler, DuskLocation loc, DuskType *type)
+{
+    switch (type->kind) {
+    case DUSK_TYPE_STRUCT: {
+        DuskStructLayout expected_layout = type->struct_.layout;
+
+        for (size_t i = 0; i < type->struct_.field_count; ++i) {
+            DuskType *field_type = type->struct_.field_types[i];
+
+            DuskStructLayout layout = DUSK_STRUCT_LAYOUT_UNKNOWN;
+            if (duskGetTypeLayout(field_type, &layout)) {
+                if (layout != expected_layout) {
+                    duskAddError(
+                        compiler,
+                        loc,
+                        "struct field '%s' has a different layout to the "
+                        "struct",
+                        type->struct_.field_names[i]);
+                }
+            }
+        }
+        break;
+    }
+    case DUSK_TYPE_ARRAY:
+    case DUSK_TYPE_RUNTIME_ARRAY: {
+        DuskStructLayout expected_layout = type->array.layout;
+        DuskStructLayout layout = DUSK_STRUCT_LAYOUT_UNKNOWN;
+        if (duskGetTypeLayout(type->array.sub, &layout)) {
+            if (layout != expected_layout) {
+                duskAddError(
+                    compiler,
+                    loc,
+                    "array sub-type has a different layout to the "
+                    "array");
+            }
+        }
+        break;
+    }
+    default: break;
+    }
+}
+
+static void duskTraverseSubTypes(
+    DuskCompiler *compiler,
+    DuskLocation loc,
+    DuskType *type,
+    void (*callback)(DuskCompiler *, DuskLocation, DuskType *))
+{
+    switch (type->kind) {
+    case DUSK_TYPE_STRUCT: {
+        for (size_t i = 0; i < type->struct_.field_count; ++i) {
+            callback(compiler, loc, type->struct_.field_types[i]);
+            duskTraverseSubTypes(
+                compiler, loc, type->struct_.field_types[i], callback);
+        }
+        break;
+    }
+    case DUSK_TYPE_VECTOR: {
+        callback(compiler, loc, type->vector.sub);
+        duskTraverseSubTypes(compiler, loc, type->vector.sub, callback);
+        break;
+    }
+    case DUSK_TYPE_MATRIX: {
+        callback(compiler, loc, type->matrix.col_type);
+        duskTraverseSubTypes(compiler, loc, type->matrix.col_type, callback);
+        break;
+    }
+    case DUSK_TYPE_ARRAY:
+    case DUSK_TYPE_RUNTIME_ARRAY: {
+        callback(compiler, loc, type->array.sub);
+        duskTraverseSubTypes(compiler, loc, type->array.sub, callback);
+        break;
+    }
+    default: break;
+    }
+}
+
+static void duskCheckIfTypeHasBlockDecoration(
+    DuskCompiler *compiler, DuskLocation loc, DuskType *type)
+{
+    if (type->kind == DUSK_TYPE_STRUCT && type->struct_.is_block) {
+        duskAddError(
+            compiler,
+            loc,
+            "nested type of block struct cannot also have the block "
+            "decoration");
     }
 }
 
@@ -763,6 +878,8 @@ static void duskAnalyzeExpr(
         expr->type = type_type;
         expr->as_type =
             duskTypeNewArray(compiler, layout, sub_type, (size_t)array_size);
+
+        duskCheckSubtypeLayouts(compiler, expr->location, expr->as_type);
         break;
     }
     case DUSK_EXPR_RUNTIME_ARRAY_TYPE: {
@@ -784,6 +901,8 @@ static void duskAnalyzeExpr(
 
         expr->type = type_type;
         expr->as_type = duskTypeNewRuntimeArray(compiler, layout, sub_type);
+
+        duskCheckSubtypeLayouts(compiler, expr->location, expr->as_type);
         break;
     }
     case DUSK_EXPR_STRUCT_TYPE: {
@@ -943,6 +1062,16 @@ static void duskAnalyzeExpr(
             expr->struct_type.field_names,
             field_types,
             expr->struct_type.field_attribute_arrays);
+
+        duskCheckSubtypeLayouts(compiler, expr->location, expr->as_type);
+
+        if (expr->as_type->struct_.is_block) {
+            duskTraverseSubTypes(
+                compiler,
+                expr->location,
+                expr->as_type,
+                duskCheckIfTypeHasBlockDecoration);
+        }
 
         break;
     }
@@ -2624,6 +2753,21 @@ static void duskAnalyzeDecl(
     case DUSK_DECL_VAR: {
         DuskType *type_type = duskTypeNewBasic(compiler, DUSK_TYPE_TYPE);
 
+        bool inferred_layout = false;
+
+        switch (decl->var.storage_class) {
+        case DUSK_STORAGE_CLASS_UNIFORM:
+        case DUSK_STORAGE_CLASS_STORAGE: {
+            if (duskArrayLength(state->struct_layout_stack_arr) == 0) {
+                inferred_layout = true;
+                duskArrayPush(
+                    &state->struct_layout_stack_arr, DUSK_STRUCT_LAYOUT_STD430);
+            }
+            break;
+        }
+        default: break;
+        }
+
         DuskType *var_type = NULL;
         if (decl->var.type_expr) {
             duskAnalyzeExpr(
@@ -2637,6 +2781,10 @@ static void duskAnalyzeDecl(
             if (!var_type) {
                 var_type = decl->var.value_expr->type;
             }
+        }
+
+        if (inferred_layout) {
+            duskArrayPop(&state->struct_layout_stack_arr);
         }
 
         if (!var_type) {
@@ -2719,12 +2867,13 @@ static void duskAnalyzeDecl(
             switch (decl->var.storage_class) {
             case DUSK_STORAGE_CLASS_PUSH_CONSTANT:
             case DUSK_STORAGE_CLASS_UNIFORM: {
-                if (struct_type->struct_.layout != DUSK_STRUCT_LAYOUT_STD140) {
+                if (struct_type->struct_.layout != DUSK_STRUCT_LAYOUT_STD140 &&
+                    struct_type->struct_.layout != DUSK_STRUCT_LAYOUT_STD430) {
                     duskAddError(
                         compiler,
                         decl->location,
-                        "uniform buffer requires structure to have the "
-                        "'std140' layout");
+                        "uniform buffer requires structure to have 'std140' or "
+                        "'std430' layout");
                 }
                 break;
             }
