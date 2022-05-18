@@ -287,6 +287,10 @@ const char *duskTypeToString(DuskAllocator *allocator, DuskType *type)
 
             duskStringBuilderAppend(sb, "@struct[");
 
+            if (type->struct_.is_block) {
+                duskStringBuilderAppend(sb, "block,");
+            }
+
             switch (type->struct_.layout) {
             case DUSK_STRUCT_LAYOUT_STD140:
                 duskStringBuilderAppend(sb, "std140");
@@ -582,6 +586,7 @@ DuskType *duskTypeNewStruct(
     DuskCompiler *compiler,
     const char *name,
     DuskStructLayout layout,
+    bool is_block,
     size_t field_count,
     const char **field_names,
     DuskType **field_types,
@@ -592,6 +597,7 @@ DuskType *duskTypeNewStruct(
     type->kind = DUSK_TYPE_STRUCT;
     type->struct_.name = name;
     type->struct_.layout = layout;
+    type->struct_.is_block = is_block;
     type->struct_.field_count = field_count;
     type->struct_.field_names = field_names;
     type->struct_.field_types = field_types;

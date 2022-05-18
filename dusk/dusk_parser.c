@@ -1533,29 +1533,30 @@ static DuskExpr *parsePrimaryExpr(DuskCompiler *compiler, TokenizerState *state)
     case DUSK_TOKEN_STRUCT: {
         expr->kind = DUSK_EXPR_STRUCT_TYPE;
 
+        DuskArray(const char *) params =
+            duskArrayCreate(allocator, const char *);
         DuskArray(DuskExpr *) field_type_exprs =
             duskArrayCreate(allocator, DuskExpr *);
         DuskArray(const char *) field_names =
             duskArrayCreate(allocator, const char *);
         DuskArray(DuskArray(DuskAttribute)) field_attribute_arrays =
             duskArrayCreate(allocator, DuskArray(DuskAttribute));
-        expr->struct_type.layout = DUSK_STRUCT_LAYOUT_UNKNOWN;
 
         DuskToken next_token = {0};
         tokenizerNextToken(compiler, *state, &next_token);
         if (next_token.type == DUSK_TOKEN_LPAREN) {
             consumeToken(compiler, state, DUSK_TOKEN_LPAREN);
-            DuskToken layout_ident =
-                consumeToken(compiler, state, DUSK_TOKEN_IDENT);
-            if (strcmp(layout_ident.str, "std140") == 0) {
-                expr->struct_type.layout = DUSK_STRUCT_LAYOUT_STD140;
-            } else if (strcmp(layout_ident.str, "std430") == 0) {
-                expr->struct_type.layout = DUSK_STRUCT_LAYOUT_STD430;
-            } else {
-                duskAddError(
-                    compiler,
-                    layout_ident.location,
-                    "expected either 'std140' or 'std430' struct layouts");
+
+            tokenizerNextToken(compiler, *state, &next_token);
+            while (next_token.type != DUSK_TOKEN_RPAREN) {
+                DuskToken param =
+                    consumeToken(compiler, state, DUSK_TOKEN_IDENT);
+                duskArrayPush(&params, param.str);
+
+                tokenizerNextToken(compiler, *state, &next_token);
+                if (next_token.type != DUSK_TOKEN_RPAREN) {
+                    consumeToken(compiler, state, DUSK_TOKEN_COMMA);
+                }
             }
 
             consumeToken(compiler, state, DUSK_TOKEN_RPAREN);
@@ -1587,13 +1588,21 @@ static DuskExpr *parsePrimaryExpr(DuskCompiler *compiler, TokenizerState *state)
         }
 
         expr->struct_type.field_count = duskArrayLength(field_type_exprs);
+        expr->struct_type.param_count = duskArrayLength(params);
 
+        expr->struct_type.params = DUSK_NEW_ARRAY(
+            allocator, const char *, expr->struct_type.param_count);
         expr->struct_type.field_names = DUSK_NEW_ARRAY(
             allocator, const char *, expr->struct_type.field_count);
         expr->struct_type.field_type_exprs = DUSK_NEW_ARRAY(
             allocator, DuskExpr *, expr->struct_type.field_count);
         expr->struct_type.field_attribute_arrays = DUSK_NEW_ARRAY(
             allocator, DuskArray(DuskAttribute), expr->struct_type.field_count);
+
+        memcpy(
+            expr->struct_type.params,
+            params,
+            expr->struct_type.param_count * sizeof(const char *));
 
         memcpy(
             expr->struct_type.field_names,

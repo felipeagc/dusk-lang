@@ -787,6 +787,67 @@ static void duskAnalyzeExpr(
         break;
     }
     case DUSK_EXPR_STRUCT_TYPE: {
+        DuskStructLayout struct_layout = DUSK_STRUCT_LAYOUT_UNKNOWN;
+        bool is_block = false;
+
+        DuskMap *param_map = duskMapCreate(NULL, expr->struct_type.param_count);
+        bool got_duplicate_params = false;
+
+        for (size_t i = 0; i < expr->struct_type.param_count; ++i) {
+            const char *param = expr->struct_type.params[i];
+
+            if (duskMapGet(param_map, param, NULL)) {
+                got_duplicate_params = true;
+                duskAddError(
+                    compiler,
+                    expr->location,
+                    "duplicate struct parameter: '%s'",
+                    param);
+                continue;
+            }
+
+            duskMapSet(param_map, param, NULL);
+
+            if (strcmp(param, "block") == 0) {
+                is_block = true;
+            } else if (strcmp(param, "std140") == 0) {
+                if (struct_layout != DUSK_STRUCT_LAYOUT_UNKNOWN) {
+                    got_duplicate_params = true;
+                    duskAddError(
+                        compiler,
+                        expr->location,
+                        "struct layout is set more than once");
+                    continue;
+                }
+                struct_layout = DUSK_STRUCT_LAYOUT_STD140;
+            } else if (strcmp(param, "std430") == 0) {
+                if (struct_layout != DUSK_STRUCT_LAYOUT_UNKNOWN) {
+                    got_duplicate_params = true;
+                    duskAddError(
+                        compiler,
+                        expr->location,
+                        "struct layout is set more than once");
+                    continue;
+                }
+                struct_layout = DUSK_STRUCT_LAYOUT_STD430;
+            } else {
+                got_duplicate_params = true;
+                duskAddError(
+                    compiler,
+                    expr->location,
+                    "undefined struct parameter: '%s'",
+                    param);
+                continue;
+            }
+        }
+
+        duskMapDestroy(param_map);
+
+        if (got_duplicate_params) {
+            DUSK_ASSERT(duskArrayLength(compiler->errors_arr) > 0);
+            break;
+        }
+
         for (size_t i = 0; i < expr->struct_type.field_count; ++i) {
             DuskArray(DuskAttribute) field_attributes_arr =
                 expr->struct_type.field_attribute_arrays[i];
@@ -840,8 +901,7 @@ static void duskAnalyzeExpr(
         DuskType **field_types =
             DUSK_NEW_ARRAY(allocator, DuskType *, field_count);
 
-        duskArrayPush(
-            &state->struct_layout_stack_arr, expr->struct_type.layout);
+        duskArrayPush(&state->struct_layout_stack_arr, struct_layout);
 
         for (size_t i = 0; i < field_count; ++i) {
             DuskExpr *field_type_expr = expr->struct_type.field_type_exprs[i];
@@ -877,7 +937,8 @@ static void duskAnalyzeExpr(
         expr->as_type = duskTypeNewStruct(
             compiler,
             expr->struct_type.name,
-            expr->struct_type.layout,
+            struct_layout,
+            is_block,
             expr->struct_type.field_count,
             expr->struct_type.field_names,
             field_types,
@@ -2565,7 +2626,8 @@ static void duskAnalyzeDecl(
 
         DuskType *var_type = NULL;
         if (decl->var.type_expr) {
-            duskAnalyzeExpr(compiler, state, decl->var.type_expr, type_type, false);
+            duskAnalyzeExpr(
+                compiler, state, decl->var.type_expr, type_type, false);
             var_type = decl->var.type_expr->as_type;
         }
 
@@ -2627,12 +2689,37 @@ static void duskAnalyzeDecl(
             }
         }
 
+        DuskType *struct_type = NULL;
+
+        switch (decl->type->kind) {
+        case DUSK_TYPE_STRUCT: {
+            struct_type = decl->type;
+            break;
+        }
+        case DUSK_TYPE_ARRAY:
+        case DUSK_TYPE_RUNTIME_ARRAY: {
+            if (decl->type->array.sub->kind == DUSK_TYPE_STRUCT) {
+                struct_type = decl->type->array.sub;
+            }
+
+            if (decl->var.storage_class == DUSK_STORAGE_CLASS_STORAGE &&
+                !struct_type) {
+                duskAddError(
+                    compiler,
+                    decl->location,
+                    "storage buffer arrays must have a struct as the sub-type");
+            }
+            break;
+        }
+        default: break;
+        }
+
         // Check if struct type has proper layout
-        if (decl->type->kind == DUSK_TYPE_STRUCT) {
+        if (struct_type) {
             switch (decl->var.storage_class) {
             case DUSK_STORAGE_CLASS_PUSH_CONSTANT:
             case DUSK_STORAGE_CLASS_UNIFORM: {
-                if (decl->type->struct_.layout != DUSK_STRUCT_LAYOUT_STD140) {
+                if (struct_type->struct_.layout != DUSK_STRUCT_LAYOUT_STD140) {
                     duskAddError(
                         compiler,
                         decl->location,
@@ -2642,12 +2729,19 @@ static void duskAnalyzeDecl(
                 break;
             }
             case DUSK_STORAGE_CLASS_STORAGE: {
-                if (decl->type->struct_.layout != DUSK_STRUCT_LAYOUT_STD430) {
+                if (struct_type->struct_.layout != DUSK_STRUCT_LAYOUT_STD430) {
                     duskAddError(
                         compiler,
                         decl->location,
                         "storage buffer requires structure to have the "
                         "'std430' layout");
+                }
+                if (!struct_type->struct_.is_block) {
+                    duskAddError(
+                        compiler,
+                        decl->location,
+                        "storage buffer requires structure to have the "
+                        "'block' parameter");
                 }
                 break;
             }

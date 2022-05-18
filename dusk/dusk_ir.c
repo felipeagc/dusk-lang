@@ -2193,8 +2193,7 @@ DuskArray(uint32_t)
         DuskType *type = compiler->types_arr[i];
         if (!type->emit) continue;
 
-        if (type->kind == DUSK_TYPE_STRUCT &&
-            type->struct_.layout != DUSK_STRUCT_LAYOUT_UNKNOWN) {
+        if (type->kind == DUSK_TYPE_STRUCT && type->struct_.is_block) {
             DuskIRDecoration decoration = duskIRCreateDecoration(
                 allocator, DUSK_IR_DECORATION_BLOCK, 0, NULL);
             duskArrayPush(&type->decorations_arr, decoration);

@@ -404,6 +404,7 @@ struct DuskType {
             DuskArray(DuskIRDecoration) * field_decoration_arrays;
             DuskMap *index_map;
             DuskStructLayout layout;
+            bool is_block;
         } struct_;
         struct {
             DuskType *return_type;
@@ -460,6 +461,7 @@ DuskType *duskTypeNewStruct(
     DuskCompiler *compiler,
     const char *name,
     DuskStructLayout layout,
+    bool is_block,
     size_t field_count,
     const char **field_names,
     DuskType **field_types,
@@ -1232,7 +1234,8 @@ struct DuskExpr {
             const char *str;
         } string;
         struct {
-            DuskStructLayout layout;
+            const char **params;
+            size_t param_count;
             const char *name;
             size_t field_count;
             const char **field_names;
