@@ -889,7 +889,16 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
         case DUSK_BUILTIN_FUNCTION_MIX:
         case DUSK_BUILTIN_FUNCTION_CLAMP:
         case DUSK_BUILTIN_FUNCTION_DETERMINANT:
-        case DUSK_BUILTIN_FUNCTION_INVERSE: {
+        case DUSK_BUILTIN_FUNCTION_INVERSE:
+
+        case DUSK_BUILTIN_FUNCTION_IMAGE_SAMPLE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_SAMPLE_LOD:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_LOAD:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_STORE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_LEVELS:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_LOD:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_SIZE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_SIZE_LOD: {
             DUSK_ASSERT(func_decl);
             DuskIRValue *function = func_decl->ir_value;
             DUSK_ASSERT(duskArrayLength(function->function.blocks_arr) > 0);

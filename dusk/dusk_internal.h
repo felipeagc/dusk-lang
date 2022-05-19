@@ -335,6 +335,19 @@ typedef enum DuskImageDimension {
     DUSK_IMAGE_DIMENSION_CUBE,
 } DuskImageDimension;
 
+static inline uint32_t duskImageDimensionVectorElems(DuskImageDimension dim)
+{
+    switch (dim) {
+    case DUSK_IMAGE_DIMENSION_1D: return 1;
+    case DUSK_IMAGE_DIMENSION_2D: return 2;
+    case DUSK_IMAGE_DIMENSION_3D: return 3;
+    case DUSK_IMAGE_DIMENSION_CUBE: return 3;
+    }
+
+    DUSK_ASSERT(0);
+    return 0;
+}
+
 typedef enum DuskStructLayout {
     DUSK_STRUCT_LAYOUT_UNKNOWN,
     DUSK_STRUCT_LAYOUT_STD140,
@@ -552,6 +565,15 @@ typedef enum DuskBuiltinFunctionKind {
 
     DUSK_BUILTIN_FUNCTION_DETERMINANT,
     DUSK_BUILTIN_FUNCTION_INVERSE,
+
+    DUSK_BUILTIN_FUNCTION_IMAGE_SAMPLE,
+    DUSK_BUILTIN_FUNCTION_IMAGE_SAMPLE_LOD,
+    DUSK_BUILTIN_FUNCTION_IMAGE_LOAD,
+    DUSK_BUILTIN_FUNCTION_IMAGE_STORE,
+    DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_LEVELS,
+    DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_LOD,
+    DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_SIZE,
+    DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_SIZE_LOD,
 
     DUSK_BUILTIN_FUNCTION_COUNT,
 } DuskBuiltinFunctionKind;

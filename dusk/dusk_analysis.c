@@ -58,6 +58,15 @@ static size_t DUSK_BUILTIN_FUNCTION_PARAM_COUNTS[DUSK_BUILTIN_FUNCTION_COUNT] =
 
         [DUSK_BUILTIN_FUNCTION_DETERMINANT] = 1,
         [DUSK_BUILTIN_FUNCTION_INVERSE] = 1,
+
+        [DUSK_BUILTIN_FUNCTION_IMAGE_SAMPLE] = 2,
+        [DUSK_BUILTIN_FUNCTION_IMAGE_SAMPLE_LOD] = 3,
+        [DUSK_BUILTIN_FUNCTION_IMAGE_LOAD] = 2,
+        [DUSK_BUILTIN_FUNCTION_IMAGE_STORE] = 3,
+        [DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_LEVELS] = 1,
+        [DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_LOD] = 2,
+        [DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_SIZE] = 1,
+        [DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_SIZE_LOD] = 2,
 };
 
 typedef struct DuskAnalyzerState {
@@ -1898,6 +1907,79 @@ static void duskAnalyzeExpr(
             }
             break;
         }
+
+        case DUSK_BUILTIN_FUNCTION_IMAGE_SAMPLE: {
+            DUSK_ASSERT(duskArrayLength(expr->builtin_call.params_arr) == 2);
+            DuskExpr *param0 = expr->builtin_call.params_arr[0];
+            DuskExpr *param1 = expr->builtin_call.params_arr[1];
+
+            duskAnalyzeExpr(compiler, state, param0, NULL, false);
+            if (!param0->type) break;
+
+            duskAnalyzeExpr(compiler, state, param1, NULL, false);
+            if (!param1->type) break;
+
+            if (param0->type->kind != DUSK_TYPE_SAMPLED_IMAGE) {
+                duskAddError(
+                    compiler,
+                    param0->location,
+                    "first parameter of @imageSample must be of type sampled "
+                    "image");
+                break;
+            }
+
+            DuskImageDimension dim =
+                param0->type->sampled_image.image_type->image.dim;
+            uint32_t vec_elems = duskImageDimensionVectorElems(dim);
+
+            if (param1->type->kind != DUSK_TYPE_VECTOR ||
+                param1->type->vector.size != vec_elems ||
+                param1->type->vector.sub->kind != DUSK_TYPE_FLOAT) {
+                duskAddError(
+                    compiler,
+                    param0->location,
+                    "second parameter of @imageSample must be of vector type "
+                    "'float%u' or 'int%u'",
+                    vec_elems,
+                    vec_elems);
+                break;
+            }
+
+            DuskType *float_type =
+                duskTypeNewScalar(compiler, DUSK_SCALAR_TYPE_FLOAT);
+            expr->type = duskTypeNewVector(compiler, float_type, 4);
+
+            break;
+        }
+        case DUSK_BUILTIN_FUNCTION_IMAGE_SAMPLE_LOD: {
+            DUSK_ASSERT(!"TODO");
+            break;
+        }
+        case DUSK_BUILTIN_FUNCTION_IMAGE_LOAD: {
+            DUSK_ASSERT(!"TODO");
+            break;
+        }
+        case DUSK_BUILTIN_FUNCTION_IMAGE_STORE: {
+            DUSK_ASSERT(!"TODO");
+            break;
+        }
+        case DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_LEVELS: {
+            DUSK_ASSERT(!"TODO");
+            break;
+        }
+        case DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_LOD: {
+            DUSK_ASSERT(!"TODO");
+            break;
+        }
+        case DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_SIZE: {
+            DUSK_ASSERT(!"TODO");
+            break;
+        }
+        case DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_SIZE_LOD: {
+            DUSK_ASSERT(!"TODO");
+            break;
+        }
+
         case DUSK_BUILTIN_FUNCTION_COUNT: DUSK_ASSERT(0); break;
         }
         break;

@@ -1582,6 +1582,32 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
             glsl_inst = GLSLstd450MatrixInverse;
             break;
 
+        case DUSK_BUILTIN_FUNCTION_IMAGE_SAMPLE:
+            op = SpvOpImageSampleImplicitLod;
+            break;
+
+        case DUSK_BUILTIN_FUNCTION_IMAGE_SAMPLE_LOD:
+            DUSK_ASSERT(!"TODO");
+            break;
+
+        case DUSK_BUILTIN_FUNCTION_IMAGE_LOAD: DUSK_ASSERT(!"TODO"); break;
+
+        case DUSK_BUILTIN_FUNCTION_IMAGE_STORE: DUSK_ASSERT(!"TODO"); break;
+
+        case DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_LEVELS:
+            DUSK_ASSERT(!"TODO");
+            break;
+
+        case DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_LOD: DUSK_ASSERT(!"TODO"); break;
+
+        case DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_SIZE:
+            DUSK_ASSERT(!"TODO");
+            break;
+
+        case DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_SIZE_LOD:
+            DUSK_ASSERT(!"TODO");
+            break;
+
         case DUSK_BUILTIN_FUNCTION_SAMPLER_TYPE:
         case DUSK_BUILTIN_FUNCTION_IMAGE_1D_TYPE:
         case DUSK_BUILTIN_FUNCTION_IMAGE_2D_TYPE:
