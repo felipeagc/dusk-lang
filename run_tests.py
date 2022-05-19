@@ -22,17 +22,21 @@ else:
 
 
 def run_proc(cmd_line):
-    print("     Running:", cmd_line)
+    print("Running:", cmd_line)
     return subprocess.run(cmd_line.split(" ")).returncode == 0
 
-
-failed_tests = []
+tests = []
 for filename in os.listdir("./tests/"):
     if not filename.endswith(".dusk"):
         continue
-
     test_name = os.path.splitext(filename)[0]
-    print(f"  => Testing: {test_name}")
+    tests.append(test_name)
+
+tests.sort()
+
+failed_tests = []
+for test_name in tests:
+    print(f"\n=> Testing: {test_name}")
     in_path = f"tests/{test_name}.dusk"
     out_path = f"tests/out/{test_name}.spv"
     success = run_proc(f"{compiler_exe} {in_path} -o {out_path}")

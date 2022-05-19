@@ -1,0 +1,7 @@
+[set(0), binding(0)]
+var(storage) storage_buffer: struct (block) {
+    a: float,
+};
+
+[stage(vertex)]
+fn main() void {}

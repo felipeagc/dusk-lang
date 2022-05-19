@@ -73,7 +73,6 @@ int main(int argc, char *argv[])
         duskCompile(compiler, in_path, text, text_size, &spirv_size);
 
     if (!spirv) {
-        fprintf(stderr, "Compilation failed!\n");
         exit(1);
     }
 

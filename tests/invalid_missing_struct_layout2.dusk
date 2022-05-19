@@ -1,0 +1,11 @@
+type Other struct {
+    a: float,
+};
+
+[set(0), binding(0)]
+var(storage) storage_buffer: struct (block, std430) {
+    a: Other,
+};
+
+[stage(vertex)]
+fn main() void {}
