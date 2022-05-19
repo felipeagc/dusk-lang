@@ -68,7 +68,7 @@ static const char *DUSK_BUILTIN_FUNCTION_NAMES[DUSK_BUILTIN_FUNCTION_COUNT] = {
     [DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_LEVELS] = "imageQueryLevels",
     [DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_LOD] = "imageQueryLod",
     [DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_SIZE] = "imageQuerySize",
-    [DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_SIZE_LOD] = "imageQuerySizeLod",
+    [DUSK_BUILTIN_FUNCTION_IMAGE] = "image",
 };
 
 DuskCompiler *duskCompilerCreate(void)

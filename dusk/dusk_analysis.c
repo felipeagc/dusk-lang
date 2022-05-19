@@ -65,8 +65,8 @@ static size_t DUSK_BUILTIN_FUNCTION_PARAM_COUNTS[DUSK_BUILTIN_FUNCTION_COUNT] =
         [DUSK_BUILTIN_FUNCTION_IMAGE_STORE] = 3,
         [DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_LEVELS] = 1,
         [DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_LOD] = 2,
-        [DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_SIZE] = 1,
-        [DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_SIZE_LOD] = 2,
+        [DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_SIZE] = 2,
+        [DUSK_BUILTIN_FUNCTION_IMAGE] = 1,
 };
 
 typedef struct DuskAnalyzerState {
@@ -1908,6 +1908,27 @@ static void duskAnalyzeExpr(
             break;
         }
 
+        case DUSK_BUILTIN_FUNCTION_IMAGE: {
+            DUSK_ASSERT(duskArrayLength(expr->builtin_call.params_arr) == 1);
+            DuskExpr *param0 = expr->builtin_call.params_arr[0];
+
+            duskAnalyzeExpr(compiler, state, param0, NULL, false);
+            if (!param0->type) break;
+
+            if (param0->type->kind != DUSK_TYPE_SAMPLED_IMAGE) {
+                duskAddError(
+                    compiler,
+                    param0->location,
+                    "first parameter of @image must be of type sampled "
+                    "image");
+                break;
+            }
+
+            expr->type = param0->type->sampled_image.image_type;
+
+            break;
+        }
+
         case DUSK_BUILTIN_FUNCTION_IMAGE_SAMPLE: {
             DUSK_ASSERT(duskArrayLength(expr->builtin_call.params_arr) == 2);
             DuskExpr *param0 = expr->builtin_call.params_arr[0];
@@ -2017,11 +2038,34 @@ static void duskAnalyzeExpr(
             break;
         }
         case DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_SIZE: {
-            DUSK_ASSERT(!"TODO");
-            break;
-        }
-        case DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_SIZE_LOD: {
-            DUSK_ASSERT(!"TODO");
+            DUSK_ASSERT(duskArrayLength(expr->builtin_call.params_arr) == 2);
+            DuskExpr *param0 = expr->builtin_call.params_arr[0];
+            DuskExpr *param1 = expr->builtin_call.params_arr[1];
+
+            DuskType *uint_type =
+                duskTypeNewScalar(compiler, DUSK_SCALAR_TYPE_UINT);
+
+            duskAnalyzeExpr(compiler, state, param0, NULL, false);
+            if (!param0->type) break;
+
+            duskAnalyzeExpr(compiler, state, param1, uint_type, false);
+            if (!param1->type) break;
+
+            if (param0->type->kind != DUSK_TYPE_SAMPLED_IMAGE &&
+                param0->type->kind != DUSK_TYPE_IMAGE) {
+                duskAddError(
+                    compiler,
+                    param0->location,
+                    "first parameter of @imageQuerySizeLod must be of type "
+                    "image or sampled image");
+                break;
+            }
+
+            DuskImageDimension dim =
+                param0->type->sampled_image.image_type->image.dim;
+            uint32_t vec_elems = duskImageDimensionVectorElems(dim);
+
+            expr->type = duskTypeNewVector(compiler, uint_type, vec_elems);
             break;
         }
 

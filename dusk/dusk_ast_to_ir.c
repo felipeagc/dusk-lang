@@ -849,6 +849,15 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
 
     case DUSK_EXPR_BUILTIN_FUNCTION_CALL: {
         switch (expr->builtin_call.kind) {
+        case DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_LEVELS:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_LOD:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_SIZE: {
+            duskArrayPush(&module->capabilities_arr, SpvCapabilityImageQuery);
+        }
+        default: break;
+        }
+
+        switch (expr->builtin_call.kind) {
         case DUSK_BUILTIN_FUNCTION_RADIANS:
         case DUSK_BUILTIN_FUNCTION_DEGREES:
         case DUSK_BUILTIN_FUNCTION_ROUND:
@@ -891,14 +900,12 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
         case DUSK_BUILTIN_FUNCTION_DETERMINANT:
         case DUSK_BUILTIN_FUNCTION_INVERSE:
 
+        case DUSK_BUILTIN_FUNCTION_IMAGE:
         case DUSK_BUILTIN_FUNCTION_IMAGE_SAMPLE:
         case DUSK_BUILTIN_FUNCTION_IMAGE_SAMPLE_LOD:
         case DUSK_BUILTIN_FUNCTION_IMAGE_LOAD:
         case DUSK_BUILTIN_FUNCTION_IMAGE_STORE:
-        case DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_LEVELS:
-        case DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_LOD:
-        case DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_SIZE:
-        case DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_SIZE_LOD: {
+        case DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_LOD: {
             DUSK_ASSERT(func_decl);
             DuskIRValue *function = func_decl->ir_value;
             DUSK_ASSERT(duskArrayLength(function->function.blocks_arr) > 0);
@@ -913,6 +920,43 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
                     module, func_decl, expr->builtin_call.params_arr[i]);
                 params[i] = expr->builtin_call.params_arr[i]->ir_value;
                 params[i] = duskIRLoadLvalue(module, block, params[i]);
+            }
+
+            expr->ir_value = duskIRCreateBuiltinCall(
+                module,
+                block,
+                expr->builtin_call.kind,
+                expr->type,
+                param_count,
+                params);
+            break;
+        }
+        case DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_LEVELS:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_SIZE: {
+            DUSK_ASSERT(func_decl);
+            DuskIRValue *function = func_decl->ir_value;
+            DUSK_ASSERT(duskArrayLength(function->function.blocks_arr) > 0);
+            DuskIRValue *block = duskGetLastBlock(function);
+
+            size_t param_count = duskArrayLength(expr->builtin_call.params_arr);
+            DuskIRValue **params =
+                DUSK_NEW_ARRAY(module->allocator, DuskIRValue *, param_count);
+
+            for (size_t i = 0; i < param_count; ++i) {
+                duskGenerateExpr(
+                    module, func_decl, expr->builtin_call.params_arr[i]);
+                params[i] = expr->builtin_call.params_arr[i]->ir_value;
+                params[i] = duskIRLoadLvalue(module, block, params[i]);
+            }
+
+            if (params[0]->type->kind == DUSK_TYPE_SAMPLED_IMAGE) {
+                params[0] = duskIRCreateBuiltinCall(
+                    module,
+                    block,
+                    DUSK_BUILTIN_FUNCTION_IMAGE,
+                    params[0]->type->sampled_image.image_type,
+                    1,
+                    &params[0]);
             }
 
             expr->ir_value = duskIRCreateBuiltinCall(
