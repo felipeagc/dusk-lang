@@ -1952,7 +1952,52 @@ static void duskAnalyzeExpr(
             break;
         }
         case DUSK_BUILTIN_FUNCTION_IMAGE_SAMPLE_LOD: {
-            DUSK_ASSERT(!"TODO");
+            DUSK_ASSERT(duskArrayLength(expr->builtin_call.params_arr) == 3);
+            DuskExpr *param0 = expr->builtin_call.params_arr[0];
+            DuskExpr *param1 = expr->builtin_call.params_arr[1];
+            DuskExpr *param2 = expr->builtin_call.params_arr[2];
+
+            DuskType *float_type =
+                duskTypeNewScalar(compiler, DUSK_SCALAR_TYPE_FLOAT);
+
+            duskAnalyzeExpr(compiler, state, param0, NULL, false);
+            if (!param0->type) break;
+
+            duskAnalyzeExpr(compiler, state, param1, NULL, false);
+            if (!param1->type) break;
+
+            duskAnalyzeExpr(compiler, state, param2, float_type, false);
+            if (!param2->type) break;
+
+            if (param0->type->kind != DUSK_TYPE_SAMPLED_IMAGE) {
+                duskAddError(
+                    compiler,
+                    param0->location,
+                    "first parameter of @imageSampleLod must be of type "
+                    "sampled "
+                    "image");
+                break;
+            }
+
+            DuskImageDimension dim =
+                param0->type->sampled_image.image_type->image.dim;
+            uint32_t vec_elems = duskImageDimensionVectorElems(dim);
+
+            if (param1->type->kind != DUSK_TYPE_VECTOR ||
+                param1->type->vector.size != vec_elems ||
+                param1->type->vector.sub->kind != DUSK_TYPE_FLOAT) {
+                duskAddError(
+                    compiler,
+                    param0->location,
+                    "second parameter of @imageSampleLod must be of vector "
+                    "type "
+                    "'float%u' or 'int%u'",
+                    vec_elems,
+                    vec_elems);
+                break;
+            }
+
+            expr->type = duskTypeNewVector(compiler, float_type, 4);
             break;
         }
         case DUSK_BUILTIN_FUNCTION_IMAGE_LOAD: {

@@ -1587,7 +1587,7 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
             break;
 
         case DUSK_BUILTIN_FUNCTION_IMAGE_SAMPLE_LOD:
-            DUSK_ASSERT(!"TODO");
+            op = SpvOpImageSampleExplicitLod;
             break;
 
         case DUSK_BUILTIN_FUNCTION_IMAGE_LOAD: DUSK_ASSERT(!"TODO"); break;
@@ -1644,17 +1644,38 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
         } else {
             DUSK_ASSERT(op != 0);
 
-            size_t param_count = 2 + value->builtin_call.param_count;
-            uint32_t *params = DUSK_NEW_ARRAY(allocator, uint32_t, param_count);
-            params[0] = value->type->id;
-            params[1] = value->id;
+            switch (op) {
+            case SpvOpImageSampleExplicitLod: {
+                size_t param_count = 6;
+                uint32_t *params =
+                    DUSK_NEW_ARRAY(allocator, uint32_t, param_count);
+                params[0] = value->type->id;
+                params[1] = value->id;
 
-            for (size_t i = 0; i < value->builtin_call.param_count; ++i) {
-                params[2 + i] = value->builtin_call.params[i]->id;
-                DUSK_ASSERT(params[2 + i] > 0);
+                params[2] = value->builtin_call.params[0]->id;
+                params[3] = value->builtin_call.params[1]->id;
+                params[4] = SpvImageOperandsLodMask;
+                params[5] = value->builtin_call.params[2]->id;
+
+                duskEncodeInst(module, op, params, param_count);
+                break;
             }
+            default: {
+                size_t param_count = 2 + value->builtin_call.param_count;
+                uint32_t *params =
+                    DUSK_NEW_ARRAY(allocator, uint32_t, param_count);
+                params[0] = value->type->id;
+                params[1] = value->id;
 
-            duskEncodeInst(module, op, params, param_count);
+                for (size_t i = 0; i < value->builtin_call.param_count; ++i) {
+                    params[2 + i] = value->builtin_call.params[i]->id;
+                    DUSK_ASSERT(params[2 + i] > 0);
+                }
+
+                duskEncodeInst(module, op, params, param_count);
+                break;
+            }
+            }
         }
         break;
     }

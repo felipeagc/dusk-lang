@@ -4,5 +4,6 @@ var img: @Image2DSampler(float);
 [stage(fragment)]
 fn main([location(0)] uv: float2) [location(0)] float4 {
     var color: float4 = @imageSample(img, uv);
+    color = @imageSampleLod(img, uv, uv.x);
     return color;
 }
