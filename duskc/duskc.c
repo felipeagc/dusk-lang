@@ -41,10 +41,6 @@ int main(int argc, char *argv[])
     while ((option = optparse_long(&options, longopts, NULL)) != -1) {
         switch (option) {
         case 'o': {
-            if (!options.optarg) {
-                printf("wtf\n");
-            }
-            printf("%s\n", options.optarg);
             size_t out_path_len = strlen(options.optarg);
             out_path = malloc(out_path_len + 1);
             memcpy(out_path, options.optarg, out_path_len + 1);
