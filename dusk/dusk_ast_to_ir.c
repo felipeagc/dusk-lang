@@ -1183,12 +1183,13 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
             duskArrayCreate(module->allocator, DuskIRValue *);
 
         for (size_t i = 0; i < duskArrayLength(expr->access.chain_arr); ++i) {
-
             DuskExpr *index_expr = expr->access.chain_arr[i];
             duskGenerateExpr(module, func_decl, index_expr);
             DUSK_ASSERT(index_expr->ir_value);
 
-            duskArrayPush(&index_values_arr, index_expr->ir_value);
+            DuskIRValue *index_value =
+                duskIRLoadLvalue(module, block, index_expr->ir_value);
+            duskArrayPush(&index_values_arr, index_value);
         }
 
         if (!duskIRIsLvalue(base_value)) {

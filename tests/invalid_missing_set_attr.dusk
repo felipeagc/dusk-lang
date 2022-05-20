@@ -1,0 +1,7 @@
+[binding(0)]
+var(uniform) buf: struct(std140) {
+    a: float,
+};
+
+[stage(fragment)]
+fn main() void {}

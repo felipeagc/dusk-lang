@@ -1,0 +1,7 @@
+[set(0), binding(0)]
+var buf: struct {
+    a: float,
+};
+
+[stage(fragment)]
+fn main() void {}

@@ -6,17 +6,41 @@
 :toc:
 :source-language: rust
 
-== Specification
+== Examples
 
 === Function definition
+You must specify the return type of the function, even if it is `void`.
 [source]
 ----
+fn main() void {
+}
+
 fn add1(param: int) int {
 	return param + 1;
 }
 ----
 
+=== Type definition
+[source]
+----
+type VsOutput struct {
+	[builtin(position)] pos: float4,
+	[location(0)] uv: float2,
+};
+
+type MyStructWithLayout struct (std430) {
+	a: float,
+	b: float4,
+};
+
+type MyInt int;
+
+type MyArray [4]VsOutput;
+----
+
 === Entry point definition
+Below you can see how entry points are defined and how their inputs and outputs can be specified, including builtin inputs.
+
 [source]
 ----
 type VsOutput struct {
@@ -40,6 +64,74 @@ fn fs_main(input: VsOutput) [location(0)] float4 {
 	return float4(input.uv, 0.0, 1.0);
 }
 ----
+
+=== Global variables
+[source]
+----
+[set(0), binding(0)]
+var img: @Image2DSampler(float);
+
+// Global buffers need a storage class. In this case, `uniform` is used.
+[set(1), binding(0)]
+var(uniform) uniform_buffer: struct(std140) {
+	matrix: float4x4,
+	value: float,
+};
+
+// `block` is a required decorator for structs used as storage buffers.
+[set(2), binding(0)]
+var(storage) storage_buffer: struct(std430, block) {
+	values: []float,
+};
+----
+
+=== Conditionals
+[source]
+----
+[stage(fragment)]
+fn main([location(0)] input: float) [location(0)] float4 {
+	if (input > 0) {
+		return float4(1);
+	} else if (input < 0) return float4(-1);
+
+	return float4(0);
+}
+----
+
+=== Loops
+[source]
+----
+[stage(fragment)]
+fn main([location(0)] input: float) [location(0)] float4 {
+	var i: float = 0;
+	while (i < input) {
+		i += 1;
+	}
+	return float4(i);
+}
+----
+
+=== Struct and array literals
+[source]
+----
+type VsOutput struct {
+    [builtin(position)] pos: float4,
+};
+
+[stage(vertex)]
+fn main([builtin(vertex_index)] index: uint) VsOutput {
+    var vertices = [3]float4{
+		float4(1, 0, 0, 1),
+		float4(0, 1, 0, 1),
+		float4(1, 1, 0,1 ),
+	};
+    return VsOutput{
+        .pos = vertices[index],
+    };
+}
+----
+
+== Specification
 
 === Builtin types
 
@@ -144,15 +236,31 @@ Used to mark a function as an entry point
 
 |`@arrayLength(x: []T): uint`
 |`[]T` is a runtime array type
-|Gets the length of the runtime array
+|Returns the length of the runtime array
+
+|`@image(sampled_image: S): I`
+|`S` is a sampled image type, `I` is the image type of the sampled image
+|Separates the image out from the combined sampler and image
+
+|`@imageSample(sampled_image: S, uv: U): float4`
+|`S` is a sampled image type, `U` is a vector type with the same dimension as the image
+|Samples the image at a coordinate
+
+|`@imageSampleLod(sampled_image: S, uv: U, lod: float): float4`
+|`S` is a sampled image type, `U` is a vector type with the same dimension as the image
+|Samples the image at a coordinate at a certain LOD level
+
+|`@imageSize(image: I, lod: uint): uintN`
+|`I` is an image type
+|Returns the image size at a certain LOD level
 
 |`@distance(v1: V, v2: V): S`
 |`V` is a vector type with scalar type `S`
-|Gets the distance between two vectors
+|Returns the distance between two vectors
 
 |`@length(v: V): S`
 |`V` is a vector type with scalar type `S`
-|Gets the length of a vector
+|Returns the length of a vector
 
 |`@normalize(v: V): V`
 |`V` is a vector type
@@ -168,27 +276,27 @@ Used to mark a function as an entry point
 
 |`@sqrt(v: T): T`
 |`T` is a floating point vector or scalar type
-|
+|Calculates the square root
 
 |`@inverseSqrt(v: T): T`
 |`T` is a floating point vector or scalar type
-|
+|Calculates the inverse square root
 
 |`@log(v: T): T`
 |`T` is a floating point vector or scalar type
-|
+|Calculates the natural logarithm
 
 |`@log2(v: T): T`
 |`T` is a floating point vector or scalar type
-|
+|Calculates the logarithm with base 2
 
 |`@exp(v: T): T`
 |`T` is a floating point vector or scalar type
-|
+|Calculates the natural exponent
 
 |`@exp2(v: T): T`
 |`T` is a floating point vector or scalar type
-|
+|Calculates 2 raised to the power of the parameter
 
 |`@determinant(v: M): S`
 |`M` is a square matrix type and `S` is the component type of the matrix
@@ -200,31 +308,31 @@ Used to mark a function as an entry point
 
 |`@reflect(i: T, n: T): T`
 |`T` is a floating point vector or scalar type
-|
+|Calculates the reflection direction of an incident vector (`i`), with a normal vector (`n`)
 
 |`@refract(i: V, n: V, eta: S): V`
 |`V` is a floating point vector type and `S` is a floating point scalar type
-|
+|Calculates the refraction direction for an incident vector (`i`), with a normal vector (`n`) and ratio of indices of refraction (`eta`)
 
 |`@abs(x: T): T`
 |`T` is a floating point vector or scalar type
-|
+|Calculates the absolute value
 
 |`@min(a: T, b: T): T`
 |`T` is a floating point vector or scalar type
-|
+|Returns the minimum value of the two parameters
 
 |`@max(a: T, b: T): T`
 |`T` is a floating point vector or scalar type
-|
+|Returns the maximum value of the two parameters
 
 |`@clamp(x: T, min: T, max: T): T`
 |`T` is a floating point vector or scalar type
-|
+|Clamps parameter `x` between the values of `min` and `max`
 
 |`@mix(x: T, y: T, a: T): T`
 |`T` is a floating point vector or scalar type
-|
+|Linearly interpolate between values `x` and `y` using `a`
 
 |`@step(edge: T, x: T): T`
 |

@@ -1,0 +1,15 @@
+type VsOutput struct {
+    [builtin(position)] pos: float4,
+};
+
+[stage(vertex)]
+fn main([builtin(vertex_index)] index: uint) VsOutput {
+    var vertices = [3]float4{
+		float4(1, 0, 0, 1),
+		float4(0, 1, 0, 1),
+		float4(1, 1, 0, 1),
+	};
+    return VsOutput{
+        .pos = vertices[index],
+    };
+}
