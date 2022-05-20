@@ -1,42 +1,49 @@
-- Compute shader entry point group size attribute
-- Throw ICE with DUSK_ASSERT()
-- OpName
-- Import
-- More rigorous testing
-- Debug info dumps
+- [ ] Compute shader entry point group size attribute
+- [ ] Throw ICE with DUSK_ASSERT()
+- [ ] OpName
+- [ ] Import and modules(?)
+- [ ] More rigorous testing
+- [ ] Debug info dumps
+- [ ] Reflection API (maybe not, leave that to other SPIR-V libraries)
+- [ ] AST dump
 - Builtin functions:
-	- @pow
-	- @atan2
+	- [ ] @pow
+	- [ ] @atan2
 
-	- @modf
-	- @step
-	- @smoothstep
-	- @fma
+	- [ ] @modf
+	- [ ] @step
+	- [ ] @smoothstep
+	- [ ] @fma
 
-	- @bitcast(T2, value: T1): T2
+	- [ ] @bitcast(T2, value: T1): T2
 
-	- @atomicAdd
-	- @atomicMin
-	- @atomicMax
-	- @atomicAnd
-	- @atomicOr
-	- @atomicXor
-	- @atomicExchange
-	- @atomicCompareExchange
+	- [ ] @atomicAdd
+	- [ ] @atomicMin
+	- [ ] @atomicMax
+	- [ ] @atomicAnd
+	- [ ] @atomicOr
+	- [ ] @atomicXor
+	- [ ] @atomicExchange
+	- [ ] @atomicCompareExchange
 
-	- @imageSize(image): intN
-	- @imageSizeLod(image, lod: int): intN
+	- [x] @image(sampled_image): image
+	- [ ] @combineImageSampler(image, sampler): sampled_image
 
-	- @imageLoad(image, coords: intN): float4
-	- @imageStore(image, coords: intN, value: float4)
+	- [x] @imageQuerySize(image, lod: int): intN
+		=> OpImageQuerySizeLod
 
-	- @imageSample(image_sampler, coords: floatN): float4
+	- [ ] @imageLoad(image, coords: intN): float4
+	- [ ] @imageStore(image, coords: intN, value: float4)
+
+	- [x] @imageSample(image_sampler, coords: floatN): float4
 		=> OpImageSampleImplicitLod / OpImageSampleExplicitLod if stage is not fragment
-	- @imageSampleLevel(image_sampler, coords: floatN, level: float): float4
+	- [x] @imageSampleLod(image_sampler, coords: floatN, level: float): float4
 		=> OpImageSampleExplicitLod
 
-	- @imageNumLevels(image): int
+	- [ ] @imageQueryLevels(image): int
 		=> OpImageQueryLevels
+	- [ ] @imageQueryLod(image, coords: floatN): intN
+		=> OpImageQueryLod
 
-	- @storageBarrier()
-	- @workgroupBarrier()
+	- [ ] @storageBarrier()
+	- [ ] @workgroupBarrier()
