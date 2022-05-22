@@ -6,7 +6,7 @@ import os, subprocess
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
 if not os.path.exists("./build"):
-    subprocess.run(["cmake", "-Bbuild", os.getcwd()])
+    subprocess.run(["cmake", "-DCMAKE_BUILD_TYPE=Debug", "-Bbuild", os.getcwd()])
 
 subprocess.run(["cmake", "--build", "build"])
 
@@ -44,6 +44,8 @@ for test_name in tests:
         if not success:
             failed_tests.append(test_name)
             continue
+
+        run_proc(f"spirv-dis --comment --offsets {out_path}")
 
         success = run_proc(f"spirv-val {out_path}")
         if not success:

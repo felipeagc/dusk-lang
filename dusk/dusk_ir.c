@@ -1,6 +1,4 @@
 #include "dusk_internal.h"
-#include "spirv.h"
-#include "GLSL.std.450.h"
 
 static void duskEmitType(DuskIRModule *module, DuskType *type);
 static void duskEmitValue(DuskIRModule *module, DuskIRValue *value);
@@ -1658,6 +1656,15 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
                 params[5] = value->builtin_call.params[2]->id;
 
                 duskEncodeInst(module, op, params, param_count);
+                break;
+            }
+            case SpvOpCopyMemory: {
+                uint32_t params[3] =  {
+                    value->type->id,
+                    value->builtin_call.params[2]->id,
+                    value->builtin_call.params[0]->id,
+                };
+                duskEncodeInst(module, op, params, 3);
                 break;
             }
             default: {

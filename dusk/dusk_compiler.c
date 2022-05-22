@@ -280,11 +280,18 @@ uint8_t *duskCompile(
         duskThrow(compiler);
     }
 
-    DuskIRModule *module = duskGenerateIRModule(compiler, file);
-    DuskArray(uint32_t) spirv = duskIRModuleEmit(compiler, module);
+    /* DuskIRModule *module = duskGenerateIRModule(compiler, file); */
+    /* DuskArray(uint32_t) spirv = duskIRModuleEmit(compiler, module); */
 
-    *spirv_byte_size = duskArrayLength(spirv) * 4;
-    return (uint8_t *)spirv;
+    /* *spirv_byte_size = duskArrayLength(spirv) * 4; */
+    /* return (uint8_t *)spirv; */
+
+    DuskSpvModule *spv_module = duskGenerateSpvModule(compiler, file);
+    size_t spv_length = 0;
+    uint32_t *spirv2 = duskSpvModuleEmit(NULL, spv_module, &spv_length);
+
+    *spirv_byte_size = spv_length * 4;
+    return (uint8_t *)spirv2;
 }
 
 const char *duskGetBuiltinFunctionName(DuskBuiltinFunctionKind kind)

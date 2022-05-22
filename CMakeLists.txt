@@ -17,6 +17,7 @@ add_library(
   dusk/dusk_analysis.c
   dusk/dusk_ast_to_ir.c
   dusk/dusk_ir.c
+  dusk/dusk_spirv.c
   dusk/spirv.h)
 target_include_directories(dusk PUBLIC dusk)
 

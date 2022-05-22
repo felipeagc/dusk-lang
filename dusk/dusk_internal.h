@@ -11,6 +11,10 @@
 #include <stdio.h>
 #include <setjmp.h>
 
+#define SPV_ENABLE_UTILITY_CODE
+#include "spirv.h"
+#include "GLSL.std.450.h"
+
 #if defined(_MSC_VER)
 #define DUSK_INLINE __forceinline
 #elif defined(__clang__) || defined(__GNUC__)
@@ -220,6 +224,7 @@ typedef struct DuskDecl DuskDecl;
 typedef struct DuskStmt DuskStmt;
 typedef struct DuskExpr DuskExpr;
 
+typedef struct DuskSpvValue DuskSpvValue;
 typedef struct DuskIRValue DuskIRValue;
 
 typedef struct DuskLocation {
@@ -380,6 +385,7 @@ typedef struct DuskType DuskType;
 struct DuskType {
     DuskTypeKind kind;
     uint32_t id;
+    DuskSpvValue *spv_value;
     bool emit; // This flag is set before SPIRV emission in order to emit the
                // type. Once the type is emitted, the flag is set to false.
     const char *string;
@@ -406,6 +412,7 @@ struct DuskType {
             DuskType *sub;
             size_t size;
             DuskIRValue *size_ir_value;
+            DuskSpvValue *size_spv_value;
             DuskStructLayout layout;
         } array;
         struct {
@@ -641,6 +648,68 @@ typedef enum DuskIRValueKind {
     DUSK_IR_VALUE_PHI,
     DUSK_IR_VALUE_ARRAY_LENGTH,
 } DuskIRValueKind;
+
+
+struct DuskSpvValue {
+    uint32_t id; // if op == SpvOpMax then id is a literal value
+    SpvOp op;
+    DuskType *type;
+    DuskSpvValue **params;
+    uint32_t param_count;
+};
+
+typedef struct DuskSpvModule DuskSpvModule;
+struct DuskSpvModule {
+    DuskCompiler *compiler;
+    DuskAllocator *allocator;
+
+    DuskArray(DuskSpvValue *) capabilities_arr;
+    DuskArray(DuskSpvValue *) extensions_arr;
+    DuskArray(DuskSpvValue *) header_arr;
+    DuskArray(DuskSpvValue *) decorations_arr;
+    DuskArray(DuskSpvValue *) types_consts_arr;
+    DuskArray(DuskSpvValue *) globals_arr;
+    DuskArray(DuskSpvValue *) functions_arr;
+};
+
+SpvStorageClass duskStorageClassToSpv(DuskStorageClass storage_class);
+DuskSpvValue *duskSpvCreateLiteralValue(DuskSpvModule *module, uint32_t literal);
+DuskSpvValue *duskSpvCreateValue(
+    DuskSpvModule *module,
+    SpvOp op,
+    DuskType *type,
+    uint32_t param_count,
+    DuskSpvValue **params);
+void duskSpvModuleAddExtension(DuskSpvModule *module, const char *ext_name);
+void duskSpvModuleAddCapability(DuskSpvModule *module, SpvCapability capability);
+void duskSpvModuleAddEntryPoint(
+    DuskSpvModule *module,
+    SpvExecutionModel execution_model,
+    const char *name,
+    DuskSpvValue *function);
+void duskSpvModuleAddToHeaderSection(DuskSpvModule *module, DuskSpvValue *value);
+void duskSpvDecorate(
+    DuskSpvModule *module,
+    DuskSpvValue *value,
+    SpvDecoration decoration,
+    size_t literal_count,
+    uint32_t *literals);
+void duskSpvDecorateMember(
+    DuskSpvModule *module,
+    DuskSpvValue *struct_type,
+    uint32_t member_index,
+    SpvDecoration decoration,
+    size_t literal_count,
+    uint32_t *literals);
+void duskSpvModuleAddToTypesAndConstsSection(DuskSpvModule *module, DuskSpvValue *value);
+void duskSpvModuleAddToFunctionsSection(
+    DuskSpvModule *module, DuskSpvValue *value);
+void duskSpvModuleAddToGlobalsSection(
+    DuskSpvModule *module, DuskSpvValue *value);
+DuskSpvModule *duskSpvModuleCreate(DuskCompiler *compiler);
+void duskSpvModuleDestroy(DuskSpvModule *module);
+uint32_t *duskSpvModuleEmit(
+    DuskAllocator *allocator, DuskSpvModule *module, size_t *out_length);
 
 struct DuskIRValue {
     uint32_t id;
@@ -1117,14 +1186,18 @@ struct DuskDecl {
     DuskArray(DuskAttribute) attributes_arr;
     DuskType *type;
     DuskIRValue *ir_value;
+    DuskSpvValue *spv_value;
 
     union {
         struct {
             bool is_entry_point;
             DuskIREntryPoint *entry_point;
+            DuskSpvValue *spv_entry_point;
             DuskShaderStage entry_point_stage;
             DuskArray(DuskIRValue *) entry_point_inputs_arr;
             DuskArray(DuskIRValue *) entry_point_outputs_arr;
+            DuskArray(DuskSpvValue *) spv_entry_point_inputs_arr;
+            DuskArray(DuskSpvValue *) spv_entry_point_outputs_arr;
 
             const char *link_name;
             DuskScope *scope;
@@ -1222,6 +1295,7 @@ struct DuskExpr {
     DuskType *type;
     DuskType *as_type;
     DuskIRValue *ir_value;
+    DuskSpvValue *spv_value;
     int64_t *resolved_int; // To be filled after semantic analysis
 
     union {
@@ -1330,5 +1404,7 @@ void duskAnalyzeFile(DuskCompiler *compiler, DuskFile *file);
 DuskIRModule *duskGenerateIRModule(DuskCompiler *compiler, DuskFile *file);
 DuskArray(uint32_t)
     duskIRModuleEmit(DuskCompiler *compiler, DuskIRModule *module);
+
+DuskSpvModule *duskGenerateSpvModule(DuskCompiler *compiler, DuskFile *file);
 
 #endif

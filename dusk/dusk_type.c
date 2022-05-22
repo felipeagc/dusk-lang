@@ -32,11 +32,15 @@ const char *duskTypeToPrettyString(DuskAllocator *allocator, DuskType *type)
     case DUSK_TYPE_INT: {
         if (type->int_.is_signed) {
             switch (type->int_.bits) {
+            case 8: type->pretty_string = "byte"; break;
+            case 16: type->pretty_string = "short"; break;
             case 32: type->pretty_string = "int"; break;
             default: DUSK_ASSERT(0); break;
             }
         } else {
             switch (type->int_.bits) {
+            case 8: type->pretty_string = "ubyte"; break;
+            case 16: type->pretty_string = "ushort"; break;
             case 32: type->pretty_string = "uint"; break;
             default: DUSK_ASSERT(0); break;
             }
@@ -45,6 +49,7 @@ const char *duskTypeToPrettyString(DuskAllocator *allocator, DuskType *type)
     }
     case DUSK_TYPE_FLOAT: {
         switch (type->float_.bits) {
+        case 16: type->pretty_string = "half"; break;
         case 32: type->pretty_string = "float"; break;
         case 64: type->pretty_string = "double"; break;
         default: DUSK_ASSERT(0); break;

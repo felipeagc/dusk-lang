@@ -1,10 +1,42 @@
 #include "dusk_internal.h"
-#include "spirv.h"
+
+typedef DuskArray(DuskSpvValue *) DuskSpvBlock;
 
 typedef struct DuskAstToIRState {
     DuskArray(DuskIRValue *) break_block_stack_arr;
     DuskArray(DuskIRValue *) continue_block_stack_arr;
+    DuskSpvBlock current_block;
 } DuskAstToIRState;
+
+static void duskSpvBlockAppend(DuskSpvBlock *block, DuskSpvValue *value)
+{
+    duskArrayPush(block, value);
+}
+
+static DuskSpvBlock duskSpvCreateBlock(DuskSpvModule *module)
+{
+    DuskSpvBlock block = duskArrayCreate(module->allocator, DuskSpvValue *);
+    duskSpvBlockAppend(
+        &block, duskSpvCreateValue(module, SpvOpLabel, NULL, 0, NULL));
+    return block;
+}
+
+static bool duskSpvIsLvalue(DuskSpvValue *value)
+{
+    return value->op == SpvOpVariable || value->op == SpvOpAccessChain;
+}
+
+static DuskSpvValue *duskSpvLoadLvalue(
+    DuskSpvModule *module, DuskAstToIRState *state, DuskSpvValue *value)
+{
+    if (duskSpvIsLvalue(value)) {
+        value = duskSpvCreateValue(
+            module, SpvOpLoad, value->type->pointer.sub, 1, &value);
+        duskSpvBlockAppend(&state->current_block, value);
+    }
+
+    return value;
+}
 
 static void duskGenerateLocalDecl(
     DuskIRModule *module, DuskDecl *func_decl, DuskDecl *decl);
@@ -430,6 +462,97 @@ static void duskDecorateFromAttributes(
             DuskIRDecoration decoration = duskIRCreateDecoration(
                 module->allocator, DUSK_IR_DECORATION_BUILTIN, 1, &builtin);
             duskArrayPush(decorations_arr, decoration);
+            break;
+        }
+        default: break;
+        }
+    }
+}
+
+static void duskSpvDecorateValueFromAttributes(
+    DuskSpvModule *module,
+    DuskSpvValue *value,
+    size_t attrib_count,
+    DuskAttribute *attributes)
+{
+    for (size_t i = 0; i < attrib_count; ++i) {
+        DuskAttribute *attribute = &attributes[i];
+        switch (attribute->kind) {
+        case DUSK_ATTRIBUTE_LOCATION: {
+            DUSK_ASSERT(attribute->value_expr_count == 1);
+            DUSK_ASSERT(attribute->value_exprs[0]->resolved_int);
+            uint32_t location =
+                (uint32_t)*attribute->value_exprs[0]->resolved_int;
+
+            duskSpvDecorate(module, value, SpvDecorationLocation, 1, &location);
+            break;
+        }
+        case DUSK_ATTRIBUTE_SET: {
+            DUSK_ASSERT(attribute->value_expr_count == 1);
+            DUSK_ASSERT(attribute->value_exprs[0]->resolved_int);
+            uint32_t descriptor_set =
+                (uint32_t)*attribute->value_exprs[0]->resolved_int;
+
+            duskSpvDecorate(
+                module, value, SpvDecorationDescriptorSet, 1, &descriptor_set);
+            break;
+        }
+        case DUSK_ATTRIBUTE_BINDING: {
+            DUSK_ASSERT(attribute->value_expr_count == 1);
+            DUSK_ASSERT(attribute->value_exprs[0]->resolved_int);
+            uint32_t binding =
+                (uint32_t)*attribute->value_exprs[0]->resolved_int;
+
+            duskSpvDecorate(module, value, SpvDecorationBinding, 1, &binding);
+            break;
+        }
+        case DUSK_ATTRIBUTE_OFFSET: {
+            DUSK_ASSERT(!"TODO");
+            break;
+        }
+        case DUSK_ATTRIBUTE_READ_ONLY: {
+            DUSK_ASSERT(attribute->value_expr_count == 0);
+
+            duskSpvDecorate(module, value, SpvDecorationNonWritable, 0, NULL);
+            break;
+        }
+        case DUSK_ATTRIBUTE_BUILTIN: {
+            DUSK_ASSERT(attribute->value_expr_count == 1);
+            DUSK_ASSERT(attribute->value_exprs[0]->kind == DUSK_EXPR_IDENT);
+            const char *builtin_name = attribute->value_exprs[0]->string.str;
+
+            uint32_t builtin = 0;
+            if (strcmp(builtin_name, "position") == 0) {
+                builtin = SpvBuiltInPosition;
+            } else if (strcmp(builtin_name, "frag_coord") == 0) {
+                builtin = SpvBuiltInFragCoord;
+            } else if (strcmp(builtin_name, "vertex_id") == 0) {
+                builtin = SpvBuiltInVertexId;
+            } else if (strcmp(builtin_name, "vertex_index") == 0) {
+                builtin = SpvBuiltInVertexIndex;
+            } else if (strcmp(builtin_name, "instance_id") == 0) {
+                builtin = SpvBuiltInInstanceId;
+            } else if (strcmp(builtin_name, "instance_index") == 0) {
+                builtin = SpvBuiltInInstanceIndex;
+            } else if (strcmp(builtin_name, "frag_depth") == 0) {
+                builtin = SpvBuiltInFragDepth;
+            } else if (strcmp(builtin_name, "num_workgroups") == 0) {
+                builtin = SpvBuiltInNumWorkgroups;
+            } else if (strcmp(builtin_name, "workgroup_size") == 0) {
+                builtin = SpvBuiltInWorkgroupSize;
+            } else if (strcmp(builtin_name, "workgroup_id") == 0) {
+                builtin = SpvBuiltInWorkgroupId;
+            } else if (strcmp(builtin_name, "local_invocation_id") == 0) {
+                builtin = SpvBuiltInLocalInvocationId;
+            } else if (strcmp(builtin_name, "local_invocation_index") == 0) {
+                builtin = SpvBuiltInLocalInvocationIndex;
+            } else if (strcmp(builtin_name, "global_invocation_id") == 0) {
+                builtin = SpvBuiltInGlobalInvocationId;
+            } else {
+                DUSK_ASSERT(0);
+            }
+
+            duskSpvDecorate(module, value, SpvDecorationBuiltIn, 1, &builtin);
             break;
         }
         default: break;
@@ -968,6 +1091,7 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
                 params);
             break;
         }
+
         case DUSK_BUILTIN_FUNCTION_IMAGE_1D_TYPE:
         case DUSK_BUILTIN_FUNCTION_IMAGE_2D_TYPE:
         case DUSK_BUILTIN_FUNCTION_IMAGE_2D_ARRAY_TYPE:
@@ -1625,6 +1749,7 @@ duskGenerateLocalDecl(DuskIRModule *module, DuskDecl *func_decl, DuskDecl *decl)
 
         bool should_create_var = true;
         switch (decl->type->kind) {
+        case DUSK_TYPE_RUNTIME_ARRAY:
         case DUSK_TYPE_IMAGE:
         case DUSK_TYPE_SAMPLED_IMAGE:
         case DUSK_TYPE_SAMPLER: should_create_var = false; break;
@@ -1899,6 +2024,459 @@ static void duskGenerateGlobalDecl(
     }
 }
 
+static void duskGenerateSpvType(DuskSpvModule *module, DuskType *type)
+{
+    if (type->spv_value) return;
+
+    switch (type->kind) {
+    case DUSK_TYPE_TYPE: return;
+    case DUSK_TYPE_UNTYPED_INT: return;
+    case DUSK_TYPE_UNTYPED_FLOAT: return;
+    case DUSK_TYPE_STRING: return;
+    case DUSK_TYPE_VOID: {
+        type->spv_value =
+            duskSpvCreateValue(module, SpvOpTypeVoid, NULL, 0, NULL);
+        break;
+    }
+    case DUSK_TYPE_BOOL: {
+        type->spv_value =
+            duskSpvCreateValue(module, SpvOpTypeBool, NULL, 0, NULL);
+        break;
+    }
+    case DUSK_TYPE_INT: {
+        DuskSpvValue *params[] = {
+            duskSpvCreateLiteralValue(module, type->int_.bits),
+            duskSpvCreateLiteralValue(module, (uint32_t)type->int_.is_signed),
+        };
+        type->spv_value = duskSpvCreateValue(
+            module, SpvOpTypeInt, NULL, DUSK_CARRAY_LENGTH(params), params);
+
+        switch (type->int_.bits) {
+        case 8: duskSpvModuleAddCapability(module, SpvCapabilityInt8); break;
+        case 16: duskSpvModuleAddCapability(module, SpvCapabilityInt16); break;
+        case 64: duskSpvModuleAddCapability(module, SpvCapabilityInt64); break;
+        }
+        break;
+    }
+    case DUSK_TYPE_FLOAT: {
+        DuskSpvValue *params[] = {
+            duskSpvCreateLiteralValue(module, type->float_.bits),
+        };
+        type->spv_value = duskSpvCreateValue(
+            module, SpvOpTypeFloat, NULL, DUSK_CARRAY_LENGTH(params), params);
+
+        switch (type->int_.bits) {
+        case 16:
+            duskSpvModuleAddCapability(module, SpvCapabilityFloat16);
+            break;
+        case 64:
+            duskSpvModuleAddCapability(module, SpvCapabilityFloat64);
+            break;
+        }
+        break;
+    }
+    case DUSK_TYPE_VECTOR: {
+        DuskSpvValue *params[] = {
+            type->vector.sub->spv_value,
+            duskSpvCreateLiteralValue(module, type->vector.size),
+        };
+        type->spv_value = duskSpvCreateValue(
+            module, SpvOpTypeVector, NULL, DUSK_CARRAY_LENGTH(params), params);
+        break;
+    }
+    case DUSK_TYPE_MATRIX: {
+        DuskSpvValue *params[] = {
+            type->matrix.col_type->spv_value,
+            duskSpvCreateLiteralValue(module, type->matrix.cols),
+        };
+        type->spv_value = duskSpvCreateValue(
+            module, SpvOpTypeMatrix, NULL, DUSK_CARRAY_LENGTH(params), params);
+        break;
+    }
+    case DUSK_TYPE_ARRAY: {
+        DuskType *uint_type =
+            duskTypeNewScalar(module->compiler, DUSK_SCALAR_TYPE_UINT);
+        uint_type->emit = true;
+
+        DUSK_ASSERT(UINT32_MAX >= type->array.size);
+        DuskSpvValue *size_params[] = {
+            duskSpvCreateLiteralValue(module, (uint32_t)type->array.size),
+        };
+
+        type->array.size_spv_value = duskSpvCreateValue(
+            module,
+            SpvOpConstant,
+            uint_type,
+            DUSK_CARRAY_LENGTH(size_params),
+            size_params);
+        duskSpvModuleAddToTypesAndConstsSection(
+            module, type->array.size_spv_value);
+
+        DuskSpvValue *params[] = {
+            type->array.sub->spv_value,
+            type->array.size_spv_value,
+        };
+        type->spv_value = duskSpvCreateValue(
+            module, SpvOpTypeArray, NULL, DUSK_CARRAY_LENGTH(params), params);
+        break;
+    }
+    case DUSK_TYPE_RUNTIME_ARRAY: {
+        DuskSpvValue *params[] = {
+            type->array.sub->spv_value,
+        };
+        type->spv_value = duskSpvCreateValue(
+            module,
+            SpvOpTypeRuntimeArray,
+            NULL,
+            DUSK_CARRAY_LENGTH(params),
+            params);
+        break;
+    }
+    case DUSK_TYPE_POINTER: {
+        DuskSpvValue *params[] = {
+            duskSpvCreateLiteralValue(
+                module, duskStorageClassToSpv(type->pointer.storage_class)),
+            type->pointer.sub->spv_value,
+        };
+        type->spv_value = duskSpvCreateValue(
+            module, SpvOpTypePointer, NULL, DUSK_CARRAY_LENGTH(params), params);
+        break;
+    }
+    case DUSK_TYPE_STRUCT: {
+        uint32_t param_count = type->struct_.field_count;
+        DuskSpvValue **params =
+            DUSK_NEW_ARRAY(module->allocator, DuskSpvValue *, param_count);
+
+        for (size_t i = 0; i < type->struct_.field_count; ++i) {
+            params[i] = type->struct_.field_types[i]->spv_value;
+        }
+
+        type->spv_value = duskSpvCreateValue(
+            module, SpvOpTypeStruct, NULL, param_count, params);
+        break;
+    }
+    case DUSK_TYPE_IMAGE: {
+        SpvDim dim = SpvDim2D;
+        switch (type->image.dim) {
+        case DUSK_IMAGE_DIMENSION_1D: dim = SpvDim1D; break;
+        case DUSK_IMAGE_DIMENSION_2D: dim = SpvDim2D; break;
+        case DUSK_IMAGE_DIMENSION_3D: dim = SpvDim3D; break;
+        case DUSK_IMAGE_DIMENSION_CUBE: dim = SpvDimCube; break;
+        }
+
+        DuskSpvValue *params[] = {
+            type->image.sampled_type->spv_value,
+            duskSpvCreateLiteralValue(module, (uint32_t)dim),
+            duskSpvCreateLiteralValue(module, (uint32_t)type->image.depth),
+            duskSpvCreateLiteralValue(module, (uint32_t)type->image.arrayed),
+            duskSpvCreateLiteralValue(
+                module, (uint32_t)type->image.multisampled),
+            duskSpvCreateLiteralValue(module, (uint32_t)type->image.sampled),
+            duskSpvCreateLiteralValue(module, (uint32_t)SpvImageFormatUnknown),
+        };
+
+        type->spv_value = duskSpvCreateValue(
+            module, SpvOpTypeImage, NULL, DUSK_CARRAY_LENGTH(params), params);
+        break;
+    }
+    case DUSK_TYPE_SAMPLER: {
+        type->spv_value =
+            duskSpvCreateValue(module, SpvOpTypeSampler, NULL, 0, NULL);
+        break;
+    }
+    case DUSK_TYPE_SAMPLED_IMAGE: {
+        DuskSpvValue *params[] = {
+            type->sampled_image.image_type->spv_value,
+        };
+        type->spv_value = duskSpvCreateValue(
+            module,
+            SpvOpTypeSampledImage,
+            NULL,
+            DUSK_CARRAY_LENGTH(params),
+            params);
+        break;
+    }
+    case DUSK_TYPE_FUNCTION: {
+        uint32_t op_param_count = type->function.param_type_count + 1;
+        DuskSpvValue **op_params =
+            DUSK_NEW_ARRAY(module->allocator, DuskSpvValue *, op_param_count);
+
+        op_params[0] = type->function.return_type->spv_value;
+        DUSK_ASSERT(op_params[0]);
+        for (size_t i = 0; i < type->function.param_type_count; ++i) {
+            op_params[1 + i] = type->function.param_types[i]->spv_value;
+            DUSK_ASSERT(op_params[1 + i]);
+        }
+
+        type->spv_value = duskSpvCreateValue(
+            module, SpvOpTypeFunction, NULL, op_param_count, op_params);
+        break;
+    }
+    }
+
+    duskSpvModuleAddToTypesAndConstsSection(module, type->spv_value);
+}
+
+static void duskGenerateSpvGlobalDecl(
+    DuskSpvModule *module, DuskAstToIRState *state, DuskDecl *decl)
+{
+    (void)state;
+
+    switch (decl->kind) {
+    case DUSK_DECL_FUNCTION: {
+        DuskType *func_type = decl->type;
+        if (decl->function.is_entry_point) {
+            // Entry point is a function with no parameters and no return type
+            DuskType *func_ret_type =
+                duskTypeNewBasic(module->compiler, DUSK_TYPE_VOID);
+            duskGenerateSpvType(module, func_ret_type);
+
+            func_type =
+                duskTypeNewFunction(module->compiler, func_ret_type, 0, NULL);
+            duskGenerateSpvType(module, func_type);
+
+            decl->function.entry_point_inputs_arr =
+                duskArrayCreate(module->allocator, DuskIRValue *);
+            decl->function.entry_point_outputs_arr =
+                duskArrayCreate(module->allocator, DuskIRValue *);
+            decl->function.spv_entry_point_inputs_arr =
+                duskArrayCreate(module->allocator, DuskSpvValue *);
+            decl->function.spv_entry_point_outputs_arr =
+                duskArrayCreate(module->allocator, DuskSpvValue *);
+        }
+
+        DuskSpvValue *func_type_spv = func_type->spv_value;
+        DuskType *return_type = func_type->function.return_type;
+        DuskSpvValue *op_params[] = {
+            duskSpvCreateLiteralValue(module, SpvFunctionControlMaskNone),
+            func_type_spv,
+        };
+        decl->spv_value = duskSpvCreateValue(
+            module,
+            SpvOpFunction,
+            return_type,
+            DUSK_CARRAY_LENGTH(op_params),
+            op_params);
+        duskSpvModuleAddToFunctionsSection(module, decl->spv_value);
+
+        DuskArray(DuskArray(DuskSpvValue *)) blocks =
+            duskArrayCreate(module->allocator, DuskArray(DuskSpvValue *));
+
+        state->current_block = duskSpvCreateBlock(module);
+
+        size_t param_count =
+            duskArrayLength(decl->function.parameter_decls_arr);
+        if (decl->function.is_entry_point) {
+            for (size_t i = 0; i < param_count; ++i) {
+                DuskDecl *param_decl = decl->function.parameter_decls_arr[i];
+
+                switch (param_decl->type->kind) {
+                case DUSK_TYPE_STRUCT: {
+                    size_t field_count = param_decl->type->struct_.field_count;
+                    DuskSpvValue **field_values = DUSK_NEW_ARRAY(
+                        module->allocator, DuskSpvValue *, field_count);
+
+                    for (size_t j = 0; j < field_count; ++j) {
+                        DuskType *field_type =
+                            param_decl->type->struct_.field_types[j];
+                        DuskType *field_ptr_type = duskTypeNewPointer(
+                            module->compiler,
+                            field_type,
+                            DUSK_STORAGE_CLASS_INPUT);
+                        duskGenerateSpvType(module, field_ptr_type);
+
+                        DuskSpvValue *var_params[] = {
+                            duskSpvCreateLiteralValue(
+                                module, (uint32_t)SpvStorageClassInput),
+                        };
+                        DuskSpvValue *input_value = duskSpvCreateValue(
+                            module,
+                            SpvOpVariable,
+                            field_ptr_type,
+                            DUSK_CARRAY_LENGTH(var_params),
+                            var_params);
+                        duskSpvModuleAddToGlobalsSection(module, input_value);
+                        duskArrayPush(
+                            &decl->function.spv_entry_point_inputs_arr,
+                            input_value);
+
+                        DuskArray(DuskAttribute) field_attributes_arr =
+                            param_decl->type->struct_.field_attribute_arrays[j];
+
+                        duskSpvDecorateValueFromAttributes(
+                            module,
+                            input_value,
+                            duskArrayLength(field_attributes_arr),
+                            field_attributes_arr);
+
+                        field_values[j] = input_value;
+                    }
+
+                    for (size_t j = 0; j < field_count; ++j) {
+                        field_values[j] =
+                            duskSpvLoadLvalue(module, state, field_values[j]);
+                    }
+
+                    param_decl->spv_value = duskSpvCreateValue(
+                        module,
+                        SpvOpCompositeConstruct,
+                        param_decl->type,
+                        field_count,
+                        field_values);
+                    duskSpvBlockAppend(
+                        &state->current_block, param_decl->spv_value);
+                    break;
+                }
+                default: {
+                    DuskType *input_ptr_type = duskTypeNewPointer(
+                        module->compiler,
+                        param_decl->type,
+                        DUSK_STORAGE_CLASS_INPUT);
+                    duskGenerateSpvType(module, input_ptr_type);
+
+                    DuskSpvValue *var_params[] = {
+                        duskSpvCreateLiteralValue(
+                            module, (uint32_t)SpvStorageClassInput),
+                    };
+                    DuskSpvValue *input_value = duskSpvCreateValue(
+                        module,
+                        SpvOpVariable,
+                        input_ptr_type,
+                        DUSK_CARRAY_LENGTH(var_params),
+                        var_params);
+                    duskSpvModuleAddToGlobalsSection(module, input_value);
+                    duskArrayPush(
+                        &decl->function.spv_entry_point_inputs_arr,
+                        input_value);
+
+                    duskSpvDecorateValueFromAttributes(
+                        module,
+                        input_value,
+                        duskArrayLength(param_decl->attributes_arr),
+                        param_decl->attributes_arr);
+                    break;
+                }
+                }
+            }
+
+            DuskType *return_type = decl->type->function.return_type;
+            switch (return_type->kind) {
+            case DUSK_TYPE_VOID: break;
+            case DUSK_TYPE_STRUCT: {
+                for (size_t i = 0; i < return_type->struct_.field_count; ++i) {
+                    DuskType *field_type = return_type->struct_.field_types[i];
+
+                    DuskType *field_ptr_type = duskTypeNewPointer(
+                        module->compiler,
+                        field_type,
+                        DUSK_STORAGE_CLASS_OUTPUT);
+                    duskGenerateSpvType(module, field_ptr_type);
+
+                    DuskSpvValue *var_params[] = {
+                        duskSpvCreateLiteralValue(
+                            module, (uint32_t)SpvStorageClassOutput),
+                    };
+                    DuskSpvValue *output_value = duskSpvCreateValue(
+                        module,
+                        SpvOpVariable,
+                        field_ptr_type,
+                        DUSK_CARRAY_LENGTH(var_params),
+                        var_params);
+                    duskSpvModuleAddToGlobalsSection(module, output_value);
+                    duskArrayPush(
+                        &decl->function.spv_entry_point_outputs_arr,
+                        output_value);
+
+                    DuskArray(DuskAttribute) field_attributes_arr =
+                        return_type->struct_.field_attribute_arrays[i];
+                    duskSpvDecorateValueFromAttributes(
+                        module,
+                        output_value,
+                        duskArrayLength(field_attributes_arr),
+                        field_attributes_arr);
+                }
+                break;
+            }
+            default: {
+                DuskType *output_ptr_type = duskTypeNewPointer(
+                    module->compiler, return_type, DUSK_STORAGE_CLASS_OUTPUT);
+                duskGenerateSpvType(module, output_ptr_type);
+
+                DuskSpvValue *var_params[] = {
+                    duskSpvCreateLiteralValue(
+                        module, (uint32_t)SpvStorageClassOutput),
+                };
+                DuskSpvValue *output_value = duskSpvCreateValue(
+                    module,
+                    SpvOpVariable,
+                    output_ptr_type,
+                    DUSK_CARRAY_LENGTH(var_params),
+                    var_params);
+                duskSpvModuleAddToGlobalsSection(module, output_value);
+                duskArrayPush(
+                    &decl->function.spv_entry_point_outputs_arr, output_value);
+
+                duskSpvDecorateValueFromAttributes(
+                    module,
+                    output_value,
+                    duskArrayLength(decl->function.return_type_attributes_arr),
+                    decl->function.return_type_attributes_arr);
+                break;
+            }
+            }
+        } else {
+            for (size_t i = 0; i < param_count; ++i) {
+                DuskDecl *param_decl = decl->function.parameter_decls_arr[i];
+                param_decl->spv_value = duskSpvCreateValue(
+                    module, SpvOpFunctionParameter, param_decl->type, 0, NULL);
+                duskSpvModuleAddToFunctionsSection(
+                    module, param_decl->spv_value);
+            }
+        }
+
+        // TODO: generate function body
+        // size_t stmt_count = duskArrayLength(decl->function.stmts_arr);
+        // for (size_t i = 0; i < stmt_count; ++i) {
+        //     DuskStmt *stmt = decl->function.stmts_arr[i];
+        //     duskGenerateSpvStmt(module, state, decl, stmt);
+        // }
+
+        for (size_t i = 0; i < duskArrayLength(blocks); ++i) {
+            DuskArray(DuskSpvValue *) block = blocks[i];
+            for (size_t j = 0; j < duskArrayLength(blocks); ++j) {
+                DuskSpvValue *inst = block[j];
+                duskSpvModuleAddToFunctionsSection(module, inst);
+            }
+        }
+
+        duskSpvModuleAddToFunctionsSection(
+            module,
+            duskSpvCreateValue(module, SpvOpFunctionEnd, NULL, 0, NULL));
+        break;
+    }
+    case DUSK_DECL_VAR: {
+        DuskType *ptr_type = duskTypeNewPointer(
+            module->compiler, decl->type, decl->var.storage_class);
+
+        SpvStorageClass storage_class =
+            duskStorageClassToSpv(decl->var.storage_class);
+
+        DuskSpvValue *params[] = {
+            duskSpvCreateLiteralValue(module, storage_class),
+        };
+        decl->spv_value = duskSpvCreateValue(
+            module,
+            SpvOpVariable,
+            ptr_type,
+            DUSK_CARRAY_LENGTH(params),
+            params);
+        duskSpvModuleAddToGlobalsSection(module, decl->spv_value);
+        break;
+    }
+    case DUSK_DECL_TYPE: break;
+    }
+}
+
 DuskIRModule *duskGenerateIRModule(DuskCompiler *compiler, DuskFile *file)
 {
     (void)file;
@@ -1915,6 +2493,54 @@ DuskIRModule *duskGenerateIRModule(DuskCompiler *compiler, DuskFile *file)
     for (size_t i = 0; i < duskArrayLength(file->decls_arr); ++i) {
         DuskDecl *decl = file->decls_arr[i];
         duskGenerateGlobalDecl(module, &state, decl);
+    }
+
+    return module;
+}
+
+DuskSpvModule *duskGenerateSpvModule(DuskCompiler *compiler, DuskFile *file)
+{
+    (void)file;
+
+    DuskSpvModule *module = duskSpvModuleCreate(compiler);
+
+    DuskAstToIRState state = {
+        .break_block_stack_arr =
+            duskArrayCreate(module->allocator, DuskIRValue *),
+        .continue_block_stack_arr =
+            duskArrayCreate(module->allocator, DuskIRValue *),
+    };
+
+    duskSpvModuleAddCapability(module, SpvCapabilityShader);
+    DuskSpvValue *memory_model_params[] = {
+        duskSpvCreateLiteralValue(module, SpvAddressingModelLogical),
+        duskSpvCreateLiteralValue(module, SpvMemoryModelGLSL450),
+    };
+    duskSpvModuleAddToHeaderSection(
+        module,
+        duskSpvCreateValue(
+            module,
+            SpvOpMemoryModel,
+            NULL,
+            DUSK_CARRAY_LENGTH(memory_model_params),
+            memory_model_params));
+
+    uint32_t type_count_before = duskArrayLength(compiler->types_arr);
+    for (size_t i = 0; i < duskArrayLength(compiler->types_arr); ++i) {
+        DuskType *type = compiler->types_arr[i];
+        duskGenerateSpvType(module, type);
+    }
+
+    for (size_t i = 0; i < duskArrayLength(file->decls_arr); ++i) {
+        DuskDecl *decl = file->decls_arr[i];
+        duskGenerateSpvGlobalDecl(module, &state, decl);
+    }
+
+    for (size_t i = type_count_before; i < duskArrayLength(compiler->types_arr);
+         ++i) {
+        // Generate new types that were added during generation
+        DuskType *type = compiler->types_arr[i];
+        duskGenerateSpvType(module, type);
     }
 
     return module;
