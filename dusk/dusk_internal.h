@@ -649,7 +649,6 @@ typedef enum DuskIRValueKind {
     DUSK_IR_VALUE_ARRAY_LENGTH,
 } DuskIRValueKind;
 
-
 struct DuskSpvValue {
     uint32_t id; // if op == SpvOpMax then id is a literal value
     SpvOp op;
@@ -665,15 +664,27 @@ struct DuskSpvModule {
 
     DuskArray(DuskSpvValue *) capabilities_arr;
     DuskArray(DuskSpvValue *) extensions_arr;
-    DuskArray(DuskSpvValue *) header_arr;
+    DuskArray(DuskSpvValue *) memory_model_arr;
+    DuskArray(DuskSpvValue *) entry_points_arr;
+    DuskArray(DuskSpvValue *) execution_modes_arr;
     DuskArray(DuskSpvValue *) decorations_arr;
     DuskArray(DuskSpvValue *) types_consts_arr;
     DuskArray(DuskSpvValue *) globals_arr;
     DuskArray(DuskSpvValue *) functions_arr;
 };
 
+typedef struct DuskSpvBlock {
+    DuskArray(DuskSpvValue *) insts_arr;
+} DuskSpvBlock;
+
+typedef struct DuskSpvFunction {
+    DuskArray(DuskSpvBlock *) blocks_arr;
+    DuskArray(DuskSpvValue *) vars_arr;
+} DuskSpvFunction;
+
 SpvStorageClass duskStorageClassToSpv(DuskStorageClass storage_class);
-DuskSpvValue *duskSpvCreateLiteralValue(DuskSpvModule *module, uint32_t literal);
+DuskSpvValue *
+duskSpvCreateLiteralValue(DuskSpvModule *module, uint32_t literal);
 DuskSpvValue *duskSpvCreateValue(
     DuskSpvModule *module,
     SpvOp op,
@@ -681,13 +692,17 @@ DuskSpvValue *duskSpvCreateValue(
     uint32_t param_count,
     DuskSpvValue **params);
 void duskSpvModuleAddExtension(DuskSpvModule *module, const char *ext_name);
-void duskSpvModuleAddCapability(DuskSpvModule *module, SpvCapability capability);
-void duskSpvModuleAddEntryPoint(
+void duskSpvModuleAddCapability(
+    DuskSpvModule *module, SpvCapability capability);
+DuskSpvValue *duskSpvModuleAddEntryPoint(
     DuskSpvModule *module,
     SpvExecutionModel execution_model,
     const char *name,
     DuskSpvValue *function);
-void duskSpvModuleAddToHeaderSection(DuskSpvModule *module, DuskSpvValue *value);
+void duskSpvModuleAddToMemoryModelSection(
+    DuskSpvModule *module, DuskSpvValue *value);
+void duskSpvModuleAddToExecutionModesSection(
+    DuskSpvModule *module, DuskSpvValue *value);
 void duskSpvDecorate(
     DuskSpvModule *module,
     DuskSpvValue *value,
@@ -701,7 +716,8 @@ void duskSpvDecorateMember(
     SpvDecoration decoration,
     size_t literal_count,
     uint32_t *literals);
-void duskSpvModuleAddToTypesAndConstsSection(DuskSpvModule *module, DuskSpvValue *value);
+void duskSpvModuleAddToTypesAndConstsSection(
+    DuskSpvModule *module, DuskSpvValue *value);
 void duskSpvModuleAddToFunctionsSection(
     DuskSpvModule *module, DuskSpvValue *value);
 void duskSpvModuleAddToGlobalsSection(

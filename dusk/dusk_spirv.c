@@ -29,6 +29,9 @@ duskSpvValueEmit(DuskArray(uint32_t) * stream_arr, DuskSpvValue *value)
     }
 
     for (uint32_t i = 0; i < value->param_count; ++i) {
+        if (value->params[i]->op != SpvOpMax) {
+            DUSK_ASSERT(value->params[i]->id != 0);
+        }
         duskArrayPush(stream_arr, value->params[i]->id);
     }
 }
@@ -110,7 +113,7 @@ void duskSpvModuleAddCapability(DuskSpvModule *module, SpvCapability capability)
     duskArrayPush(&module->capabilities_arr, value);
 }
 
-void duskSpvModuleAddEntryPoint(
+DuskSpvValue *duskSpvModuleAddEntryPoint(
     DuskSpvModule *module,
     SpvExecutionModel execution_model,
     const char *name,
@@ -134,12 +137,22 @@ void duskSpvModuleAddEntryPoint(
 
     DuskSpvValue *value = duskSpvCreateValue(
         module, SpvOpEntryPoint, NULL, param_count, param_values);
-    duskArrayPush(&module->header_arr, value);
+    duskArrayPush(&module->entry_points_arr, value);
+    return value;
 }
 
-void duskSpvModuleAddToHeaderSection(DuskSpvModule *module, DuskSpvValue *value)
+void duskSpvModuleAddToMemoryModelSection(
+    DuskSpvModule *module, DuskSpvValue *value)
 {
-    duskArrayPush(&module->header_arr, value);
+    DUSK_ASSERT(value);
+    duskArrayPush(&module->memory_model_arr, value);
+}
+
+void duskSpvModuleAddToExecutionModesSection(
+    DuskSpvModule *module, DuskSpvValue *value)
+{
+    DUSK_ASSERT(value);
+    duskArrayPush(&module->execution_modes_arr, value);
 }
 
 void duskSpvDecorate(
@@ -189,18 +202,21 @@ void duskSpvDecorateMember(
 void duskSpvModuleAddToTypesAndConstsSection(
     DuskSpvModule *module, DuskSpvValue *value)
 {
+    DUSK_ASSERT(value);
     duskArrayPush(&module->types_consts_arr, value);
 }
 
 void duskSpvModuleAddToFunctionsSection(
     DuskSpvModule *module, DuskSpvValue *value)
 {
+    DUSK_ASSERT(value);
     duskArrayPush(&module->functions_arr, value);
 }
 
 void duskSpvModuleAddToGlobalsSection(
     DuskSpvModule *module, DuskSpvValue *value)
 {
+    DUSK_ASSERT(value);
     duskArrayPush(&module->globals_arr, value);
 }
 
@@ -214,7 +230,9 @@ DuskSpvModule *duskSpvModuleCreate(DuskCompiler *compiler)
 
     module->capabilities_arr = duskArrayCreate(NULL, DuskSpvValue *);
     module->extensions_arr = duskArrayCreate(NULL, DuskSpvValue *);
-    module->header_arr = duskArrayCreate(NULL, DuskSpvValue *);
+    module->memory_model_arr = duskArrayCreate(NULL, DuskSpvValue *);
+    module->entry_points_arr = duskArrayCreate(NULL, DuskSpvValue *);
+    module->execution_modes_arr = duskArrayCreate(NULL, DuskSpvValue *);
     module->decorations_arr = duskArrayCreate(NULL, DuskSpvValue *);
     module->types_consts_arr = duskArrayCreate(NULL, DuskSpvValue *);
     module->globals_arr = duskArrayCreate(NULL, DuskSpvValue *);
@@ -227,7 +245,9 @@ void duskSpvModuleDestroy(DuskSpvModule *module)
 {
     duskArrayFree(&module->capabilities_arr);
     duskArrayFree(&module->extensions_arr);
-    duskArrayFree(&module->header_arr);
+    duskArrayFree(&module->memory_model_arr);
+    duskArrayFree(&module->entry_points_arr);
+    duskArrayFree(&module->execution_modes_arr);
     duskArrayFree(&module->decorations_arr);
     duskArrayFree(&module->types_consts_arr);
     duskArrayFree(&module->globals_arr);
@@ -248,7 +268,9 @@ uint32_t *duskSpvModuleEmit(
     DuskArray(DuskSpvValue *) sections[] = {
         module->capabilities_arr,
         module->extensions_arr,
-        module->header_arr,
+        module->memory_model_arr,
+        module->entry_points_arr,
+        module->execution_modes_arr,
         module->decorations_arr,
         module->types_consts_arr,
         module->globals_arr,
@@ -274,6 +296,8 @@ uint32_t *duskSpvModuleEmit(
         }
     }
 
+    stream_arr[3] = last_id + 1;
+
     // Emit instructions
     for (size_t i = 0; i < section_count; ++i) {
         DuskArray(DuskSpvValue *) section = sections[i];
@@ -282,8 +306,6 @@ uint32_t *duskSpvModuleEmit(
             duskSpvValueEmit(&stream_arr, value);
         }
     }
-
-    stream_arr[3] = last_id + 1;
 
     uint32_t *result =
         DUSK_NEW_ARRAY(allocator, uint32_t, duskArrayLength(stream_arr));

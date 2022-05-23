@@ -1,24 +1,56 @@
 #include "dusk_internal.h"
 
-typedef DuskArray(DuskSpvValue *) DuskSpvBlock;
-
 typedef struct DuskAstToIRState {
     DuskArray(DuskIRValue *) break_block_stack_arr;
     DuskArray(DuskIRValue *) continue_block_stack_arr;
-    DuskSpvBlock current_block;
+    DuskSpvFunction *current_func;
+    DuskSpvBlock *current_block;
 } DuskAstToIRState;
 
 static void duskSpvBlockAppend(DuskSpvBlock *block, DuskSpvValue *value)
 {
-    duskArrayPush(block, value);
+    DUSK_ASSERT(value);
+    duskArrayPush(&block->insts_arr, value);
 }
 
-static DuskSpvBlock duskSpvCreateBlock(DuskSpvModule *module)
+static bool duskSpvBlockIsTerminated(DuskSpvBlock *block)
 {
-    DuskSpvBlock block = duskArrayCreate(module->allocator, DuskSpvValue *);
+    size_t inst_count = duskArrayLength(block->insts_arr);
+    DuskSpvValue *last_inst = block->insts_arr[inst_count - 1];
+    switch (last_inst->op) {
+    case SpvOpReturn:
+    case SpvOpReturnValue:
+    case SpvOpBranch:
+    case SpvOpBranchConditional:
+    case SpvOpUnreachable:
+    case SpvOpSwitch:
+    case SpvOpKill:
+    case SpvOpTerminateInvocation: return true;
+    default: return false;
+    }
+}
+
+static DuskSpvBlock *duskSpvBlockCreate(DuskSpvModule *module)
+{
+    DuskSpvBlock *block = DUSK_NEW(module->allocator, DuskSpvBlock);
+    block->insts_arr = duskArrayCreate(module->allocator, DuskSpvValue *);
     duskSpvBlockAppend(
-        &block, duskSpvCreateValue(module, SpvOpLabel, NULL, 0, NULL));
+        block, duskSpvCreateValue(module, SpvOpLabel, NULL, 0, NULL));
     return block;
+}
+
+static void
+duskSpvAddBlockToCurrentFunction(DuskAstToIRState *state, DuskSpvBlock *block)
+{
+    duskArrayPush(&state->current_func->blocks_arr, block);
+    state->current_block = block;
+}
+
+static void
+duskSpvAddVarToCurrentFunction(DuskAstToIRState *state, DuskSpvValue *var)
+{
+    DUSK_ASSERT(var->op == SpvOpVariable);
+    duskArrayPush(&state->current_func->vars_arr, var);
 }
 
 static bool duskSpvIsLvalue(DuskSpvValue *value)
@@ -32,10 +64,245 @@ static DuskSpvValue *duskSpvLoadLvalue(
     if (duskSpvIsLvalue(value)) {
         value = duskSpvCreateValue(
             module, SpvOpLoad, value->type->pointer.sub, 1, &value);
-        duskSpvBlockAppend(&state->current_block, value);
+        duskSpvBlockAppend(state->current_block, value);
     }
 
     return value;
+}
+
+static SpvOp duskSpvGetBinaryOp(
+    DuskBinaryOp binary_op, DuskType *left_type, DuskType *right_type)
+{
+    SpvOp op = 0;
+
+    DuskType *left_scalar_type = duskGetScalarType(left_type);
+    DuskType *right_scalar_type = duskGetScalarType(right_type);
+
+    DUSK_ASSERT(left_scalar_type == right_scalar_type);
+
+    if (left_type != right_type) {
+        DUSK_ASSERT(
+            left_type->kind == DUSK_TYPE_VECTOR ||
+            right_type->kind == DUSK_TYPE_VECTOR);
+        DUSK_ASSERT(binary_op == DUSK_BINARY_OP_MUL);
+    }
+
+    DuskType *scalar_type = left_scalar_type;
+
+    switch (binary_op) {
+    case DUSK_BINARY_OP_ADD: {
+        if (scalar_type->kind == DUSK_TYPE_FLOAT) {
+            op = SpvOpFAdd;
+        } else if (scalar_type->kind == DUSK_TYPE_INT) {
+            op = SpvOpIAdd;
+        } else {
+            DUSK_ASSERT(0);
+        }
+        break;
+    }
+    case DUSK_BINARY_OP_SUB: {
+        if (scalar_type->kind == DUSK_TYPE_FLOAT) {
+            op = SpvOpFSub;
+        } else if (scalar_type->kind == DUSK_TYPE_INT) {
+            op = SpvOpISub;
+        } else {
+            DUSK_ASSERT(0);
+        }
+        break;
+    }
+    case DUSK_BINARY_OP_MUL: {
+        if (left_type->kind == DUSK_TYPE_VECTOR &&
+            left_type->vector.sub == right_type) {
+            op = SpvOpVectorTimesScalar;
+        } else if (
+            right_type->kind == DUSK_TYPE_VECTOR &&
+            right_type->vector.sub == left_type) {
+            op = SpvOpVectorTimesScalar;
+        } else if (
+            left_type->kind == DUSK_TYPE_MATRIX &&
+            left_type->matrix.col_type->vector.sub == right_type) {
+            op = SpvOpMatrixTimesScalar;
+        } else if (
+            right_type->kind == DUSK_TYPE_MATRIX &&
+            right_type->matrix.col_type->vector.sub == left_type) {
+        } else if (
+            left_type->kind == DUSK_TYPE_VECTOR &&
+            right_type->kind == DUSK_TYPE_MATRIX &&
+            left_type == right_type->matrix.col_type) {
+            op = SpvOpVectorTimesMatrix;
+        } else if (
+            left_type->kind == DUSK_TYPE_MATRIX &&
+            right_type->kind == DUSK_TYPE_VECTOR &&
+            right_type == left_type->matrix.col_type) {
+            op = SpvOpMatrixTimesVector;
+        } else if (
+            left_type->kind == DUSK_TYPE_MATRIX &&
+            right_type->kind == DUSK_TYPE_MATRIX && left_type == right_type) {
+            op = SpvOpMatrixTimesMatrix;
+        } else if (scalar_type->kind == DUSK_TYPE_FLOAT) {
+            op = SpvOpFMul;
+        } else if (scalar_type->kind == DUSK_TYPE_INT) {
+            op = SpvOpIMul;
+        } else {
+            DUSK_ASSERT(0);
+        }
+        break;
+    }
+    case DUSK_BINARY_OP_DIV: {
+        if (scalar_type->kind == DUSK_TYPE_FLOAT) {
+            op = SpvOpFDiv;
+        } else if (scalar_type->kind == DUSK_TYPE_INT) {
+            if (scalar_type->int_.is_signed) {
+                op = SpvOpSDiv;
+            } else {
+                op = SpvOpUDiv;
+            }
+        } else {
+            DUSK_ASSERT(0);
+        }
+        break;
+    }
+    case DUSK_BINARY_OP_MOD: {
+        if (scalar_type->kind == DUSK_TYPE_INT) {
+            if (scalar_type->int_.is_signed) {
+                op = SpvOpSMod;
+            } else {
+                op = SpvOpUMod;
+            }
+        } else {
+            DUSK_ASSERT(0);
+        }
+        break;
+    }
+    case DUSK_BINARY_OP_BITAND: {
+        if (scalar_type->kind == DUSK_TYPE_INT) {
+            op = SpvOpBitwiseAnd;
+        } else {
+            DUSK_ASSERT(0);
+        }
+        break;
+    }
+    case DUSK_BINARY_OP_BITOR: {
+        if (scalar_type->kind == DUSK_TYPE_INT) {
+            op = SpvOpBitwiseOr;
+        } else {
+            DUSK_ASSERT(0);
+        }
+        break;
+    }
+    case DUSK_BINARY_OP_BITXOR: {
+        if (scalar_type->kind == DUSK_TYPE_INT) {
+            op = SpvOpBitwiseXor;
+        } else {
+            DUSK_ASSERT(0);
+        }
+        break;
+    }
+    case DUSK_BINARY_OP_LSHIFT: {
+        if (scalar_type->kind == DUSK_TYPE_INT) {
+            op = SpvOpShiftLeftLogical;
+        } else {
+            DUSK_ASSERT(0);
+        }
+        break;
+    }
+    case DUSK_BINARY_OP_RSHIFT: {
+        if (scalar_type->kind == DUSK_TYPE_INT) {
+            if (scalar_type->int_.is_signed) {
+                op = SpvOpShiftRightArithmetic;
+            } else {
+                op = SpvOpShiftRightLogical;
+            }
+        } else {
+            DUSK_ASSERT(0);
+        }
+        break;
+    }
+    case DUSK_BINARY_OP_EQ: {
+        if (scalar_type->kind == DUSK_TYPE_FLOAT) {
+            op = SpvOpFOrdEqual;
+        } else if (scalar_type->kind == DUSK_TYPE_INT) {
+            op = SpvOpIEqual;
+        } else {
+            DUSK_ASSERT(0);
+        }
+        break;
+    }
+    case DUSK_BINARY_OP_NOTEQ: {
+        if (scalar_type->kind == DUSK_TYPE_FLOAT) {
+            op = SpvOpFOrdNotEqual;
+        } else if (scalar_type->kind == DUSK_TYPE_INT) {
+            op = SpvOpINotEqual;
+        } else {
+            DUSK_ASSERT(0);
+        }
+        break;
+    }
+    case DUSK_BINARY_OP_LESS: {
+        if (scalar_type->kind == DUSK_TYPE_FLOAT) {
+            op = SpvOpFOrdLessThan;
+        } else if (scalar_type->kind == DUSK_TYPE_INT) {
+            if (scalar_type->int_.is_signed) {
+                op = SpvOpSLessThan;
+            } else {
+                op = SpvOpULessThan;
+            }
+        } else {
+            DUSK_ASSERT(0);
+        }
+        break;
+    }
+    case DUSK_BINARY_OP_LESSEQ: {
+        if (scalar_type->kind == DUSK_TYPE_FLOAT) {
+            op = SpvOpFOrdLessThanEqual;
+        } else if (scalar_type->kind == DUSK_TYPE_INT) {
+            if (scalar_type->int_.is_signed) {
+                op = SpvOpSLessThanEqual;
+            } else {
+                op = SpvOpULessThanEqual;
+            }
+        } else {
+            DUSK_ASSERT(0);
+        }
+        break;
+    }
+    case DUSK_BINARY_OP_GREATER: {
+        if (scalar_type->kind == DUSK_TYPE_FLOAT) {
+            op = SpvOpFOrdGreaterThan;
+        } else if (scalar_type->kind == DUSK_TYPE_INT) {
+            if (scalar_type->int_.is_signed) {
+                op = SpvOpSGreaterThan;
+            } else {
+                op = SpvOpUGreaterThan;
+            }
+        } else {
+            DUSK_ASSERT(0);
+        }
+        break;
+    }
+    case DUSK_BINARY_OP_GREATEREQ: {
+        if (scalar_type->kind == DUSK_TYPE_FLOAT) {
+            op = SpvOpFOrdGreaterThanEqual;
+        } else if (scalar_type->kind == DUSK_TYPE_INT) {
+            if (scalar_type->int_.is_signed) {
+                op = SpvOpSGreaterThanEqual;
+            } else {
+                op = SpvOpUGreaterThanEqual;
+            }
+        } else {
+            DUSK_ASSERT(0);
+        }
+        break;
+    }
+
+    case DUSK_BINARY_OP_AND:
+    case DUSK_BINARY_OP_OR: DUSK_ASSERT(0); break;
+
+    case DUSK_BINARY_OP_MAX: DUSK_ASSERT(0); break;
+    }
+
+    DUSK_ASSERT(op != 0);
+    return op;
 }
 
 static void duskGenerateLocalDecl(
@@ -2217,6 +2484,580 @@ static void duskGenerateSpvType(DuskSpvModule *module, DuskType *type)
     duskSpvModuleAddToTypesAndConstsSection(module, type->spv_value);
 }
 
+static void duskGenerateSpvExpr(
+    DuskSpvModule *module, DuskAstToIRState *state, DuskExpr *expr)
+{
+    switch (expr->kind) {
+    case DUSK_EXPR_STRING_LITERAL: break;
+    case DUSK_EXPR_VOID_TYPE:
+    case DUSK_EXPR_BOOL_TYPE:
+    case DUSK_EXPR_SCALAR_TYPE:
+    case DUSK_EXPR_VECTOR_TYPE:
+    case DUSK_EXPR_MATRIX_TYPE:
+    case DUSK_EXPR_STRUCT_TYPE:
+    case DUSK_EXPR_ARRAY_TYPE:
+    case DUSK_EXPR_RUNTIME_ARRAY_TYPE: break;
+    case DUSK_EXPR_INT_LITERAL: {
+        DUSK_ASSERT(
+            expr->type->kind != DUSK_TYPE_UNTYPED_INT &&
+            expr->type->kind != DUSK_TYPE_UNTYPED_FLOAT);
+        uint32_t literals[2] = {0, 0};
+        size_t literal_word_count = 1;
+
+        if (expr->type->kind == DUSK_TYPE_INT) {
+            switch (expr->type->int_.bits) {
+            case 8: {
+                literals[0] = (uint8_t)expr->int_literal;
+                break;
+            }
+            case 16: {
+                literals[0] = (uint16_t)expr->int_literal;
+                break;
+            }
+            case 32: {
+                literals[0] = (uint32_t)expr->int_literal;
+                break;
+            }
+            case 64: {
+                uint64_t lit = (uint64_t)expr->int_literal;
+                memcpy(&literals[0], &lit, sizeof(uint64_t));
+                literal_word_count = 2;
+                break;
+            }
+            }
+        } else if (expr->type->kind == DUSK_TYPE_FLOAT) {
+            switch (expr->type->float_.bits) {
+            case 32: {
+                float lit = (float)expr->int_literal;
+                memcpy(&literals[0], &lit, sizeof(float));
+                break;
+            }
+            case 64: {
+                double lit = (double)expr->int_literal;
+                memcpy(&literals[0], &lit, sizeof(double));
+                literal_word_count = 2;
+                break;
+            }
+            }
+        }
+
+        DuskSpvValue *spv_literals[2] = {
+            duskSpvCreateLiteralValue(module, literals[0]),
+            duskSpvCreateLiteralValue(module, literals[1]),
+        };
+
+        expr->spv_value = duskSpvCreateValue(
+            module,
+            SpvOpConstant,
+            expr->type,
+            literal_word_count,
+            spv_literals);
+        duskSpvModuleAddToTypesAndConstsSection(module, expr->spv_value);
+        break;
+    }
+    case DUSK_EXPR_FLOAT_LITERAL: {
+        DUSK_ASSERT(
+            expr->type->kind != DUSK_TYPE_UNTYPED_INT &&
+            expr->type->kind != DUSK_TYPE_UNTYPED_FLOAT);
+        uint32_t literals[2] = {0, 0};
+        memcpy(&literals[0], &expr->float_literal, sizeof(double));
+
+        DuskSpvValue *spv_literals[2] = {
+            duskSpvCreateLiteralValue(module, literals[0]),
+            duskSpvCreateLiteralValue(module, literals[1]),
+        };
+        expr->spv_value = duskSpvCreateValue(
+            module,
+            SpvOpConstant,
+            expr->type,
+            DUSK_CARRAY_LENGTH(spv_literals),
+            spv_literals);
+        duskSpvModuleAddToTypesAndConstsSection(module, expr->spv_value);
+        break;
+    }
+    case DUSK_EXPR_BOOL_LITERAL: {
+        expr->spv_value = duskSpvCreateValue(
+            module,
+            expr->bool_literal ? SpvOpConstantTrue : SpvOpConstantFalse,
+            expr->type,
+            0,
+            NULL);
+        duskSpvModuleAddToTypesAndConstsSection(module, expr->spv_value);
+        break;
+    }
+    case DUSK_EXPR_STRUCT_LITERAL: {
+        DUSK_ASSERT(!"TODO");
+        break;
+    }
+    case DUSK_EXPR_ARRAY_LITERAL: {
+        DUSK_ASSERT(!"TODO");
+        break;
+    }
+    case DUSK_EXPR_IDENT: {
+        DUSK_ASSERT(expr->identifier.decl);
+        DUSK_ASSERT(expr->type);
+        expr->spv_value = expr->identifier.decl->spv_value;
+        break;
+    }
+    case DUSK_EXPR_FUNCTION_CALL: {
+        DUSK_ASSERT(!"TODO");
+        break;
+    }
+    case DUSK_EXPR_BUILTIN_FUNCTION_CALL: {
+        DUSK_ASSERT(!"TODO");
+        break;
+    }
+    case DUSK_EXPR_ACCESS: {
+        DUSK_ASSERT(!"TODO");
+        break;
+    }
+    case DUSK_EXPR_ARRAY_ACCESS: {
+        DUSK_ASSERT(!"TODO");
+        break;
+    }
+    case DUSK_EXPR_BINARY: {
+        switch (expr->binary.op) {
+        case DUSK_BINARY_OP_MAX: DUSK_ASSERT(0); break;
+
+        case DUSK_BINARY_OP_EQ:
+        case DUSK_BINARY_OP_NOTEQ:
+        case DUSK_BINARY_OP_GREATER:
+        case DUSK_BINARY_OP_GREATEREQ:
+        case DUSK_BINARY_OP_LESS:
+        case DUSK_BINARY_OP_LESSEQ:
+
+        case DUSK_BINARY_OP_ADD:
+        case DUSK_BINARY_OP_SUB:
+        case DUSK_BINARY_OP_MUL:
+        case DUSK_BINARY_OP_DIV:
+        case DUSK_BINARY_OP_MOD:
+        case DUSK_BINARY_OP_BITAND:
+        case DUSK_BINARY_OP_BITOR:
+        case DUSK_BINARY_OP_BITXOR:
+        case DUSK_BINARY_OP_LSHIFT:
+        case DUSK_BINARY_OP_RSHIFT: {
+            duskGenerateSpvExpr(module, state, expr->binary.left);
+            duskGenerateSpvExpr(module, state, expr->binary.right);
+
+            DuskSpvValue *left_val =
+                duskSpvLoadLvalue(module, state, expr->binary.left->spv_value);
+            DuskSpvValue *right_val =
+                duskSpvLoadLvalue(module, state, expr->binary.right->spv_value);
+
+            DuskSpvValue *params[] = {
+                left_val,
+                right_val,
+            };
+
+            SpvOp op = duskSpvGetBinaryOp(
+                expr->binary.op,
+                expr->binary.left->type,
+                expr->binary.right->type);
+            expr->spv_value = duskSpvCreateValue(
+                module, op, expr->type, DUSK_CARRAY_LENGTH(params), params);
+            duskSpvBlockAppend(state->current_block, expr->spv_value);
+            break;
+        }
+
+        case DUSK_BINARY_OP_AND: {
+            DuskSpvBlock *first_cond_true_block = duskSpvBlockCreate(module);
+            DuskSpvBlock *merge_block = duskSpvBlockCreate(module);
+
+            duskGenerateSpvExpr(module, state, expr->binary.left);
+            DuskSpvValue *first_cond =
+                duskSpvLoadLvalue(module, state, expr->binary.left->spv_value);
+
+            DuskSpvValue *merge_params[] = {
+                merge_block->insts_arr[0],
+                duskSpvCreateLiteralValue(module, SpvSelectionControlMaskNone),
+            };
+            duskSpvBlockAppend(
+                state->current_block,
+                duskSpvCreateValue(
+                    module,
+                    SpvOpSelectionMerge,
+                    NULL,
+                    DUSK_CARRAY_LENGTH(merge_params),
+                    merge_params));
+
+            DuskSpvBlock *initial_block = state->current_block;
+            DuskSpvValue *cond_branch_params[] = {
+                first_cond,
+                first_cond_true_block->insts_arr[0],
+                merge_block->insts_arr[0],
+            };
+            duskSpvBlockAppend(
+                state->current_block,
+                duskSpvCreateValue(
+                    module,
+                    SpvOpBranchConditional,
+                    NULL,
+                    DUSK_CARRAY_LENGTH(cond_branch_params),
+                    cond_branch_params));
+
+            duskSpvAddBlockToCurrentFunction(state, first_cond_true_block);
+            duskGenerateSpvExpr(module, state, expr->binary.right);
+            DuskSpvValue *second_cond =
+                duskSpvLoadLvalue(module, state, expr->binary.right->spv_value);
+
+            DuskSpvValue *branch_params[] = {
+                merge_block->insts_arr[0],
+            };
+            DuskSpvBlock *second_true_block = state->current_block;
+            duskSpvBlockAppend(
+                state->current_block,
+                duskSpvCreateValue(
+                    module,
+                    SpvOpBranch,
+                    NULL,
+                    DUSK_CARRAY_LENGTH(branch_params),
+                    branch_params));
+
+            duskSpvAddBlockToCurrentFunction(state, merge_block);
+            DuskSpvValue *phi_params[] = {
+                first_cond,
+                initial_block->insts_arr[0],
+                second_cond,
+                second_true_block->insts_arr[0],
+            };
+            expr->spv_value = duskSpvCreateValue(
+                module,
+                SpvOpPhi,
+                expr->type,
+                DUSK_CARRAY_LENGTH(phi_params),
+                phi_params);
+            duskSpvBlockAppend(state->current_block, expr->spv_value);
+            break;
+        }
+
+        case DUSK_BINARY_OP_OR: {
+            DuskSpvBlock *first_cond_false_block = duskSpvBlockCreate(module);
+            DuskSpvBlock *merge_block = duskSpvBlockCreate(module);
+
+            duskGenerateSpvExpr(module, state, expr->binary.left);
+            DuskSpvValue *first_cond =
+                duskSpvLoadLvalue(module, state, expr->binary.left->spv_value);
+
+            DuskSpvValue *merge_params[] = {
+                merge_block->insts_arr[0],
+                duskSpvCreateLiteralValue(module, SpvSelectionControlMaskNone),
+            };
+            duskSpvBlockAppend(
+                state->current_block,
+                duskSpvCreateValue(
+                    module,
+                    SpvOpSelectionMerge,
+                    NULL,
+                    DUSK_CARRAY_LENGTH(merge_params),
+                    merge_params));
+
+            DuskSpvBlock *initial_block = state->current_block;
+            DuskSpvValue *cond_branch_params[] = {
+                first_cond,
+                merge_block->insts_arr[0],
+                first_cond_false_block->insts_arr[0],
+            };
+            duskSpvBlockAppend(
+                state->current_block,
+                duskSpvCreateValue(
+                    module,
+                    SpvOpBranchConditional,
+                    NULL,
+                    DUSK_CARRAY_LENGTH(cond_branch_params),
+                    cond_branch_params));
+
+            duskSpvAddBlockToCurrentFunction(state, first_cond_false_block);
+            duskGenerateSpvExpr(module, state, expr->binary.right);
+            DuskSpvValue *second_cond =
+                duskSpvLoadLvalue(module, state, expr->binary.right->spv_value);
+
+            DuskSpvValue *branch_params[] = {
+                merge_block->insts_arr[0],
+            };
+            DuskSpvBlock *second_true_block = state->current_block;
+            duskSpvBlockAppend(
+                state->current_block,
+                duskSpvCreateValue(
+                    module,
+                    SpvOpBranch,
+                    NULL,
+                    DUSK_CARRAY_LENGTH(branch_params),
+                    branch_params));
+
+            duskSpvAddBlockToCurrentFunction(state, merge_block);
+            DuskSpvValue *phi_params[] = {
+                first_cond,
+                initial_block->insts_arr[0],
+                second_cond,
+                second_true_block->insts_arr[0],
+            };
+            expr->spv_value = duskSpvCreateValue(
+                module,
+                SpvOpPhi,
+                expr->type,
+                DUSK_CARRAY_LENGTH(phi_params),
+                phi_params);
+            duskSpvBlockAppend(state->current_block, expr->spv_value);
+            break;
+        }
+        }
+        break;
+    }
+    case DUSK_EXPR_UNARY: {
+        duskGenerateSpvExpr(module, state, expr->unary.right);
+        DUSK_ASSERT(expr->unary.right->spv_value);
+
+        DuskSpvValue *right_val =
+            duskSpvLoadLvalue(module, state, expr->unary.right->spv_value);
+
+        switch (expr->unary.op) {
+        case DUSK_UNARY_OP_NOT: {
+            switch (right_val->op) {
+            case SpvOpConstantFalse: {
+                expr->spv_value = duskSpvCreateValue(
+                    module, SpvOpConstantTrue, expr->type, 0, NULL);
+                duskSpvModuleAddToTypesAndConstsSection(
+                    module, expr->spv_value);
+                break;
+            }
+            case SpvOpConstantTrue: {
+                expr->spv_value = duskSpvCreateValue(
+                    module, SpvOpConstantFalse, expr->type, 0, NULL);
+                duskSpvModuleAddToTypesAndConstsSection(
+                    module, expr->spv_value);
+                break;
+            }
+            default: {
+                // Non-constant
+                expr->spv_value = duskSpvCreateValue(
+                    module, SpvOpNot, expr->type, 1, &right_val);
+                duskSpvBlockAppend(state->current_block, expr->spv_value);
+                break;
+            }
+            }
+            break;
+        }
+        case DUSK_UNARY_OP_NEGATE: {
+            if (right_val->op == SpvOpConstant) {
+                // Constant
+                switch (expr->type->kind) {
+                case DUSK_TYPE_INT: {
+                    uint32_t literals[2] = {};
+
+                    switch (expr->type->int_.bits) {
+                    case 8: {
+                        literals[0] =
+                            (uint8_t)(-((uint8_t)right_val->params[0]->id));
+                        break;
+                    }
+                    case 16: {
+                        literals[0] =
+                            (uint16_t)(-((uint16_t)right_val->params[0]->id));
+                        break;
+                    }
+                    case 32: {
+                        literals[0] = -right_val->params[0]->id;
+                        break;
+                    }
+                    case 64: {
+                        literals[0] = right_val->params[0]->id;
+                        literals[1] = right_val->params[1]->id;
+                        uint64_t lit;
+                        memcpy(&lit, &literals[0], sizeof(uint64_t));
+                        lit = -lit;
+                        memcpy(&literals[0], &lit, sizeof(uint64_t));
+                        break;
+                    }
+                    default: DUSK_ASSERT(0);
+                    }
+
+                    DuskSpvValue *spv_literals[2] = {
+                        duskSpvCreateLiteralValue(module, literals[0]),
+                        duskSpvCreateLiteralValue(module, literals[1]),
+                    };
+
+                    expr->spv_value = duskSpvCreateValue(
+                        module,
+                        SpvOpConstant,
+                        expr->type,
+                        right_val->param_count,
+                        spv_literals);
+                    duskSpvModuleAddToTypesAndConstsSection(
+                        module, expr->spv_value);
+                    break;
+                }
+                case DUSK_TYPE_FLOAT: {
+                    uint32_t literals[2] = {};
+
+                    switch (expr->type->int_.bits) {
+                    case 32: {
+                        float lit;
+                        memcpy(&lit, &literals[0], sizeof(float));
+                        lit = -lit;
+                        memcpy(&literals[0], &lit, sizeof(float));
+                        break;
+                    }
+                    case 64: {
+                        literals[0] = right_val->params[0]->id;
+                        literals[1] = right_val->params[1]->id;
+                        double lit;
+                        memcpy(&lit, &literals[0], sizeof(double));
+                        lit = -lit;
+                        memcpy(&literals[0], &lit, sizeof(double));
+                        break;
+                    }
+                    default: DUSK_ASSERT(0);
+                    }
+
+                    DuskSpvValue *spv_literals[2] = {
+                        duskSpvCreateLiteralValue(module, literals[0]),
+                        duskSpvCreateLiteralValue(module, literals[1]),
+                    };
+
+                    expr->spv_value = duskSpvCreateValue(
+                        module,
+                        SpvOpConstant,
+                        expr->type,
+                        right_val->param_count,
+                        spv_literals);
+                    duskSpvModuleAddToTypesAndConstsSection(
+                        module, expr->spv_value);
+                    break;
+                }
+                default: DUSK_ASSERT(0);
+                }
+            } else {
+                // Non constant
+                SpvOp op;
+                switch (expr->type->kind) {
+                case DUSK_TYPE_INT: op = SpvOpSNegate; break;
+                case DUSK_TYPE_FLOAT: op = SpvOpFNegate; break;
+                default: DUSK_ASSERT(0);
+                }
+
+                expr->spv_value =
+                    duskSpvCreateValue(module, op, expr->type, 1, &right_val);
+                duskSpvBlockAppend(state->current_block, expr->spv_value);
+            }
+            break;
+        }
+        case DUSK_UNARY_OP_BITNOT: {
+            DUSK_ASSERT(!"TODO");
+            break;
+        }
+        }
+        break;
+    }
+    }
+}
+
+static void duskGenerateSpvLocalDecl(
+    DuskSpvModule *module, DuskAstToIRState *state, DuskDecl *decl)
+{
+    switch (decl->kind) {
+    case DUSK_DECL_VAR: {
+        DUSK_ASSERT(decl->type);
+
+        bool should_create_var = true;
+        switch (decl->type->kind) {
+        case DUSK_TYPE_RUNTIME_ARRAY:
+        case DUSK_TYPE_IMAGE:
+        case DUSK_TYPE_SAMPLED_IMAGE:
+        case DUSK_TYPE_SAMPLER: should_create_var = false; break;
+        default: break;
+        }
+
+        if (should_create_var) {
+            DuskSpvValue *var_params[] = {
+                duskSpvCreateLiteralValue(
+                    module, (uint32_t)SpvStorageClassFunction),
+            };
+            DuskType *ptr_type = duskTypeNewPointer(
+                module->compiler, decl->type, DUSK_STORAGE_CLASS_FUNCTION);
+            decl->spv_value = duskSpvCreateValue(
+                module,
+                SpvOpVariable,
+                ptr_type,
+                DUSK_CARRAY_LENGTH(var_params),
+                var_params);
+            duskSpvAddVarToCurrentFunction(state, decl->spv_value);
+        }
+
+        if (decl->var.value_expr) {
+            duskGenerateSpvExpr(module, state, decl->var.value_expr);
+            DuskSpvValue *assigned_value = decl->var.value_expr->spv_value;
+            DUSK_ASSERT(assigned_value);
+
+            if (should_create_var) {
+                assigned_value =
+                    duskSpvLoadLvalue(module, state, assigned_value);
+
+                DuskSpvValue *store_params[] = {
+                    decl->spv_value,
+                    assigned_value,
+                };
+                duskSpvBlockAppend(
+                    state->current_block,
+                    duskSpvCreateValue(
+                        module,
+                        SpvOpStore,
+                        NULL,
+                        DUSK_CARRAY_LENGTH(store_params),
+                        store_params));
+                ;
+            } else {
+                decl->spv_value = assigned_value;
+            }
+        }
+
+        DUSK_ASSERT(decl->spv_value);
+
+        break;
+    }
+    case DUSK_DECL_FUNCTION:
+    case DUSK_DECL_TYPE: DUSK_ASSERT(0); break;
+    }
+}
+
+static void duskGenerateSpvStmt(
+    DuskSpvModule *module, DuskAstToIRState *state, DuskStmt *stmt)
+{
+    switch (stmt->kind) {
+    case DUSK_STMT_DECL: {
+        duskGenerateSpvLocalDecl(module, state, stmt->decl);
+        break;
+    }
+    case DUSK_STMT_ASSIGN: {
+        break;
+    }
+    case DUSK_STMT_EXPR: {
+        duskGenerateSpvExpr(module, state, stmt->expr);
+        break;
+    }
+    case DUSK_STMT_BLOCK: {
+        break;
+    }
+    case DUSK_STMT_IF: {
+        break;
+    }
+    case DUSK_STMT_WHILE: {
+        break;
+    }
+    case DUSK_STMT_BREAK: {
+        break;
+    }
+    case DUSK_STMT_CONTINUE: {
+        break;
+    }
+    case DUSK_STMT_RETURN: {
+        break;
+    }
+    case DUSK_STMT_DISCARD: {
+        break;
+    }
+    }
+}
+
 static void duskGenerateSpvGlobalDecl(
     DuskSpvModule *module, DuskAstToIRState *state, DuskDecl *decl)
 {
@@ -2259,14 +3100,50 @@ static void duskGenerateSpvGlobalDecl(
             op_params);
         duskSpvModuleAddToFunctionsSection(module, decl->spv_value);
 
-        DuskArray(DuskArray(DuskSpvValue *)) blocks =
-            duskArrayCreate(module->allocator, DuskArray(DuskSpvValue *));
+        state->current_func = DUSK_NEW(module->allocator, DuskSpvFunction);
+        state->current_func->blocks_arr =
+            duskArrayCreate(module->allocator, DuskSpvBlock *);
+        state->current_func->vars_arr =
+            duskArrayCreate(module->allocator, DuskSpvValue *);
 
-        state->current_block = duskSpvCreateBlock(module);
+        duskSpvAddBlockToCurrentFunction(state, duskSpvBlockCreate(module));
 
         size_t param_count =
             duskArrayLength(decl->function.parameter_decls_arr);
         if (decl->function.is_entry_point) {
+            SpvExecutionModel execution_model = 0;
+            switch (decl->function.entry_point_stage) {
+            case DUSK_SHADER_STAGE_VERTEX:
+                execution_model = SpvExecutionModelVertex;
+                break;
+            case DUSK_SHADER_STAGE_FRAGMENT:
+                execution_model = SpvExecutionModelFragment;
+                break;
+            case DUSK_SHADER_STAGE_COMPUTE:
+                execution_model = SpvExecutionModelGLCompute;
+                break;
+            }
+
+            duskSpvModuleAddEntryPoint(
+                module, execution_model, decl->name, decl->spv_value);
+
+            if (decl->function.entry_point_stage ==
+                DUSK_SHADER_STAGE_FRAGMENT) {
+                DuskSpvValue *execution_mode_params[] = {
+                    decl->spv_value,
+                    duskSpvCreateLiteralValue(
+                        module, (uint32_t)SpvExecutionModeOriginUpperLeft),
+                };
+                duskSpvModuleAddToExecutionModesSection(
+                    module,
+                    duskSpvCreateValue(
+                        module,
+                        SpvOpExecutionMode,
+                        NULL,
+                        DUSK_CARRAY_LENGTH(execution_mode_params),
+                        execution_mode_params));
+            }
+
             for (size_t i = 0; i < param_count; ++i) {
                 DuskDecl *param_decl = decl->function.parameter_decls_arr[i];
 
@@ -2324,7 +3201,7 @@ static void duskGenerateSpvGlobalDecl(
                         field_count,
                         field_values);
                     duskSpvBlockAppend(
-                        &state->current_block, param_decl->spv_value);
+                        state->current_block, param_decl->spv_value);
                     break;
                 }
                 default: {
@@ -2434,17 +3311,45 @@ static void duskGenerateSpvGlobalDecl(
             }
         }
 
-        // TODO: generate function body
-        // size_t stmt_count = duskArrayLength(decl->function.stmts_arr);
-        // for (size_t i = 0; i < stmt_count; ++i) {
-        //     DuskStmt *stmt = decl->function.stmts_arr[i];
-        //     duskGenerateSpvStmt(module, state, decl, stmt);
-        // }
+        size_t stmt_count = duskArrayLength(decl->function.stmts_arr);
+        for (size_t i = 0; i < stmt_count; ++i) {
+            DuskStmt *stmt = decl->function.stmts_arr[i];
+            duskGenerateSpvStmt(module, state, stmt);
+        }
 
-        for (size_t i = 0; i < duskArrayLength(blocks); ++i) {
-            DuskArray(DuskSpvValue *) block = blocks[i];
-            for (size_t j = 0; j < duskArrayLength(blocks); ++j) {
-                DuskSpvValue *inst = block[j];
+        // Insert void return in last block if return type is void
+        if (return_type->kind == DUSK_TYPE_VOID) {
+            size_t block_count =
+                duskArrayLength(state->current_func->blocks_arr);
+            DuskSpvBlock *last_block =
+                state->current_func->blocks_arr[block_count - 1];
+            if (!duskSpvBlockIsTerminated(last_block)) {
+                duskSpvBlockAppend(
+                    last_block,
+                    duskSpvCreateValue(module, SpvOpReturn, NULL, 0, NULL));
+            }
+        }
+
+        for (size_t i = 0; i < duskArrayLength(state->current_func->blocks_arr);
+             ++i) {
+            DuskSpvBlock *block = state->current_func->blocks_arr[i];
+            DUSK_ASSERT(duskSpvBlockIsTerminated(block));
+
+            DUSK_ASSERT(block->insts_arr[0]->op == SpvOpLabel);
+            duskSpvModuleAddToFunctionsSection(module, block->insts_arr[0]);
+
+            if (i == 0) {
+                // Declare local variables
+                for (size_t j = 0;
+                     j < duskArrayLength(state->current_func->vars_arr);
+                     ++j) {
+                    duskSpvModuleAddToFunctionsSection(
+                        module, state->current_func->vars_arr[j]);
+                }
+            }
+
+            for (size_t j = 1; j < duskArrayLength(block->insts_arr); ++j) {
+                DuskSpvValue *inst = block->insts_arr[j];
                 duskSpvModuleAddToFunctionsSection(module, inst);
             }
         }
@@ -2516,7 +3421,7 @@ DuskSpvModule *duskGenerateSpvModule(DuskCompiler *compiler, DuskFile *file)
         duskSpvCreateLiteralValue(module, SpvAddressingModelLogical),
         duskSpvCreateLiteralValue(module, SpvMemoryModelGLSL450),
     };
-    duskSpvModuleAddToHeaderSection(
+    duskSpvModuleAddToMemoryModelSection(
         module,
         duskSpvCreateValue(
             module,

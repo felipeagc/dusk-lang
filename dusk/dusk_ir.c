@@ -1580,9 +1580,7 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
             glsl_inst = GLSLstd450MatrixInverse;
             break;
 
-        case DUSK_BUILTIN_FUNCTION_IMAGE:
-            op = SpvOpImage;
-            break;
+        case DUSK_BUILTIN_FUNCTION_IMAGE: op = SpvOpImage; break;
 
         case DUSK_BUILTIN_FUNCTION_IMAGE_SAMPLE:
             op = SpvOpImageSampleImplicitLod;
@@ -1659,7 +1657,7 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
                 break;
             }
             case SpvOpCopyMemory: {
-                uint32_t params[3] =  {
+                uint32_t params[3] = {
                     value->type->id,
                     value->builtin_call.params[2]->id,
                     value->builtin_call.params[0]->id,
