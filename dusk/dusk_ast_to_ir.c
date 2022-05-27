@@ -3,6 +3,8 @@
 typedef struct DuskAstToIRState {
     DuskArray(DuskIRValue *) break_block_stack_arr;
     DuskArray(DuskIRValue *) continue_block_stack_arr;
+    DuskArray(DuskSpvBlock *) spv_break_block_stack_arr;
+    DuskArray(DuskSpvBlock *) spv_continue_block_stack_arr;
     DuskSpvFunction *current_func;
     DuskSpvBlock *current_block;
 } DuskAstToIRState;
@@ -3028,6 +3030,23 @@ static void duskGenerateSpvStmt(
         break;
     }
     case DUSK_STMT_ASSIGN: {
+        duskGenerateSpvExpr(module, state, stmt->assign.assigned_expr);
+        duskGenerateSpvExpr(module, state, stmt->assign.value_expr);
+
+        DuskSpvValue *pointer = stmt->assign.assigned_expr->spv_value;
+        DuskSpvValue *value = stmt->assign.value_expr->spv_value;
+        value = duskSpvLoadLvalue(module, state, value);
+
+        DuskSpvValue *params[] = {
+            pointer,
+            value,
+        };
+
+        duskSpvBlockAppend(
+            state->current_block,
+            duskSpvCreateValue(
+                module, SpvOpStore, NULL, DUSK_CARRAY_LENGTH(params), params));
+
         break;
     }
     case DUSK_STMT_EXPR: {
@@ -3035,24 +3054,239 @@ static void duskGenerateSpvStmt(
         break;
     }
     case DUSK_STMT_BLOCK: {
+        for (size_t i = 0; i < duskArrayLength(stmt->block.stmts_arr); ++i) {
+            duskGenerateSpvStmt(module, state, stmt->block.stmts_arr[i]);
+        }
         break;
     }
     case DUSK_STMT_IF: {
+        DuskSpvBlock *true_block = duskSpvBlockCreate(module);
+        DuskSpvBlock *false_block = NULL;
+        if (stmt->if_.false_stmt) {
+            false_block = duskSpvBlockCreate(module);
+        }
+        DuskSpvBlock *merge_block = duskSpvBlockCreate(module);
+
+        duskGenerateSpvExpr(module, state, stmt->if_.cond_expr);
+        DUSK_ASSERT(stmt->if_.cond_expr->spv_value);
+        DuskSpvValue *cond =
+            duskSpvLoadLvalue(module, state, stmt->if_.cond_expr->spv_value);
+
+        DuskSpvValue *merge_params[] = {
+            merge_block->insts_arr[0],
+            duskSpvCreateLiteralValue(module, SpvSelectionControlMaskNone),
+        };
+        duskSpvBlockAppend(
+            state->current_block,
+            duskSpvCreateValue(
+                module,
+                SpvOpSelectionMerge,
+                NULL,
+                DUSK_CARRAY_LENGTH(merge_params),
+                merge_params));
+
+        DuskSpvValue *cond_branch_params[] = {
+            cond,
+            true_block->insts_arr[0],
+            false_block ? false_block->insts_arr[0] : merge_block->insts_arr[0],
+        };
+        duskSpvBlockAppend(
+            state->current_block,
+            duskSpvCreateValue(
+                module,
+                SpvOpBranchConditional,
+                NULL,
+                DUSK_CARRAY_LENGTH(cond_branch_params),
+                cond_branch_params));
+
+        duskSpvAddBlockToCurrentFunction(state, true_block);
+        duskGenerateSpvStmt(module, state, stmt->if_.true_stmt);
+
+        DuskSpvValue *branch_params[] = {
+            merge_block->insts_arr[0],
+        };
+        duskSpvBlockAppend(
+            state->current_block,
+            duskSpvCreateValue(
+                module,
+                SpvOpBranch,
+                NULL,
+                DUSK_CARRAY_LENGTH(branch_params),
+                branch_params));
+
+        if (false_block) {
+            duskSpvAddBlockToCurrentFunction(state, false_block);
+            duskGenerateSpvStmt(module, state, stmt->if_.false_stmt);
+
+            DuskSpvValue *branch_params[] = {
+                merge_block->insts_arr[0],
+            };
+            duskSpvBlockAppend(
+                state->current_block,
+                duskSpvCreateValue(
+                    module,
+                    SpvOpBranch,
+                    NULL,
+                    DUSK_CARRAY_LENGTH(branch_params),
+                    branch_params));
+        }
+
+        duskSpvAddBlockToCurrentFunction(state, merge_block);
+
         break;
     }
     case DUSK_STMT_WHILE: {
+        DuskSpvBlock *header_block = duskSpvBlockCreate(module);
+        DuskSpvBlock *cond_block = duskSpvBlockCreate(module);
+        DuskSpvBlock *body_block = duskSpvBlockCreate(module);
+        DuskSpvBlock *continue_block = duskSpvBlockCreate(module);
+        DuskSpvBlock *merge_block = duskSpvBlockCreate(module);
+
+        DuskSpvValue *header_branch_params[] = {
+            header_block->insts_arr[0],
+        };
+        duskSpvBlockAppend(
+            state->current_block,
+            duskSpvCreateValue(
+                module,
+                SpvOpBranch,
+                NULL,
+                DUSK_CARRAY_LENGTH(header_branch_params),
+                header_branch_params));
+
+        // Header block
+        duskSpvAddBlockToCurrentFunction(state, header_block);
+        DuskSpvValue *loop_merge_params[] = {
+            merge_block->insts_arr[0],
+            continue_block->insts_arr[0],
+            duskSpvCreateLiteralValue(module, SpvLoopControlMaskNone),
+        };
+        duskSpvBlockAppend(
+            state->current_block,
+            duskSpvCreateValue(
+                module,
+                SpvOpLoopMerge,
+                NULL,
+                DUSK_CARRAY_LENGTH(loop_merge_params),
+                loop_merge_params));
+        DuskSpvValue *header_cond_branch_params[] = {
+            cond_block->insts_arr[0],
+        };
+        duskSpvBlockAppend(
+            state->current_block,
+            duskSpvCreateValue(
+                module,
+                SpvOpBranch,
+                NULL,
+                DUSK_CARRAY_LENGTH(header_cond_branch_params),
+                header_cond_branch_params));
+
+        // Cond block
+        duskSpvAddBlockToCurrentFunction(state, cond_block);
+        duskGenerateSpvExpr(module, state, stmt->while_.cond_expr);
+        DuskSpvValue *cond =
+            duskSpvLoadLvalue(module, state, stmt->while_.cond_expr->spv_value);
+
+        DuskSpvValue *cond_branch_params[] = {
+            cond,
+            body_block->insts_arr[0],
+            merge_block->insts_arr[0],
+        };
+        duskSpvBlockAppend(
+            state->current_block,
+            duskSpvCreateValue(
+                module,
+                SpvOpBranchConditional,
+                NULL,
+                DUSK_CARRAY_LENGTH(cond_branch_params),
+                cond_branch_params));
+
+        // Body block
+        duskArrayPush(&state->spv_break_block_stack_arr, merge_block);
+        duskArrayPush(&state->spv_continue_block_stack_arr, continue_block);
+
+        duskSpvAddBlockToCurrentFunction(state, body_block);
+        duskGenerateSpvStmt(module, state, stmt->while_.stmt);
+        DuskSpvValue *body_branch_params[] = {
+            continue_block->insts_arr[0],
+        };
+        duskSpvBlockAppend(
+            state->current_block,
+            duskSpvCreateValue(
+                module,
+                SpvOpBranch,
+                NULL,
+                DUSK_CARRAY_LENGTH(body_branch_params),
+                body_branch_params));
+
+        duskArrayPop(&state->continue_block_stack_arr);
+        duskArrayPop(&state->break_block_stack_arr);
+
+        // Continue block
+        duskSpvAddBlockToCurrentFunction(state, continue_block);
+        DuskSpvValue *continue_branch_params[] = {
+            header_block->insts_arr[0],
+        };
+        duskSpvBlockAppend(
+            state->current_block,
+            duskSpvCreateValue(
+                module,
+                SpvOpBranch,
+                NULL,
+                DUSK_CARRAY_LENGTH(continue_branch_params),
+                continue_branch_params));
+
+        // Merge block
+        duskSpvAddBlockToCurrentFunction(state, merge_block);
+
         break;
     }
     case DUSK_STMT_BREAK: {
+        DUSK_ASSERT(duskArrayLength(state->spv_break_block_stack_arr) > 0);
+        DuskSpvBlock *dest_block =
+            state->spv_break_block_stack_arr
+                [duskArrayLength(state->spv_break_block_stack_arr) - 1];
+
+        DuskSpvValue *branch_params[] = {
+            dest_block->insts_arr[0],
+        };
+        duskSpvBlockAppend(
+            state->current_block,
+            duskSpvCreateValue(
+                module,
+                SpvOpBranch,
+                NULL,
+                DUSK_CARRAY_LENGTH(branch_params),
+                branch_params));
         break;
     }
     case DUSK_STMT_CONTINUE: {
+        DUSK_ASSERT(duskArrayLength(state->spv_continue_block_stack_arr) > 0);
+        DuskSpvBlock *dest_block =
+            state->spv_continue_block_stack_arr
+                [duskArrayLength(state->spv_continue_block_stack_arr) - 1];
+
+        DuskSpvValue *branch_params[] = {
+            dest_block->insts_arr[0],
+        };
+        duskSpvBlockAppend(
+            state->current_block,
+            duskSpvCreateValue(
+                module,
+                SpvOpBranch,
+                NULL,
+                DUSK_CARRAY_LENGTH(branch_params),
+                branch_params));
         break;
     }
     case DUSK_STMT_RETURN: {
+        DUSK_ASSERT(!"TODO");
         break;
     }
     case DUSK_STMT_DISCARD: {
+        duskSpvBlockAppend(
+            state->current_block,
+            duskSpvCreateValue(module, SpvOpKill, NULL, 0, NULL));
         break;
     }
     }
@@ -3061,8 +3295,6 @@ static void duskGenerateSpvStmt(
 static void duskGenerateSpvGlobalDecl(
     DuskSpvModule *module, DuskAstToIRState *state, DuskDecl *decl)
 {
-    (void)state;
-
     switch (decl->kind) {
     case DUSK_DECL_FUNCTION: {
         DuskType *func_type = decl->type;
@@ -3414,6 +3646,10 @@ DuskSpvModule *duskGenerateSpvModule(DuskCompiler *compiler, DuskFile *file)
             duskArrayCreate(module->allocator, DuskIRValue *),
         .continue_block_stack_arr =
             duskArrayCreate(module->allocator, DuskIRValue *),
+        .spv_break_block_stack_arr =
+            duskArrayCreate(module->allocator, DuskSpvBlock *),
+        .spv_continue_block_stack_arr =
+            duskArrayCreate(module->allocator, DuskSpvBlock *),
     };
 
     duskSpvModuleAddCapability(module, SpvCapabilityShader);
