@@ -227,6 +227,74 @@ void duskSpvModuleAddToGlobalsSection(
     duskArrayPush(&module->globals_arr, value);
 }
 
+static void duskSpvModuleAddEntryPointUsedGlobals(
+    DuskSpvModule *module, DuskSpvValue *entry_point)
+{
+    DuskArray(DuskSpvValue *) func_starts =
+        duskArrayCreate(module->allocator, DuskSpvValue *);
+    duskArrayPush(&func_starts, entry_point->params[1]);
+
+    DuskArray(DuskSpvValue *) referenced_globals =
+        duskArrayCreate(module->allocator, DuskSpvValue *);
+
+    while (duskArrayLength(func_starts) > 0) {
+        DuskSpvValue *func_start =
+            func_starts[duskArrayLength(func_starts) - 1];
+        duskArrayPop(&func_starts);
+
+        size_t i = 0;
+        while (module->functions_arr[i] != func_start) {
+            i++;
+        }
+
+        while (module->functions_arr[i]->op != SpvOpFunctionEnd) {
+            DuskSpvValue *value = module->functions_arr[i];
+
+            if (value->op == SpvOpFunctionCall) {
+                DuskSpvValue *func = value->params[0];
+                duskArrayPush(&func_starts, func);
+            }
+
+            for (size_t j = 0; j < value->param_count; ++j) {
+                DuskSpvValue *param = value->params[j];
+                if (param->op == SpvOpVariable) {
+                    DUSK_ASSERT(param->params[0]->op == SpvOpMax);
+                    switch (param->params[0]->id) {
+                    case SpvStorageClassInput:
+                    case SpvStorageClassOutput:
+                    case SpvStorageClassUniform:
+                    case SpvStorageClassUniformConstant:
+                    case SpvStorageClassStorageBuffer:
+                    case SpvStorageClassPushConstant:
+                    case SpvStorageClassWorkgroup: {
+                        duskArrayPush(&referenced_globals, param);
+                        break;
+                    }
+                    default: break;
+                    }
+                }
+            }
+
+            ++i;
+        }
+    }
+
+    size_t new_entry_point_params_len =
+        entry_point->param_count + duskArrayLength(referenced_globals);
+    DuskSpvValue **new_entry_point_params = DUSK_NEW_ARRAY(
+        module->allocator, DuskSpvValue *, new_entry_point_params_len);
+    memcpy(
+        new_entry_point_params,
+        entry_point->params,
+        sizeof(DuskSpvValue *) * entry_point->param_count);
+    memcpy(
+        new_entry_point_params + entry_point->param_count,
+        referenced_globals,
+        sizeof(DuskSpvValue *) * duskArrayLength(referenced_globals));
+    entry_point->param_count = new_entry_point_params_len;
+    entry_point->params = new_entry_point_params;
+}
+
 DuskSpvModule *duskSpvModuleCreate(DuskCompiler *compiler)
 {
     DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
@@ -285,6 +353,11 @@ uint32_t *duskSpvModuleEmit(
     };
     const uint32_t section_count = DUSK_CARRAY_LENGTH(sections);
 
+    for (size_t i = 0; i < duskArrayLength(module->entry_points_arr); ++i) {
+        DuskSpvValue *entry_point = module->entry_points_arr[i];
+        duskSpvModuleAddEntryPointUsedGlobals(module, entry_point);
+    }
+
     uint32_t last_id = 0;
 
     // Reserve IDs
@@ -294,6 +367,7 @@ uint32_t *duskSpvModuleEmit(
             DuskSpvValue *value = section[j];
             DUSK_ASSERT(value);
 
+            if (value->op == SpvOpMax) continue;
             if (value->id > 0) continue;
 
             bool has_result, has_result_type;
