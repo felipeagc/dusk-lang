@@ -3,6 +3,8 @@
 static void
 duskSpvValueEmit(DuskArray(uint32_t) * stream_arr, DuskSpvValue *value)
 {
+    if (value->emitted) return;
+
     DUSK_ASSERT(value->op != SpvOpMax);
 
     bool has_result, has_result_type;
@@ -10,16 +12,19 @@ duskSpvValueEmit(DuskArray(uint32_t) * stream_arr, DuskSpvValue *value)
 
     uint32_t actual_param_count = value->param_count;
     if (has_result) actual_param_count++;
-    if (has_result_type) actual_param_count++;
+    if (has_result_type) {
+        actual_param_count++;
+        DUSK_ASSERT(value->type);
+        DUSK_ASSERT(value->type->spv_value);
+        DUSK_ASSERT(value->type->spv_value->id != 0);
+        duskSpvValueEmit(stream_arr, value->type->spv_value);
+    }
 
     uint32_t opcode_word = value->op;
     opcode_word |= ((uint16_t)(actual_param_count + 1)) << 16;
     duskArrayPush(stream_arr, opcode_word);
 
     if (has_result_type) {
-        DUSK_ASSERT(value->type);
-        DUSK_ASSERT(value->type->spv_value);
-        DUSK_ASSERT(value->type->spv_value->id != 0);
         duskArrayPush(stream_arr, value->type->spv_value->id);
     }
 
@@ -34,6 +39,8 @@ duskSpvValueEmit(DuskArray(uint32_t) * stream_arr, DuskSpvValue *value)
         }
         duskArrayPush(stream_arr, value->params[i]->id);
     }
+
+    value->emitted = true;
 }
 
 SpvStorageClass duskStorageClassToSpv(DuskStorageClass storage_class)
@@ -287,8 +294,17 @@ uint32_t *duskSpvModuleEmit(
             DuskSpvValue *value = section[j];
             DUSK_ASSERT(value);
 
+            if (value->id > 0) continue;
+
             bool has_result, has_result_type;
             SpvHasResultAndType(value->op, &has_result, &has_result_type);
+
+            if (has_result_type) {
+                DuskSpvValue *type_value = value->type->spv_value;
+                if (type_value->id == 0) {
+                    type_value->id = ++last_id;
+                }
+            }
 
             if (has_result) {
                 value->id = ++last_id;

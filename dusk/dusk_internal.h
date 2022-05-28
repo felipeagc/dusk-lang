@@ -655,6 +655,7 @@ struct DuskSpvValue {
     DuskType *type;
     DuskSpvValue **params;
     uint32_t param_count;
+    bool emitted;
 };
 
 typedef struct DuskSpvModule DuskSpvModule;
