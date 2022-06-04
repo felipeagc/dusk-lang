@@ -2946,7 +2946,75 @@ static void duskGenerateSpvExpr(
         break;
     }
     case DUSK_EXPR_ARRAY_ACCESS: {
-        DUSK_ASSERT(!"TODO");
+        duskGenerateSpvExpr(module, state, expr->access.base_expr);
+        DuskSpvValue *base_value = expr->access.base_expr->spv_value;
+        DUSK_ASSERT(base_value);
+
+        DuskArray(DuskSpvValue *) index_values_arr =
+            duskArrayCreate(module->allocator, DuskSpvValue *);
+
+        for (size_t i = 0; i < duskArrayLength(expr->access.chain_arr); ++i) {
+            DuskExpr *index_expr = expr->access.chain_arr[i];
+            duskGenerateSpvExpr(module, state, index_expr);
+            DUSK_ASSERT(index_expr->spv_value);
+
+            DuskSpvValue *index_value =
+                duskSpvLoadLvalue(module, state, index_expr->spv_value);
+            duskArrayPush(&index_values_arr, index_value);
+        }
+
+        if (!duskSpvIsLvalue(base_value)) {
+            DuskSpvValue *var_params[] = {
+                duskSpvCreateLiteralValue(
+                    module, (uint32_t)SpvStorageClassFunction),
+            };
+            DuskType *ptr_type = duskTypeNewPointer(
+                module->compiler,
+                base_value->type,
+                DUSK_STORAGE_CLASS_FUNCTION);
+            DuskSpvValue *tmp_var = duskSpvCreateValue(
+                module,
+                SpvOpVariable,
+                ptr_type,
+                DUSK_CARRAY_LENGTH(var_params),
+                var_params);
+            duskSpvAddVarToCurrentFunction(state, tmp_var);
+
+            DuskSpvValue *store_params[] = {
+                tmp_var,
+                base_value,
+            };
+            duskSpvBlockAppend(
+                state->current_block,
+                duskSpvCreateValue(
+                    module,
+                    SpvOpStore,
+                    NULL,
+                    DUSK_CARRAY_LENGTH(store_params),
+                    store_params));
+            base_value = tmp_var;
+        }
+
+        size_t access_chain_params_count =
+            duskArrayLength(index_values_arr) + 1;
+        DuskSpvValue **access_chain_params = DUSK_NEW_ARRAY(
+            module->allocator, DuskSpvValue *, access_chain_params_count);
+        access_chain_params[0] = base_value;
+
+        for (size_t i = 0; i < duskArrayLength(index_values_arr); ++i) {
+            access_chain_params[i + 1] = index_values_arr[i];
+        }
+
+        expr->spv_value = duskSpvCreateValue(
+            module,
+            SpvOpStore,
+            duskTypeNewPointer(
+                module->compiler,
+                expr->type,
+                base_value->type->pointer.storage_class),
+            access_chain_params_count,
+            access_chain_params);
+        duskSpvBlockAppend(state->current_block, expr->spv_value);
         break;
     }
     case DUSK_EXPR_BINARY: {
