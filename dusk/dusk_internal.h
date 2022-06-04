@@ -679,6 +679,7 @@ typedef struct DuskSpvBlock {
 } DuskSpvBlock;
 
 typedef struct DuskSpvFunction {
+    DuskDecl *decl;
     DuskArray(DuskSpvBlock *) blocks_arr;
     DuskArray(DuskSpvValue *) vars_arr;
 } DuskSpvFunction;

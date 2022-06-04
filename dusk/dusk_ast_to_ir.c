@@ -2712,6 +2712,7 @@ static void duskGenerateSpvExpr(
         DUSK_ASSERT(expr->identifier.decl);
         DUSK_ASSERT(expr->type);
         expr->spv_value = expr->identifier.decl->spv_value;
+        DUSK_ASSERT(expr->spv_value);
         break;
     }
     case DUSK_EXPR_FUNCTION_CALL: {
@@ -3313,7 +3314,7 @@ static void duskGenerateSpvExpr(
 
         expr->spv_value = duskSpvCreateValue(
             module,
-            SpvOpStore,
+            SpvOpAccessChain,
             duskTypeNewPointer(
                 module->compiler,
                 expr->type,
@@ -3988,23 +3989,106 @@ static void duskGenerateSpvStmt(
         break;
     }
     case DUSK_STMT_RETURN: {
-        if (stmt->return_.expr) {
-            duskGenerateSpvExpr(module, state, stmt->return_.expr);
-            DuskSpvValue *params[] = {
-                duskSpvLoadLvalue(module, state, stmt->return_.expr->spv_value),
-            };
-            duskSpvBlockAppend(
-                state->current_block,
-                duskSpvCreateValue(
-                    module,
-                    SpvOpReturnValue,
-                    NULL,
-                    DUSK_CARRAY_LENGTH(params),
-                    params));
-        } else {
+        if (state->current_func->decl->function.is_entry_point) {
+            DuskType *return_type =
+                state->current_func->decl->type->function.return_type;
+            size_t output_count =
+                duskArrayLength(state->current_func->decl->function
+                                    .spv_entry_point_outputs_arr);
+
+            switch (return_type->kind) {
+            case DUSK_TYPE_VOID: {
+                DUSK_ASSERT(output_count == 0);
+                break;
+            }
+            case DUSK_TYPE_STRUCT: {
+                DUSK_ASSERT(output_count == return_type->struct_.field_count);
+
+                duskGenerateSpvExpr(module, state, stmt->return_.expr);
+                DuskSpvValue *struct_value = stmt->return_.expr->spv_value;
+                struct_value = duskSpvLoadLvalue(
+                    module, state, stmt->return_.expr->spv_value);
+
+                for (uint32_t i = 0; i < output_count; ++i) {
+                    DuskSpvValue *extract_params[] = {
+                        struct_value,
+                        duskSpvCreateLiteralValue(module, i),
+                    };
+                    DuskSpvValue *field_value = duskSpvCreateValue(
+                        module,
+                        SpvOpCompositeExtract,
+                        return_type->struct_.field_types[i],
+                        DUSK_CARRAY_LENGTH(extract_params),
+                        extract_params);
+                    duskSpvBlockAppend(state->current_block, field_value);
+
+                    DuskSpvValue *store_params[] = {
+                        state->current_func->decl->function
+                            .spv_entry_point_outputs_arr[i],
+                        field_value,
+                    };
+                    duskSpvBlockAppend(
+                        state->current_block,
+                        duskSpvCreateValue(
+                            module,
+                            SpvOpStore,
+                            NULL,
+                            DUSK_CARRAY_LENGTH(store_params),
+                            store_params));
+                }
+                break;
+            }
+            default: {
+                DUSK_ASSERT(output_count == 1);
+                DUSK_ASSERT(stmt->return_.expr);
+                DuskSpvValue *output_value =
+                    state->current_func->decl->function
+                        .spv_entry_point_outputs_arr[0];
+
+                duskGenerateSpvExpr(module, state, stmt->return_.expr);
+                DuskSpvValue *returned_value = stmt->return_.expr->spv_value;
+                returned_value = duskSpvLoadLvalue(
+                    module, state, stmt->return_.expr->spv_value);
+
+                DuskSpvValue *store_params[] = {
+                    output_value,
+                    returned_value,
+                };
+                duskSpvBlockAppend(
+                    state->current_block,
+                    duskSpvCreateValue(
+                        module,
+                        SpvOpStore,
+                        NULL,
+                        DUSK_CARRAY_LENGTH(store_params),
+                        store_params));
+                break;
+            }
+            }
+
             duskSpvBlockAppend(
                 state->current_block,
                 duskSpvCreateValue(module, SpvOpReturn, NULL, 0, NULL));
+        } else {
+            if (stmt->return_.expr) {
+                duskGenerateSpvExpr(module, state, stmt->return_.expr);
+                DuskSpvValue *params[] = {
+                    duskSpvLoadLvalue(
+                        module, state, stmt->return_.expr->spv_value),
+                };
+                duskSpvBlockAppend(
+                    state->current_block,
+                    duskSpvCreateValue(
+                        module,
+                        SpvOpReturnValue,
+                        NULL,
+                        DUSK_CARRAY_LENGTH(params),
+                        params));
+            } else {
+                duskSpvBlockAppend(
+                    state->current_block,
+                    duskSpvCreateValue(module, SpvOpReturn, NULL, 0, NULL));
+            }
         }
         break;
     }
@@ -4058,6 +4142,7 @@ static void duskGenerateSpvGlobalDecl(
         duskSpvModuleAddToFunctionsSection(module, decl->spv_value);
 
         state->current_func = DUSK_NEW(module->allocator, DuskSpvFunction);
+        state->current_func->decl = decl;
         state->current_func->blocks_arr =
             duskArrayCreate(module->allocator, DuskSpvBlock *);
         state->current_func->vars_arr =
@@ -4178,6 +4263,7 @@ static void duskGenerateSpvGlobalDecl(
                         input_ptr_type,
                         DUSK_CARRAY_LENGTH(var_params),
                         var_params);
+                    param_decl->spv_value = input_value;
                     duskSpvModuleAddToGlobalsSection(module, input_value);
                     duskArrayPush(
                         &decl->function.spv_entry_point_inputs_arr,
@@ -4314,6 +4400,9 @@ static void duskGenerateSpvGlobalDecl(
         duskSpvModuleAddToFunctionsSection(
             module,
             duskSpvCreateValue(module, SpvOpFunctionEnd, NULL, 0, NULL));
+
+        state->current_func = NULL;
+        state->current_block = NULL;
         break;
     }
     case DUSK_DECL_VAR: {
