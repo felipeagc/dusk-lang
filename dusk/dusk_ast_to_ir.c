@@ -2715,7 +2715,313 @@ static void duskGenerateSpvExpr(
         break;
     }
     case DUSK_EXPR_FUNCTION_CALL: {
-        DUSK_ASSERT(!"TODO");
+        DuskType *func_type = expr->function_call.func_expr->type;
+        size_t param_count = duskArrayLength(expr->function_call.params_arr);
+
+        switch (func_type->kind) {
+        case DUSK_TYPE_FUNCTION: {
+            duskGenerateSpvExpr(module, state, expr->function_call.func_expr);
+            DuskSpvValue **param_values =
+                DUSK_NEW_ARRAY(module->allocator, DuskSpvValue *, param_count);
+
+            for (size_t i = 0; i < param_count; ++i) {
+                DuskExpr *param_expr = expr->function_call.params_arr[i];
+                duskGenerateSpvExpr(module, state, param_expr);
+                DUSK_ASSERT(param_expr->spv_value);
+                param_values[i] = param_expr->spv_value;
+            }
+
+            expr->spv_value = duskSpvCreateValue(
+                module,
+                SpvOpFunctionCall,
+                func_type->function.return_type,
+                param_count,
+                param_values);
+            duskSpvBlockAppend(state->current_block, expr->spv_value);
+            break;
+        }
+
+        case DUSK_TYPE_TYPE: {
+            DuskType *constructed_type = expr->function_call.func_expr->as_type;
+
+            switch (constructed_type->kind) {
+            case DUSK_TYPE_INT:
+            case DUSK_TYPE_FLOAT: {
+                DUSK_ASSERT(param_count == 1);
+                DuskExpr *param = expr->function_call.params_arr[0];
+                duskGenerateSpvExpr(module, state, param);
+                DuskSpvValue *value =
+                    duskSpvLoadLvalue(module, state, param->spv_value);
+
+                DuskType *source_type = param->type;
+                DuskType *dest_type = constructed_type;
+
+                if (source_type == dest_type) {
+                    expr->spv_value = value;
+                    break;
+                }
+
+                SpvOp op = 0;
+                if (source_type->kind == DUSK_TYPE_FLOAT &&
+                    dest_type->kind == DUSK_TYPE_INT) {
+                    if (dest_type->int_.is_signed) {
+                        op = SpvOpConvertFToS;
+                    } else {
+                        op = SpvOpConvertFToU;
+                    }
+                } else if (
+                    source_type->kind == DUSK_TYPE_INT &&
+                    dest_type->kind == DUSK_TYPE_FLOAT) {
+                    if (source_type->int_.is_signed) {
+                        op = SpvOpConvertSToF;
+                    } else {
+                        op = SpvOpConvertUToF;
+                    }
+                } else if (
+                    source_type->kind == DUSK_TYPE_INT &&
+                    dest_type->kind == DUSK_TYPE_INT) {
+                    if (source_type->int_.is_signed) {
+                        if (dest_type->int_.is_signed) {
+                            op = SpvOpSConvert;
+                        } else {
+                            op = SpvOpBitcast;
+                        }
+                    } else {
+                        if (dest_type->int_.is_signed) {
+                            op = SpvOpBitcast;
+                        } else {
+                            op = SpvOpUConvert;
+                        }
+                    }
+                } else if (
+                    source_type->kind == DUSK_TYPE_FLOAT &&
+                    dest_type->kind == DUSK_TYPE_FLOAT) {
+                    op = SpvOpFConvert;
+                } else {
+                    DUSK_ASSERT(0);
+                }
+
+                DUSK_ASSERT(op != 0);
+
+                expr->spv_value =
+                    duskSpvCreateValue(module, op, dest_type, 1, &value);
+                duskSpvBlockAppend(state->current_block, expr->spv_value);
+                break;
+            }
+            case DUSK_TYPE_VECTOR: {
+                size_t value_count = constructed_type->vector.size;
+                DuskSpvValue **values = duskAllocateZeroed(
+                    module->allocator, sizeof(DuskSpvValue *) * value_count);
+
+                if (state->current_func) {
+                    bool all_constants = true;
+                    if (param_count == 1 && value_count != param_count) {
+                        DuskExpr *param = expr->function_call.params_arr[0];
+                        duskGenerateSpvExpr(module, state, param);
+                        DuskSpvValue *param_value = param->spv_value;
+                        if (!duskSpvValueIsConstant(param_value)) {
+                            param_value = duskSpvLoadLvalue(
+                                module, state, param->spv_value);
+                            all_constants = false;
+                        }
+
+                        for (size_t i = 0; i < value_count; ++i) {
+                            values[i] = param_value;
+                        }
+                    } else {
+                        // Mixed vector constructor
+                        DUSK_ASSERT(constructed_type->kind == DUSK_TYPE_VECTOR);
+
+                        size_t elem_index = 0;
+                        for (size_t i = 0; i < param_count; ++i) {
+                            DuskExpr *param = expr->function_call.params_arr[i];
+                            duskGenerateSpvExpr(module, state, param);
+
+                            if (param->type->kind == DUSK_TYPE_VECTOR) {
+                                all_constants = false;
+                                DuskSpvValue *loaded_composite =
+                                    duskSpvLoadLvalue(
+                                        module, state, param->spv_value);
+                                for (uint32_t j = 0;
+                                     j < param->type->vector.size;
+                                     ++j) {
+                                    DuskSpvValue *extract_params[] = {
+                                        loaded_composite,
+                                        duskSpvCreateLiteralValue(module, j),
+                                    };
+                                    values[elem_index] = duskSpvCreateValue(
+                                        module,
+                                        SpvOpCompositeExtract,
+                                        param->type->vector.sub,
+                                        DUSK_CARRAY_LENGTH(extract_params),
+                                        extract_params);
+                                    duskSpvBlockAppend(
+                                        state->current_block,
+                                        values[elem_index]);
+                                    elem_index++;
+                                }
+                            } else {
+                                values[elem_index] = param->spv_value;
+                                if (!duskSpvValueIsConstant(
+                                        values[elem_index])) {
+                                    values[elem_index] = duskSpvLoadLvalue(
+                                        module, state, values[elem_index]);
+                                    all_constants = false;
+                                }
+
+                                elem_index++;
+                            }
+                        }
+                    }
+
+                    if (all_constants) {
+                        expr->spv_value = duskSpvCreateValue(
+                            module,
+                            SpvOpConstantComposite,
+                            constructed_type,
+                            value_count,
+                            values);
+                        duskSpvModuleAddToTypesAndConstsSection(
+                            module, expr->spv_value);
+                    } else {
+                        expr->spv_value = duskSpvCreateValue(
+                            module,
+                            SpvOpCompositeConstruct,
+                            constructed_type,
+                            value_count,
+                            values);
+                        duskSpvBlockAppend(
+                            state->current_block, expr->spv_value);
+                    }
+                } else {
+                    // Not inside a function, must be a constant
+                    if (param_count == value_count) {
+                        for (size_t i = 0; i < value_count; ++i) {
+                            DuskExpr *param = expr->function_call.params_arr[i];
+                            duskGenerateSpvExpr(module, state, param);
+                            values[i] = param->spv_value;
+                            DUSK_ASSERT(duskSpvValueIsConstant(values[i]));
+                        }
+                    } else if (param_count == 1) {
+                        DuskExpr *param = expr->function_call.params_arr[0];
+                        duskGenerateSpvExpr(module, state, param);
+                        DuskSpvValue *param_value = param->spv_value;
+                        DUSK_ASSERT(duskSpvValueIsConstant(param_value));
+
+                        for (size_t i = 0; i < value_count; ++i) {
+                            values[i] = param_value;
+                        }
+                    } else {
+                        DUSK_ASSERT(0);
+                    }
+
+                    expr->spv_value = duskSpvCreateValue(
+                        module,
+                        SpvOpConstantComposite,
+                        constructed_type,
+                        value_count,
+                        values);
+                    duskSpvModuleAddToTypesAndConstsSection(
+                        module, expr->spv_value);
+                }
+                break;
+            }
+            case DUSK_TYPE_MATRIX: {
+                size_t value_count = constructed_type->matrix.cols;
+                DuskSpvValue **values = duskAllocateZeroed(
+                    module->allocator, sizeof(DuskSpvValue *) * value_count);
+
+                if (state->current_func) {
+                    bool all_constants = true;
+                    if (param_count == 1 && value_count != param_count) {
+                        DuskExpr *param = expr->function_call.params_arr[0];
+                        duskGenerateSpvExpr(module, state, param);
+                        DuskSpvValue *param_value = param->spv_value;
+                        if (!duskSpvValueIsConstant(param_value)) {
+                            param_value = duskSpvLoadLvalue(
+                                module, state, param->spv_value);
+                            all_constants = false;
+                        }
+
+                        for (size_t i = 0; i < value_count; ++i) {
+                            values[i] = param_value;
+                        }
+                    } else if (param_count == value_count) {
+                        for (size_t i = 0; i < param_count; ++i) {
+                            DuskExpr *param = expr->function_call.params_arr[i];
+                            duskGenerateSpvExpr(module, state, param);
+                            values[i] = param->spv_value;
+                            if (!duskSpvValueIsConstant(values[i])) {
+                                values[i] =
+                                    duskSpvLoadLvalue(module, state, values[i]);
+                                all_constants = false;
+                            }
+                        }
+                    } else {
+                        DUSK_ASSERT(0);
+                    }
+
+                    if (all_constants) {
+                        expr->spv_value = duskSpvCreateValue(
+                            module,
+                            SpvOpConstantComposite,
+                            constructed_type,
+                            value_count,
+                            values);
+                        duskSpvModuleAddToTypesAndConstsSection(
+                            module, expr->spv_value);
+                    } else {
+                        expr->spv_value = duskSpvCreateValue(
+                            module,
+                            SpvOpCompositeConstruct,
+                            constructed_type,
+                            value_count,
+                            values);
+                        duskSpvBlockAppend(
+                            state->current_block, expr->spv_value);
+                    }
+                } else {
+                    // Not inside a function, must be a constant
+
+                    if (param_count == value_count) {
+                        for (size_t i = 0; i < value_count; ++i) {
+                            DuskExpr *param = expr->function_call.params_arr[i];
+                            duskGenerateSpvExpr(module, state, param);
+                            values[i] = param->spv_value;
+                            DUSK_ASSERT(duskSpvValueIsConstant(values[i]));
+                        }
+                    } else if (param_count == 1) {
+                        DuskExpr *param = expr->function_call.params_arr[0];
+                        duskGenerateSpvExpr(module, state, param);
+                        DuskSpvValue *param_value = param->spv_value;
+                        DUSK_ASSERT(duskSpvValueIsConstant(param_value));
+
+                        for (size_t i = 0; i < value_count; ++i) {
+                            values[i] = param_value;
+                        }
+                    } else {
+                        DUSK_ASSERT(0);
+                    }
+
+                    expr->spv_value = duskSpvCreateValue(
+                        module,
+                        SpvOpConstantComposite,
+                        constructed_type,
+                        value_count,
+                        values);
+                    duskSpvModuleAddToTypesAndConstsSection(
+                        module, expr->spv_value);
+                }
+                break;
+            }
+            default: DUSK_ASSERT(0); break;
+            }
+
+            break;
+        }
+
+        default: DUSK_ASSERT(0); break;
+        }
         break;
     }
     case DUSK_EXPR_BUILTIN_FUNCTION_CALL: {
