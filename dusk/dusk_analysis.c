@@ -2056,7 +2056,7 @@ static void duskAnalyzeExpr(
                 duskAddError(
                     compiler,
                     param0->location,
-                    "first parameter of @imageQuerySizeLod must be of type "
+                    "first parameter of @imageQuerySize must be of type "
                     "image or sampled image");
                 break;
             }

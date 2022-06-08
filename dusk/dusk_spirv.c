@@ -87,6 +87,11 @@ DuskSpvValue *duskSpvCreateValue(
     if (param_count > 0) {
         memcpy(value->params, params, sizeof(DuskSpvValue *) * param_count);
     }
+
+    for (size_t i = 0; i < param_count; ++i) {
+        DUSK_ASSERT(value->params[i]);
+    }
+
     return value;
 }
 
@@ -257,6 +262,7 @@ static void duskSpvModuleAddEntryPointUsedGlobals(
 
             for (size_t j = 0; j < value->param_count; ++j) {
                 DuskSpvValue *param = value->params[j];
+                DUSK_ASSERT(param);
                 if (param->op == SpvOpVariable) {
                     DUSK_ASSERT(param->params[0]->op == SpvOpMax);
                     switch (param->params[0]->id) {
@@ -267,7 +273,16 @@ static void duskSpvModuleAddEntryPointUsedGlobals(
                     case SpvStorageClassStorageBuffer:
                     case SpvStorageClassPushConstant:
                     case SpvStorageClassWorkgroup: {
-                        duskArrayPush(&referenced_globals, param);
+                        bool found = false;
+                        for (size_t k = 0; k < duskArrayLength(referenced_globals); ++k) {
+                            if (referenced_globals[k] == param) {
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (!found) {
+                            duskArrayPush(&referenced_globals, param);
+                        }
                         break;
                     }
                     default: break;

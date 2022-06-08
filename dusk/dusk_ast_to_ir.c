@@ -3026,7 +3026,269 @@ static void duskGenerateSpvExpr(
         break;
     }
     case DUSK_EXPR_BUILTIN_FUNCTION_CALL: {
-        DUSK_ASSERT(!"TODO");
+        uint32_t glsl_inst = 0;
+        SpvOp op = 0;
+
+        switch (expr->builtin_call.kind) {
+        case DUSK_BUILTIN_FUNCTION_RADIANS:
+            glsl_inst = GLSLstd450Radians;
+            break;
+        case DUSK_BUILTIN_FUNCTION_DEGREES:
+            glsl_inst = GLSLstd450Degrees;
+            break;
+        case DUSK_BUILTIN_FUNCTION_ROUND: glsl_inst = GLSLstd450Round; break;
+        case DUSK_BUILTIN_FUNCTION_TRUNC: glsl_inst = GLSLstd450Trunc; break;
+        case DUSK_BUILTIN_FUNCTION_FLOOR: glsl_inst = GLSLstd450Floor; break;
+        case DUSK_BUILTIN_FUNCTION_CEIL: glsl_inst = GLSLstd450Ceil; break;
+        case DUSK_BUILTIN_FUNCTION_FRACT: glsl_inst = GLSLstd450Fract; break;
+        case DUSK_BUILTIN_FUNCTION_SQRT: glsl_inst = GLSLstd450Sqrt; break;
+        case DUSK_BUILTIN_FUNCTION_INVERSE_SQRT:
+            glsl_inst = GLSLstd450InverseSqrt;
+            break;
+        case DUSK_BUILTIN_FUNCTION_LOG: glsl_inst = GLSLstd450Log; break;
+        case DUSK_BUILTIN_FUNCTION_LOG2: glsl_inst = GLSLstd450Log2; break;
+        case DUSK_BUILTIN_FUNCTION_EXP: glsl_inst = GLSLstd450Exp; break;
+        case DUSK_BUILTIN_FUNCTION_EXP2: glsl_inst = GLSLstd450Exp2; break;
+
+        case DUSK_BUILTIN_FUNCTION_SIN: glsl_inst = GLSLstd450Sin; break;
+        case DUSK_BUILTIN_FUNCTION_COS: glsl_inst = GLSLstd450Cos; break;
+        case DUSK_BUILTIN_FUNCTION_TAN: glsl_inst = GLSLstd450Tan; break;
+        case DUSK_BUILTIN_FUNCTION_ASIN: glsl_inst = GLSLstd450Asin; break;
+        case DUSK_BUILTIN_FUNCTION_ACOS: glsl_inst = GLSLstd450Acos; break;
+        case DUSK_BUILTIN_FUNCTION_ATAN: glsl_inst = GLSLstd450Atan; break;
+        case DUSK_BUILTIN_FUNCTION_SINH: glsl_inst = GLSLstd450Sinh; break;
+        case DUSK_BUILTIN_FUNCTION_COSH: glsl_inst = GLSLstd450Cosh; break;
+        case DUSK_BUILTIN_FUNCTION_TANH: glsl_inst = GLSLstd450Tanh; break;
+        case DUSK_BUILTIN_FUNCTION_ASINH: glsl_inst = GLSLstd450Asinh; break;
+        case DUSK_BUILTIN_FUNCTION_ACOSH: glsl_inst = GLSLstd450Acosh; break;
+        case DUSK_BUILTIN_FUNCTION_ATANH: glsl_inst = GLSLstd450Atanh; break;
+
+        case DUSK_BUILTIN_FUNCTION_ABS: {
+            if (expr->type->kind == DUSK_TYPE_INT) {
+                glsl_inst = GLSLstd450SAbs;
+            } else {
+                glsl_inst = GLSLstd450FAbs;
+            }
+            break;
+        }
+
+        case DUSK_BUILTIN_FUNCTION_DISTANCE:
+            glsl_inst = GLSLstd450Distance;
+            break;
+
+        case DUSK_BUILTIN_FUNCTION_NORMALIZE:
+            glsl_inst = GLSLstd450Normalize;
+            break;
+
+        case DUSK_BUILTIN_FUNCTION_DOT: op = SpvOpDot; break;
+
+        case DUSK_BUILTIN_FUNCTION_LENGTH: glsl_inst = GLSLstd450Length; break;
+
+        case DUSK_BUILTIN_FUNCTION_CROSS: glsl_inst = GLSLstd450Cross; break;
+
+        case DUSK_BUILTIN_FUNCTION_REFLECT:
+            glsl_inst = GLSLstd450Reflect;
+            break;
+
+        case DUSK_BUILTIN_FUNCTION_REFRACT:
+            glsl_inst = GLSLstd450Refract;
+            break;
+
+        case DUSK_BUILTIN_FUNCTION_MIN: {
+            if (expr->type->kind == DUSK_TYPE_INT) {
+                if (expr->type->int_.is_signed) {
+                    glsl_inst = GLSLstd450SMin;
+                } else {
+                    glsl_inst = GLSLstd450UMin;
+                }
+            } else {
+                glsl_inst = GLSLstd450FMin;
+            }
+            break;
+        }
+
+        case DUSK_BUILTIN_FUNCTION_MAX: {
+            if (expr->type->kind == DUSK_TYPE_INT) {
+                if (expr->type->int_.is_signed) {
+                    glsl_inst = GLSLstd450SMax;
+                } else {
+                    glsl_inst = GLSLstd450UMax;
+                }
+            } else {
+                glsl_inst = GLSLstd450FMax;
+            }
+            break;
+        }
+
+        case DUSK_BUILTIN_FUNCTION_MIX: glsl_inst = GLSLstd450FMix; break;
+
+        case DUSK_BUILTIN_FUNCTION_CLAMP: {
+            if (expr->type->kind == DUSK_TYPE_INT) {
+                if (expr->type->int_.is_signed) {
+                    glsl_inst = GLSLstd450SClamp;
+                } else {
+                    glsl_inst = GLSLstd450UClamp;
+                }
+            } else {
+                glsl_inst = GLSLstd450FClamp;
+            }
+            break;
+        }
+
+        case DUSK_BUILTIN_FUNCTION_DETERMINANT:
+            glsl_inst = GLSLstd450Determinant;
+            break;
+
+        case DUSK_BUILTIN_FUNCTION_INVERSE:
+            glsl_inst = GLSLstd450MatrixInverse;
+            break;
+
+        case DUSK_BUILTIN_FUNCTION_IMAGE: op = SpvOpImage; break;
+
+        case DUSK_BUILTIN_FUNCTION_IMAGE_SAMPLE:
+            op = SpvOpImageSampleImplicitLod;
+            break;
+
+        case DUSK_BUILTIN_FUNCTION_IMAGE_SAMPLE_LOD: {
+            duskSpvModuleAddCapability(module, SpvCapabilityImageQuery);
+
+            DUSK_ASSERT(duskArrayLength(expr->builtin_call.params_arr) == 3);
+
+            duskGenerateSpvExpr(
+                module, state, expr->builtin_call.params_arr[0]);
+            duskGenerateSpvExpr(
+                module, state, expr->builtin_call.params_arr[1]);
+            duskGenerateSpvExpr(
+                module, state, expr->builtin_call.params_arr[2]);
+
+            DuskSpvValue *params[] = {
+                duskSpvLoadLvalue(
+                    module, state, expr->builtin_call.params_arr[0]->spv_value),
+                duskSpvLoadLvalue(
+                    module, state, expr->builtin_call.params_arr[1]->spv_value),
+                duskSpvCreateLiteralValue(module, SpvImageOperandsLodMask),
+                duskSpvLoadLvalue(
+                    module, state, expr->builtin_call.params_arr[2]->spv_value),
+            };
+
+            expr->spv_value = duskSpvCreateValue(
+                module,
+                SpvOpImageSampleExplicitLod,
+                expr->type,
+                DUSK_CARRAY_LENGTH(params),
+                params);
+
+            duskSpvBlockAppend(state->current_block, expr->spv_value);
+            break;
+        }
+
+        case DUSK_BUILTIN_FUNCTION_IMAGE_LOAD: DUSK_ASSERT(!"TODO"); break;
+
+        case DUSK_BUILTIN_FUNCTION_IMAGE_STORE: DUSK_ASSERT(!"TODO"); break;
+
+        case DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_LEVELS:
+            DUSK_ASSERT(!"TODO");
+            break;
+
+        case DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_LOD: DUSK_ASSERT(!"TODO"); break;
+
+        case DUSK_BUILTIN_FUNCTION_IMAGE_QUERY_SIZE: {
+            duskSpvModuleAddCapability(module, SpvCapabilityImageQuery);
+
+            DUSK_ASSERT(duskArrayLength(expr->builtin_call.params_arr) == 2);
+
+            duskGenerateSpvExpr(
+                module, state, expr->builtin_call.params_arr[0]);
+            duskGenerateSpvExpr(
+                module, state, expr->builtin_call.params_arr[1]);
+
+            DuskSpvValue *image_param = duskSpvLoadLvalue(
+                module, state, expr->builtin_call.params_arr[0]->spv_value);
+            if (image_param->type->kind == DUSK_TYPE_SAMPLED_IMAGE) {
+                image_param = duskSpvCreateValue(
+                    module,
+                    SpvOpImage,
+                    image_param->type->sampled_image.image_type,
+                    1,
+                    &image_param);
+                duskSpvBlockAppend(state->current_block, image_param);
+            }
+
+            DuskSpvValue *params[] = {
+                image_param,
+                duskSpvLoadLvalue(
+                    module, state, expr->builtin_call.params_arr[1]->spv_value),
+            };
+
+            expr->spv_value = duskSpvCreateValue(
+                module,
+                SpvOpImageQuerySizeLod,
+                expr->type,
+                DUSK_CARRAY_LENGTH(params),
+                params);
+
+            duskSpvBlockAppend(state->current_block, expr->spv_value);
+            break;
+        }
+
+        case DUSK_BUILTIN_FUNCTION_SAMPLER_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_1D_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_2D_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_2D_ARRAY_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_3D_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_1D_SAMPLER_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_2D_SAMPLER_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_2D_ARRAY_SAMPLER_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_3D_SAMPLER_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_SAMPLER_TYPE:
+        case DUSK_BUILTIN_FUNCTION_IMAGE_CUBE_ARRAY_SAMPLER_TYPE:
+        case DUSK_BUILTIN_FUNCTION_COUNT: {
+            DUSK_ASSERT(0);
+            break;
+        }
+        }
+
+        if (glsl_inst != 0 || op != 0) {
+            size_t raw_param_count =
+                duskArrayLength(expr->function_call.params_arr);
+            DuskSpvValue **raw_param_values = DUSK_NEW_ARRAY(
+                module->allocator, DuskSpvValue *, raw_param_count);
+            for (size_t i = 0;
+                 i < duskArrayLength(expr->builtin_call.params_arr);
+                 ++i) {
+                duskGenerateSpvExpr(
+                    module, state, expr->builtin_call.params_arr[i]);
+                raw_param_values[i] = duskSpvLoadLvalue(
+                    module, state, expr->builtin_call.params_arr[i]->spv_value);
+            }
+
+            if (glsl_inst != 0) {
+                DUSK_ASSERT(op == 0);
+                size_t param_count =
+                    1 + duskArrayLength(expr->function_call.params_arr);
+                DuskSpvValue **param_values = DUSK_NEW_ARRAY(
+                    module->allocator, DuskSpvValue *, param_count);
+                param_values[0] = duskSpvCreateLiteralValue(module, glsl_inst);
+                for (size_t i = 0; i < param_count; ++i) {
+                    param_values[1 + i] = raw_param_values[i];
+                }
+
+                expr->spv_value = duskSpvCreateValue(
+                    module,
+                    SpvOpExtInst,
+                    expr->type,
+                    param_count,
+                    param_values);
+                duskSpvBlockAppend(state->current_block, expr->spv_value);
+            } else if (op != 0) {
+                expr->spv_value = duskSpvCreateValue(
+                    module, op, expr->type, raw_param_count, raw_param_values);
+                duskSpvBlockAppend(state->current_block, expr->spv_value);
+            }
+        }
+
         break;
     }
     case DUSK_EXPR_ACCESS: {
