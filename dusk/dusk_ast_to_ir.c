@@ -9,15 +9,11 @@ typedef struct DuskAstToIRState {
     DuskSpvBlock *current_block;
 } DuskAstToIRState;
 
-static void duskSpvBlockAppend(DuskSpvBlock *block, DuskSpvValue *value)
-{
-    DUSK_ASSERT(value);
-    duskArrayPush(&block->insts_arr, value);
-}
-
 static bool duskSpvBlockIsTerminated(DuskSpvBlock *block)
 {
     size_t inst_count = duskArrayLength(block->insts_arr);
+    if (inst_count == 0) return false;
+
     DuskSpvValue *last_inst = block->insts_arr[inst_count - 1];
     switch (last_inst->op) {
     case SpvOpReturn:
@@ -30,6 +26,13 @@ static bool duskSpvBlockIsTerminated(DuskSpvBlock *block)
     case SpvOpTerminateInvocation: return true;
     default: return false;
     }
+}
+
+static void duskSpvBlockAppend(DuskSpvBlock *block, DuskSpvValue *value)
+{
+    DUSK_ASSERT(value);
+    if (duskSpvBlockIsTerminated(block)) return;
+    duskArrayPush(&block->insts_arr, value);
 }
 
 static DuskSpvBlock *duskSpvBlockCreate(DuskSpvModule *module)
@@ -4798,12 +4801,10 @@ static void duskGenerateSpvGlobalDecl(
                 duskArrayLength(state->current_func->blocks_arr);
             DuskSpvBlock *last_block =
                 state->current_func->blocks_arr[block_count - 1];
-            if (!duskSpvBlockIsTerminated(last_block)) {
-                duskSpvBlockAppend(
-                    last_block,
-                    duskSpvCreateValue(
-                        module, &decl->location, SpvOpReturn, NULL, 0, NULL));
-            }
+            duskSpvBlockAppend(
+                last_block,
+                duskSpvCreateValue(
+                    module, &decl->location, SpvOpReturn, NULL, 0, NULL));
         }
 
         for (size_t i = 0; i < duskArrayLength(state->current_func->blocks_arr);
