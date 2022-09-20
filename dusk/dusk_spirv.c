@@ -237,6 +237,7 @@ static void duskSpvModuleAddEntryPointUsedGlobals(
 {
     DuskArray(DuskSpvValue *) func_starts =
         duskArrayCreate(module->allocator, DuskSpvValue *);
+    DUSK_ASSERT(entry_point->params[1]->op == SpvOpFunction);
     duskArrayPush(&func_starts, entry_point->params[1]);
 
     DuskArray(DuskSpvValue *) referenced_globals =
@@ -245,6 +246,7 @@ static void duskSpvModuleAddEntryPointUsedGlobals(
     while (duskArrayLength(func_starts) > 0) {
         DuskSpvValue *func_start =
             func_starts[duskArrayLength(func_starts) - 1];
+        DUSK_ASSERT(func_start->op == SpvOpFunction);
         duskArrayPop(&func_starts);
 
         size_t i = 0;
@@ -257,6 +259,7 @@ static void duskSpvModuleAddEntryPointUsedGlobals(
 
             if (value->op == SpvOpFunctionCall) {
                 DuskSpvValue *func = value->params[0];
+                DUSK_ASSERT(func->op == SpvOpFunction);
                 duskArrayPush(&func_starts, func);
             }
 

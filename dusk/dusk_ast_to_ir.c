@@ -2722,22 +2722,27 @@ static void duskGenerateSpvExpr(
         switch (func_type->kind) {
         case DUSK_TYPE_FUNCTION: {
             duskGenerateSpvExpr(module, state, expr->function_call.func_expr);
-            DuskSpvValue **param_values =
-                DUSK_NEW_ARRAY(module->allocator, DuskSpvValue *, param_count);
+
+            size_t spv_param_count = param_count + 1;
+            DuskSpvValue **spv_param_values =
+                DUSK_NEW_ARRAY(module->allocator, DuskSpvValue *, spv_param_count);
+
+            DUSK_ASSERT(expr->function_call.func_expr->spv_value);
+            spv_param_values[0] = expr->function_call.func_expr->spv_value;
 
             for (size_t i = 0; i < param_count; ++i) {
                 DuskExpr *param_expr = expr->function_call.params_arr[i];
                 duskGenerateSpvExpr(module, state, param_expr);
                 DUSK_ASSERT(param_expr->spv_value);
-                param_values[i] = param_expr->spv_value;
+                spv_param_values[i + 1] = param_expr->spv_value;
             }
 
             expr->spv_value = duskSpvCreateValue(
                 module,
                 SpvOpFunctionCall,
                 func_type->function.return_type,
-                param_count,
-                param_values);
+                spv_param_count,
+                spv_param_values);
             duskSpvBlockAppend(state->current_block, expr->spv_value);
             break;
         }
@@ -3811,9 +3816,10 @@ static void duskGenerateSpvExpr(
             break;
         }
         case DUSK_UNARY_OP_NEGATE: {
+            DuskType *scalar_type = duskGetScalarType(expr->type);
             if (right_val->op == SpvOpConstant) {
                 // Constant
-                switch (expr->type->kind) {
+                switch (scalar_type->kind) {
                 case DUSK_TYPE_INT: {
                     uint32_t literals[2] = {};
 
@@ -3902,7 +3908,7 @@ static void duskGenerateSpvExpr(
             } else {
                 // Non constant
                 SpvOp op;
-                switch (expr->type->kind) {
+                switch (scalar_type->kind) {
                 case DUSK_TYPE_INT: op = SpvOpSNegate; break;
                 case DUSK_TYPE_FLOAT: op = SpvOpFNegate; break;
                 default: DUSK_ASSERT(0);

@@ -1,0 +1,9 @@
+fn test(param: int) int {
+    var a: int = param;
+    return a;
+}
+
+[stage(vertex)]
+fn vs_main() void {
+    var hello: int = test(123);
+}
