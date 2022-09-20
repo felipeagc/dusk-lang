@@ -664,6 +664,8 @@ struct DuskSpvModule {
     DuskCompiler *compiler;
     DuskAllocator *allocator;
 
+    DuskMap *ext_imports;
+
     DuskArray(DuskSpvValue *) capabilities_arr;
     DuskArray(DuskSpvValue *) extensions_arr;
     DuskArray(DuskSpvValue *) memory_model_arr;
@@ -696,6 +698,7 @@ DuskSpvValue *duskSpvCreateValue(
     uint32_t param_count,
     DuskSpvValue **params);
 void duskSpvModuleAddExtension(DuskSpvModule *module, const char *ext_name);
+DuskSpvValue *duskSpvModuleGetExtInstImport(DuskSpvModule *module, const char *ext_name);
 void duskSpvModuleAddCapability(
     DuskSpvModule *module, SpvCapability capability);
 DuskSpvValue *duskSpvModuleAddEntryPoint(

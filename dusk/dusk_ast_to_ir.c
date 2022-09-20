@@ -3345,14 +3345,18 @@ static void duskGenerateSpvExpr(
             }
 
             if (glsl_inst != 0) {
+                DuskSpvValue *ext_inst_import =
+                    duskSpvModuleGetExtInstImport(module, "GLSL.std.450");
+
                 DUSK_ASSERT(op == 0);
                 size_t param_count =
-                    1 + duskArrayLength(expr->function_call.params_arr);
+                    2 + duskArrayLength(expr->function_call.params_arr);
                 DuskSpvValue **param_values = DUSK_NEW_ARRAY(
                     module->allocator, DuskSpvValue *, param_count);
-                param_values[0] = duskSpvCreateLiteralValue(module, glsl_inst);
+                param_values[0] = ext_inst_import;
+                param_values[1] = duskSpvCreateLiteralValue(module, glsl_inst);
                 for (size_t i = 0; i < param_count; ++i) {
-                    param_values[1 + i] = raw_param_values[i];
+                    param_values[2 + i] = raw_param_values[i];
                 }
 
                 expr->spv_value = duskSpvCreateValue(

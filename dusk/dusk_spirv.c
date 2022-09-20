@@ -117,13 +117,40 @@ void duskSpvModuleAddExtension(DuskSpvModule *module, const char *ext_name)
     duskArrayPush(&module->extensions_arr, value);
 }
 
+DuskSpvValue *duskSpvModuleGetExtInstImport(DuskSpvModule *module, const char *ext_name)
+{
+    DuskSpvValue *ext_value = NULL;
+    if (duskMapGet(module->ext_imports, ext_name, (void**)&ext_value)) {
+        DUSK_ASSERT(ext_value);
+        return ext_value;
+    }
+
+    size_t ext_strlen = strlen(ext_name);
+
+    size_t param_word_count = DUSK_ROUND_UP(4, ext_strlen + 1) / 4;
+    uint32_t *param_words =
+        DUSK_NEW_ARRAY(module->allocator, uint32_t, param_word_count);
+    memcpy(param_words, ext_name, ext_strlen);
+
+    DuskSpvValue **param_values =
+        DUSK_NEW_ARRAY(module->allocator, DuskSpvValue *, param_word_count);
+    for (size_t i = 0; i < param_word_count; ++i) {
+        param_values[i] = duskSpvCreateLiteralValue(module, param_words[i]);
+    }
+
+    ext_value = duskSpvCreateValue(
+        module, NULL, SpvOpExtInstImport, NULL, param_word_count, param_values);
+    duskArrayPush(&module->extensions_arr, ext_value);
+    return ext_value;
+}
+
 void duskSpvModuleAddCapability(DuskSpvModule *module, SpvCapability capability)
 {
     DuskSpvValue *param_values[1] = {
         duskSpvCreateLiteralValue(module, capability),
     };
-    DuskSpvValue *value =
-        duskSpvCreateValue(module, NULL, SpvOpCapability, NULL, 1, param_values);
+    DuskSpvValue *value = duskSpvCreateValue(
+        module, NULL, SpvOpCapability, NULL, 1, param_values);
     duskArrayPush(&module->capabilities_arr, value);
 }
 
@@ -279,7 +306,9 @@ static void duskSpvModuleAddEntryPointUsedGlobals(
                     case SpvStorageClassPushConstant:
                     case SpvStorageClassWorkgroup: {
                         bool found = false;
-                        for (size_t k = 0; k < duskArrayLength(referenced_globals); ++k) {
+                        for (size_t k = 0;
+                             k < duskArrayLength(referenced_globals);
+                             ++k) {
                             if (referenced_globals[k] == param) {
                                 found = true;
                                 break;
@@ -323,6 +352,8 @@ DuskSpvModule *duskSpvModuleCreate(DuskCompiler *compiler)
     module->compiler = compiler;
     module->allocator = allocator;
 
+    module->ext_imports = duskMapCreate(NULL, 16);
+
     module->capabilities_arr = duskArrayCreate(NULL, DuskSpvValue *);
     module->extensions_arr = duskArrayCreate(NULL, DuskSpvValue *);
     module->memory_model_arr = duskArrayCreate(NULL, DuskSpvValue *);
@@ -338,6 +369,7 @@ DuskSpvModule *duskSpvModuleCreate(DuskCompiler *compiler)
 
 void duskSpvModuleDestroy(DuskSpvModule *module)
 {
+    duskMapDestroy(module->ext_imports);
     duskArrayFree(&module->capabilities_arr);
     duskArrayFree(&module->extensions_arr);
     duskArrayFree(&module->memory_model_arr);
