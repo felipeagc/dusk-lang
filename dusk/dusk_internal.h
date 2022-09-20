@@ -654,6 +654,7 @@ struct DuskSpvValue {
     SpvOp op;
     DuskType *type;
     DuskSpvValue **params;
+    DuskLocation *location;
     uint32_t param_count;
     bool emitted;
 };
@@ -689,6 +690,7 @@ DuskSpvValue *
 duskSpvCreateLiteralValue(DuskSpvModule *module, uint32_t literal);
 DuskSpvValue *duskSpvCreateValue(
     DuskSpvModule *module,
+    DuskLocation *location,
     SpvOp op,
     DuskType *type,
     uint32_t param_count,

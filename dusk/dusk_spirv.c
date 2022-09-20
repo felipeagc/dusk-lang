@@ -72,6 +72,7 @@ DuskSpvValue *duskSpvCreateLiteralValue(DuskSpvModule *module, uint32_t literal)
 
 DuskSpvValue *duskSpvCreateValue(
     DuskSpvModule *module,
+    DuskLocation *location,
     SpvOp op,
     DuskType *type,
     uint32_t param_count,
@@ -81,6 +82,7 @@ DuskSpvValue *duskSpvCreateValue(
     value->id = 0;
     value->op = op;
     value->type = type;
+    value->location = location;
     value->param_count = param_count;
     value->params =
         DUSK_NEW_ARRAY(module->allocator, DuskSpvValue *, param_count);
@@ -111,7 +113,7 @@ void duskSpvModuleAddExtension(DuskSpvModule *module, const char *ext_name)
     }
 
     DuskSpvValue *value = duskSpvCreateValue(
-        module, SpvOpExtension, NULL, param_word_count, param_values);
+        module, NULL, SpvOpExtension, NULL, param_word_count, param_values);
     duskArrayPush(&module->extensions_arr, value);
 }
 
@@ -121,7 +123,7 @@ void duskSpvModuleAddCapability(DuskSpvModule *module, SpvCapability capability)
         duskSpvCreateLiteralValue(module, capability),
     };
     DuskSpvValue *value =
-        duskSpvCreateValue(module, SpvOpCapability, NULL, 1, param_values);
+        duskSpvCreateValue(module, NULL, SpvOpCapability, NULL, 1, param_values);
     duskArrayPush(&module->capabilities_arr, value);
 }
 
@@ -148,7 +150,7 @@ DuskSpvValue *duskSpvModuleAddEntryPoint(
     }
 
     DuskSpvValue *value = duskSpvCreateValue(
-        module, SpvOpEntryPoint, NULL, param_count, param_values);
+        module, NULL, SpvOpEntryPoint, NULL, param_count, param_values);
     duskArrayPush(&module->entry_points_arr, value);
     return value;
 }
@@ -184,7 +186,7 @@ void duskSpvDecorate(
     }
 
     DuskSpvValue *decoration_value = duskSpvCreateValue(
-        module, SpvOpDecorate, NULL, param_count, param_values);
+        module, NULL, SpvOpDecorate, NULL, param_count, param_values);
     duskArrayPush(&module->decorations_arr, decoration_value);
 }
 
@@ -207,7 +209,7 @@ void duskSpvDecorateMember(
     }
 
     DuskSpvValue *decoration_value = duskSpvCreateValue(
-        module, SpvOpMemberDecorate, NULL, param_count, param_values);
+        module, NULL, SpvOpMemberDecorate, NULL, param_count, param_values);
     duskArrayPush(&module->decorations_arr, decoration_value);
 }
 

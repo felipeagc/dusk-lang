@@ -37,7 +37,7 @@ static DuskSpvBlock *duskSpvBlockCreate(DuskSpvModule *module)
     DuskSpvBlock *block = DUSK_NEW(module->allocator, DuskSpvBlock);
     block->insts_arr = duskArrayCreate(module->allocator, DuskSpvValue *);
     duskSpvBlockAppend(
-        block, duskSpvCreateValue(module, SpvOpLabel, NULL, 0, NULL));
+        block, duskSpvCreateValue(module, NULL, SpvOpLabel, NULL, 0, NULL));
     return block;
 }
 
@@ -66,7 +66,7 @@ static DuskSpvValue *duskSpvLoadLvalue(
     if (duskSpvIsLvalue(value)) {
         DUSK_ASSERT(value->type->kind == DUSK_TYPE_POINTER);
         value = duskSpvCreateValue(
-            module, SpvOpLoad, value->type->pointer.sub, 1, &value);
+            module, NULL, SpvOpLoad, value->type->pointer.sub, 1, &value);
         duskSpvBlockAppend(state->current_block, value);
     }
 
@@ -2317,12 +2317,12 @@ static void duskGenerateSpvType(DuskSpvModule *module, DuskType *type)
     case DUSK_TYPE_STRING: return;
     case DUSK_TYPE_VOID: {
         type->spv_value =
-            duskSpvCreateValue(module, SpvOpTypeVoid, NULL, 0, NULL);
+            duskSpvCreateValue(module, NULL, SpvOpTypeVoid, NULL, 0, NULL);
         break;
     }
     case DUSK_TYPE_BOOL: {
         type->spv_value =
-            duskSpvCreateValue(module, SpvOpTypeBool, NULL, 0, NULL);
+            duskSpvCreateValue(module, NULL, SpvOpTypeBool, NULL, 0, NULL);
         break;
     }
     case DUSK_TYPE_INT: {
@@ -2331,7 +2331,12 @@ static void duskGenerateSpvType(DuskSpvModule *module, DuskType *type)
             duskSpvCreateLiteralValue(module, (uint32_t)type->int_.is_signed),
         };
         type->spv_value = duskSpvCreateValue(
-            module, SpvOpTypeInt, NULL, DUSK_CARRAY_LENGTH(params), params);
+            module,
+            NULL,
+            SpvOpTypeInt,
+            NULL,
+            DUSK_CARRAY_LENGTH(params),
+            params);
 
         switch (type->int_.bits) {
         case 8: duskSpvModuleAddCapability(module, SpvCapabilityInt8); break;
@@ -2345,7 +2350,12 @@ static void duskGenerateSpvType(DuskSpvModule *module, DuskType *type)
             duskSpvCreateLiteralValue(module, type->float_.bits),
         };
         type->spv_value = duskSpvCreateValue(
-            module, SpvOpTypeFloat, NULL, DUSK_CARRAY_LENGTH(params), params);
+            module,
+            NULL,
+            SpvOpTypeFloat,
+            NULL,
+            DUSK_CARRAY_LENGTH(params),
+            params);
 
         switch (type->int_.bits) {
         case 16:
@@ -2363,7 +2373,12 @@ static void duskGenerateSpvType(DuskSpvModule *module, DuskType *type)
             duskSpvCreateLiteralValue(module, type->vector.size),
         };
         type->spv_value = duskSpvCreateValue(
-            module, SpvOpTypeVector, NULL, DUSK_CARRAY_LENGTH(params), params);
+            module,
+            NULL,
+            SpvOpTypeVector,
+            NULL,
+            DUSK_CARRAY_LENGTH(params),
+            params);
         break;
     }
     case DUSK_TYPE_MATRIX: {
@@ -2372,7 +2387,12 @@ static void duskGenerateSpvType(DuskSpvModule *module, DuskType *type)
             duskSpvCreateLiteralValue(module, type->matrix.cols),
         };
         type->spv_value = duskSpvCreateValue(
-            module, SpvOpTypeMatrix, NULL, DUSK_CARRAY_LENGTH(params), params);
+            module,
+            NULL,
+            SpvOpTypeMatrix,
+            NULL,
+            DUSK_CARRAY_LENGTH(params),
+            params);
         break;
     }
     case DUSK_TYPE_ARRAY: {
@@ -2387,6 +2407,7 @@ static void duskGenerateSpvType(DuskSpvModule *module, DuskType *type)
 
         type->array.size_spv_value = duskSpvCreateValue(
             module,
+            NULL,
             SpvOpConstant,
             uint_type,
             DUSK_CARRAY_LENGTH(size_params),
@@ -2399,7 +2420,12 @@ static void duskGenerateSpvType(DuskSpvModule *module, DuskType *type)
             type->array.size_spv_value,
         };
         type->spv_value = duskSpvCreateValue(
-            module, SpvOpTypeArray, NULL, DUSK_CARRAY_LENGTH(params), params);
+            module,
+            NULL,
+            SpvOpTypeArray,
+            NULL,
+            DUSK_CARRAY_LENGTH(params),
+            params);
         break;
     }
     case DUSK_TYPE_RUNTIME_ARRAY: {
@@ -2408,6 +2434,7 @@ static void duskGenerateSpvType(DuskSpvModule *module, DuskType *type)
         };
         type->spv_value = duskSpvCreateValue(
             module,
+            NULL,
             SpvOpTypeRuntimeArray,
             NULL,
             DUSK_CARRAY_LENGTH(params),
@@ -2421,7 +2448,12 @@ static void duskGenerateSpvType(DuskSpvModule *module, DuskType *type)
             type->pointer.sub->spv_value,
         };
         type->spv_value = duskSpvCreateValue(
-            module, SpvOpTypePointer, NULL, DUSK_CARRAY_LENGTH(params), params);
+            module,
+            NULL,
+            SpvOpTypePointer,
+            NULL,
+            DUSK_CARRAY_LENGTH(params),
+            params);
         break;
     }
     case DUSK_TYPE_STRUCT: {
@@ -2434,7 +2466,7 @@ static void duskGenerateSpvType(DuskSpvModule *module, DuskType *type)
         }
 
         type->spv_value = duskSpvCreateValue(
-            module, SpvOpTypeStruct, NULL, param_count, params);
+            module, NULL, SpvOpTypeStruct, NULL, param_count, params);
         break;
     }
     case DUSK_TYPE_IMAGE: {
@@ -2458,12 +2490,17 @@ static void duskGenerateSpvType(DuskSpvModule *module, DuskType *type)
         };
 
         type->spv_value = duskSpvCreateValue(
-            module, SpvOpTypeImage, NULL, DUSK_CARRAY_LENGTH(params), params);
+            module,
+            NULL,
+            SpvOpTypeImage,
+            NULL,
+            DUSK_CARRAY_LENGTH(params),
+            params);
         break;
     }
     case DUSK_TYPE_SAMPLER: {
         type->spv_value =
-            duskSpvCreateValue(module, SpvOpTypeSampler, NULL, 0, NULL);
+            duskSpvCreateValue(module, NULL, SpvOpTypeSampler, NULL, 0, NULL);
         break;
     }
     case DUSK_TYPE_SAMPLED_IMAGE: {
@@ -2472,6 +2509,7 @@ static void duskGenerateSpvType(DuskSpvModule *module, DuskType *type)
         };
         type->spv_value = duskSpvCreateValue(
             module,
+            NULL,
             SpvOpTypeSampledImage,
             NULL,
             DUSK_CARRAY_LENGTH(params),
@@ -2491,7 +2529,7 @@ static void duskGenerateSpvType(DuskSpvModule *module, DuskType *type)
         }
 
         type->spv_value = duskSpvCreateValue(
-            module, SpvOpTypeFunction, NULL, op_param_count, op_params);
+            module, NULL, SpvOpTypeFunction, NULL, op_param_count, op_params);
         break;
     }
     }
@@ -2564,6 +2602,7 @@ static void duskGenerateSpvExpr(
 
         expr->spv_value = duskSpvCreateValue(
             module,
+            &expr->location,
             SpvOpConstant,
             expr->type,
             literal_word_count,
@@ -2576,7 +2615,21 @@ static void duskGenerateSpvExpr(
             expr->type->kind != DUSK_TYPE_UNTYPED_INT &&
             expr->type->kind != DUSK_TYPE_UNTYPED_FLOAT);
         uint32_t literals[2] = {0, 0};
-        memcpy(&literals[0], &expr->float_literal, sizeof(double));
+        uint32_t literal_word_count = 1;
+
+        switch (expr->type->float_.bits) {
+        case 32: {
+            float lit = (float)expr->int_literal;
+            memcpy(&literals[0], &lit, sizeof(float));
+            break;
+        }
+        case 64: {
+            double lit = (double)expr->int_literal;
+            memcpy(&literals[0], &lit, sizeof(double));
+            literal_word_count = 2;
+            break;
+        }
+        }
 
         DuskSpvValue *spv_literals[2] = {
             duskSpvCreateLiteralValue(module, literals[0]),
@@ -2584,9 +2637,10 @@ static void duskGenerateSpvExpr(
         };
         expr->spv_value = duskSpvCreateValue(
             module,
+            &expr->location,
             SpvOpConstant,
             expr->type,
-            DUSK_CARRAY_LENGTH(spv_literals),
+            literal_word_count,
             spv_literals);
         duskSpvModuleAddToTypesAndConstsSection(module, expr->spv_value);
         break;
@@ -2594,6 +2648,7 @@ static void duskGenerateSpvExpr(
     case DUSK_EXPR_BOOL_LITERAL: {
         expr->spv_value = duskSpvCreateValue(
             module,
+            &expr->location,
             expr->bool_literal ? SpvOpConstantTrue : SpvOpConstantFalse,
             expr->type,
             0,
@@ -2639,6 +2694,7 @@ static void duskGenerateSpvExpr(
         if (all_fields_constant) {
             expr->spv_value = duskSpvCreateValue(
                 module,
+                &expr->location,
                 SpvOpConstantComposite,
                 expr->type,
                 field_value_count,
@@ -2647,6 +2703,7 @@ static void duskGenerateSpvExpr(
         } else {
             expr->spv_value = duskSpvCreateValue(
                 module,
+                &expr->location,
                 SpvOpCompositeConstruct,
                 expr->type,
                 field_value_count,
@@ -2659,7 +2716,12 @@ static void duskGenerateSpvExpr(
         DuskType *array_type = expr->type;
         if (array_type->kind == DUSK_TYPE_STRUCT) {
             expr->spv_value = duskSpvCreateValue(
-                module, SpvOpConstantComposite, expr->type, 0, NULL);
+                module,
+                &expr->location,
+                SpvOpConstantComposite,
+                expr->type,
+                0,
+                NULL);
             duskSpvModuleAddToTypesAndConstsSection(module, expr->spv_value);
             break;
         } else {
@@ -2692,6 +2754,7 @@ static void duskGenerateSpvExpr(
         if (all_fields_constant) {
             expr->spv_value = duskSpvCreateValue(
                 module,
+                &expr->location,
                 SpvOpConstantComposite,
                 expr->type,
                 field_value_count,
@@ -2700,6 +2763,7 @@ static void duskGenerateSpvExpr(
         } else {
             expr->spv_value = duskSpvCreateValue(
                 module,
+                &expr->location,
                 SpvOpCompositeConstruct,
                 expr->type,
                 field_value_count,
@@ -2724,8 +2788,8 @@ static void duskGenerateSpvExpr(
             duskGenerateSpvExpr(module, state, expr->function_call.func_expr);
 
             size_t spv_param_count = param_count + 1;
-            DuskSpvValue **spv_param_values =
-                DUSK_NEW_ARRAY(module->allocator, DuskSpvValue *, spv_param_count);
+            DuskSpvValue **spv_param_values = DUSK_NEW_ARRAY(
+                module->allocator, DuskSpvValue *, spv_param_count);
 
             DUSK_ASSERT(expr->function_call.func_expr->spv_value);
             spv_param_values[0] = expr->function_call.func_expr->spv_value;
@@ -2739,6 +2803,7 @@ static void duskGenerateSpvExpr(
 
             expr->spv_value = duskSpvCreateValue(
                 module,
+                &expr->location,
                 SpvOpFunctionCall,
                 func_type->function.return_type,
                 spv_param_count,
@@ -2809,8 +2874,8 @@ static void duskGenerateSpvExpr(
 
                 DUSK_ASSERT(op != 0);
 
-                expr->spv_value =
-                    duskSpvCreateValue(module, op, dest_type, 1, &value);
+                expr->spv_value = duskSpvCreateValue(
+                    module, &expr->location, op, dest_type, 1, &value);
                 duskSpvBlockAppend(state->current_block, expr->spv_value);
                 break;
             }
@@ -2857,6 +2922,7 @@ static void duskGenerateSpvExpr(
                                     };
                                     values[elem_index] = duskSpvCreateValue(
                                         module,
+                                        &expr->location,
                                         SpvOpCompositeExtract,
                                         param->type->vector.sub,
                                         DUSK_CARRAY_LENGTH(extract_params),
@@ -2883,6 +2949,7 @@ static void duskGenerateSpvExpr(
                     if (all_constants) {
                         expr->spv_value = duskSpvCreateValue(
                             module,
+                            &expr->location,
                             SpvOpConstantComposite,
                             constructed_type,
                             value_count,
@@ -2892,6 +2959,7 @@ static void duskGenerateSpvExpr(
                     } else {
                         expr->spv_value = duskSpvCreateValue(
                             module,
+                            &expr->location,
                             SpvOpCompositeConstruct,
                             constructed_type,
                             value_count,
@@ -2923,6 +2991,7 @@ static void duskGenerateSpvExpr(
 
                     expr->spv_value = duskSpvCreateValue(
                         module,
+                        &expr->location,
                         SpvOpConstantComposite,
                         constructed_type,
                         value_count,
@@ -2970,6 +3039,7 @@ static void duskGenerateSpvExpr(
                     if (all_constants) {
                         expr->spv_value = duskSpvCreateValue(
                             module,
+                            &expr->location,
                             SpvOpConstantComposite,
                             constructed_type,
                             value_count,
@@ -2979,6 +3049,7 @@ static void duskGenerateSpvExpr(
                     } else {
                         expr->spv_value = duskSpvCreateValue(
                             module,
+                            &expr->location,
                             SpvOpCompositeConstruct,
                             constructed_type,
                             value_count,
@@ -3011,6 +3082,7 @@ static void duskGenerateSpvExpr(
 
                     expr->spv_value = duskSpvCreateValue(
                         module,
+                        &expr->location,
                         SpvOpConstantComposite,
                         constructed_type,
                         value_count,
@@ -3178,6 +3250,7 @@ static void duskGenerateSpvExpr(
 
             expr->spv_value = duskSpvCreateValue(
                 module,
+                &expr->location,
                 SpvOpImageSampleExplicitLod,
                 expr->type,
                 DUSK_CARRAY_LENGTH(params),
@@ -3212,6 +3285,7 @@ static void duskGenerateSpvExpr(
             if (image_param->type->kind == DUSK_TYPE_SAMPLED_IMAGE) {
                 image_param = duskSpvCreateValue(
                     module,
+                    &expr->location,
                     SpvOpImage,
                     image_param->type->sampled_image.image_type,
                     1,
@@ -3227,6 +3301,7 @@ static void duskGenerateSpvExpr(
 
             expr->spv_value = duskSpvCreateValue(
                 module,
+                &expr->location,
                 SpvOpImageQuerySizeLod,
                 expr->type,
                 DUSK_CARRAY_LENGTH(params),
@@ -3282,6 +3357,7 @@ static void duskGenerateSpvExpr(
 
                 expr->spv_value = duskSpvCreateValue(
                     module,
+                    &expr->location,
                     SpvOpExtInst,
                     expr->type,
                     param_count,
@@ -3289,7 +3365,12 @@ static void duskGenerateSpvExpr(
                 duskSpvBlockAppend(state->current_block, expr->spv_value);
             } else if (op != 0) {
                 expr->spv_value = duskSpvCreateValue(
-                    module, op, expr->type, raw_param_count, raw_param_values);
+                    module,
+                    &expr->location,
+                    op,
+                    expr->type,
+                    raw_param_count,
+                    raw_param_values);
                 duskSpvBlockAppend(state->current_block, expr->spv_value);
             }
         }
@@ -3340,6 +3421,7 @@ static void duskGenerateSpvExpr(
                     }
                     right_expr->spv_value = duskSpvCreateValue(
                         module,
+                        &expr->location,
                         SpvOpVectorShuffle,
                         vec_type,
                         shuffle_params_count,
@@ -3358,6 +3440,7 @@ static void duskGenerateSpvExpr(
                         };
                         DuskSpvValue *index_value = duskSpvCreateValue(
                             module,
+                            &expr->location,
                             SpvOpConstant,
                             duskTypeNewScalar(
                                 module->compiler, DUSK_SCALAR_TYPE_UINT),
@@ -3372,6 +3455,7 @@ static void duskGenerateSpvExpr(
                         };
                         right_expr->spv_value = duskSpvCreateValue(
                             module,
+                            &expr->location,
                             SpvOpAccessChain,
                             duskTypeNewPointer(
                                 module->compiler,
@@ -3390,6 +3474,7 @@ static void duskGenerateSpvExpr(
                         };
                         right_expr->spv_value = duskSpvCreateValue(
                             module,
+                            &expr->location,
                             SpvOpCompositeExtract,
                             left_expr->type->vector.sub,
                             DUSK_CARRAY_LENGTH(composite_extract_params),
@@ -3418,6 +3503,7 @@ static void duskGenerateSpvExpr(
                     };
                     DuskSpvValue *index_value = duskSpvCreateValue(
                         module,
+                        &expr->location,
                         SpvOpConstant,
                         duskTypeNewScalar(
                             module->compiler, DUSK_SCALAR_TYPE_UINT),
@@ -3432,6 +3518,7 @@ static void duskGenerateSpvExpr(
                     };
                     right_expr->spv_value = duskSpvCreateValue(
                         module,
+                        &expr->location,
                         SpvOpAccessChain,
                         duskTypeNewPointer(
                             module->compiler,
@@ -3451,6 +3538,7 @@ static void duskGenerateSpvExpr(
                     };
                     right_expr->spv_value = duskSpvCreateValue(
                         module,
+                        &expr->location,
                         SpvOpCompositeExtract,
                         left_expr->type->struct_.field_types[field_index],
                         DUSK_CARRAY_LENGTH(composite_extract_params),
@@ -3493,6 +3581,7 @@ static void duskGenerateSpvExpr(
                     };
                     right_expr->spv_value = duskSpvCreateValue(
                         module,
+                        &expr->location,
                         SpvOpArrayLength,
                         duskTypeNewScalar(
                             module->compiler, DUSK_SCALAR_TYPE_UINT),
@@ -3548,6 +3637,7 @@ static void duskGenerateSpvExpr(
                 DUSK_STORAGE_CLASS_FUNCTION);
             DuskSpvValue *tmp_var = duskSpvCreateValue(
                 module,
+                &expr->location,
                 SpvOpVariable,
                 ptr_type,
                 DUSK_CARRAY_LENGTH(var_params),
@@ -3562,6 +3652,7 @@ static void duskGenerateSpvExpr(
                 state->current_block,
                 duskSpvCreateValue(
                     module,
+                    &expr->location,
                     SpvOpStore,
                     NULL,
                     DUSK_CARRAY_LENGTH(store_params),
@@ -3581,6 +3672,7 @@ static void duskGenerateSpvExpr(
 
         expr->spv_value = duskSpvCreateValue(
             module,
+            &expr->location,
             SpvOpAccessChain,
             duskTypeNewPointer(
                 module->compiler,
@@ -3632,7 +3724,12 @@ static void duskGenerateSpvExpr(
                 expr->binary.left->type,
                 expr->binary.right->type);
             expr->spv_value = duskSpvCreateValue(
-                module, op, expr->type, DUSK_CARRAY_LENGTH(params), params);
+                module,
+                &expr->location,
+                op,
+                expr->type,
+                DUSK_CARRAY_LENGTH(params),
+                params);
             duskSpvBlockAppend(state->current_block, expr->spv_value);
             break;
         }
@@ -3653,6 +3750,7 @@ static void duskGenerateSpvExpr(
                 state->current_block,
                 duskSpvCreateValue(
                     module,
+                    &expr->location,
                     SpvOpSelectionMerge,
                     NULL,
                     DUSK_CARRAY_LENGTH(merge_params),
@@ -3668,6 +3766,7 @@ static void duskGenerateSpvExpr(
                 state->current_block,
                 duskSpvCreateValue(
                     module,
+                    &expr->location,
                     SpvOpBranchConditional,
                     NULL,
                     DUSK_CARRAY_LENGTH(cond_branch_params),
@@ -3686,6 +3785,7 @@ static void duskGenerateSpvExpr(
                 state->current_block,
                 duskSpvCreateValue(
                     module,
+                    &expr->location,
                     SpvOpBranch,
                     NULL,
                     DUSK_CARRAY_LENGTH(branch_params),
@@ -3700,6 +3800,7 @@ static void duskGenerateSpvExpr(
             };
             expr->spv_value = duskSpvCreateValue(
                 module,
+                &expr->location,
                 SpvOpPhi,
                 expr->type,
                 DUSK_CARRAY_LENGTH(phi_params),
@@ -3724,6 +3825,7 @@ static void duskGenerateSpvExpr(
                 state->current_block,
                 duskSpvCreateValue(
                     module,
+                    &expr->location,
                     SpvOpSelectionMerge,
                     NULL,
                     DUSK_CARRAY_LENGTH(merge_params),
@@ -3739,6 +3841,7 @@ static void duskGenerateSpvExpr(
                 state->current_block,
                 duskSpvCreateValue(
                     module,
+                    &expr->location,
                     SpvOpBranchConditional,
                     NULL,
                     DUSK_CARRAY_LENGTH(cond_branch_params),
@@ -3757,6 +3860,7 @@ static void duskGenerateSpvExpr(
                 state->current_block,
                 duskSpvCreateValue(
                     module,
+                    &expr->location,
                     SpvOpBranch,
                     NULL,
                     DUSK_CARRAY_LENGTH(branch_params),
@@ -3771,6 +3875,7 @@ static void duskGenerateSpvExpr(
             };
             expr->spv_value = duskSpvCreateValue(
                 module,
+                &expr->location,
                 SpvOpPhi,
                 expr->type,
                 DUSK_CARRAY_LENGTH(phi_params),
@@ -3793,14 +3898,24 @@ static void duskGenerateSpvExpr(
             switch (right_val->op) {
             case SpvOpConstantFalse: {
                 expr->spv_value = duskSpvCreateValue(
-                    module, SpvOpConstantTrue, expr->type, 0, NULL);
+                    module,
+                    &expr->location,
+                    SpvOpConstantTrue,
+                    expr->type,
+                    0,
+                    NULL);
                 duskSpvModuleAddToTypesAndConstsSection(
                     module, expr->spv_value);
                 break;
             }
             case SpvOpConstantTrue: {
                 expr->spv_value = duskSpvCreateValue(
-                    module, SpvOpConstantFalse, expr->type, 0, NULL);
+                    module,
+                    &expr->location,
+                    SpvOpConstantFalse,
+                    expr->type,
+                    0,
+                    NULL);
                 duskSpvModuleAddToTypesAndConstsSection(
                     module, expr->spv_value);
                 break;
@@ -3808,7 +3923,12 @@ static void duskGenerateSpvExpr(
             default: {
                 // Non-constant
                 expr->spv_value = duskSpvCreateValue(
-                    module, SpvOpNot, expr->type, 1, &right_val);
+                    module,
+                    &expr->location,
+                    SpvOpNot,
+                    expr->type,
+                    1,
+                    &right_val);
                 duskSpvBlockAppend(state->current_block, expr->spv_value);
                 break;
             }
@@ -3857,6 +3977,7 @@ static void duskGenerateSpvExpr(
 
                     expr->spv_value = duskSpvCreateValue(
                         module,
+                        &expr->location,
                         SpvOpConstant,
                         expr->type,
                         right_val->param_count,
@@ -3895,6 +4016,7 @@ static void duskGenerateSpvExpr(
 
                     expr->spv_value = duskSpvCreateValue(
                         module,
+                        &expr->location,
                         SpvOpConstant,
                         expr->type,
                         right_val->param_count,
@@ -3914,8 +4036,8 @@ static void duskGenerateSpvExpr(
                 default: DUSK_ASSERT(0);
                 }
 
-                expr->spv_value =
-                    duskSpvCreateValue(module, op, expr->type, 1, &right_val);
+                expr->spv_value = duskSpvCreateValue(
+                    module, &expr->location, op, expr->type, 1, &right_val);
                 duskSpvBlockAppend(state->current_block, expr->spv_value);
             }
             break;
@@ -3955,6 +4077,7 @@ static void duskGenerateSpvLocalDecl(
                 module->compiler, decl->type, DUSK_STORAGE_CLASS_FUNCTION);
             decl->spv_value = duskSpvCreateValue(
                 module,
+                &decl->location,
                 SpvOpVariable,
                 ptr_type,
                 DUSK_CARRAY_LENGTH(var_params),
@@ -3979,6 +4102,7 @@ static void duskGenerateSpvLocalDecl(
                     state->current_block,
                     duskSpvCreateValue(
                         module,
+                        &decl->location,
                         SpvOpStore,
                         NULL,
                         DUSK_CARRAY_LENGTH(store_params),
@@ -4022,7 +4146,12 @@ static void duskGenerateSpvStmt(
         duskSpvBlockAppend(
             state->current_block,
             duskSpvCreateValue(
-                module, SpvOpStore, NULL, DUSK_CARRAY_LENGTH(params), params));
+                module,
+                &stmt->location,
+                SpvOpStore,
+                NULL,
+                DUSK_CARRAY_LENGTH(params),
+                params));
 
         break;
     }
@@ -4057,6 +4186,7 @@ static void duskGenerateSpvStmt(
             state->current_block,
             duskSpvCreateValue(
                 module,
+                &stmt->location,
                 SpvOpSelectionMerge,
                 NULL,
                 DUSK_CARRAY_LENGTH(merge_params),
@@ -4071,6 +4201,7 @@ static void duskGenerateSpvStmt(
             state->current_block,
             duskSpvCreateValue(
                 module,
+                &stmt->location,
                 SpvOpBranchConditional,
                 NULL,
                 DUSK_CARRAY_LENGTH(cond_branch_params),
@@ -4086,6 +4217,7 @@ static void duskGenerateSpvStmt(
             state->current_block,
             duskSpvCreateValue(
                 module,
+                &stmt->location,
                 SpvOpBranch,
                 NULL,
                 DUSK_CARRAY_LENGTH(branch_params),
@@ -4102,6 +4234,7 @@ static void duskGenerateSpvStmt(
                 state->current_block,
                 duskSpvCreateValue(
                     module,
+                    &stmt->location,
                     SpvOpBranch,
                     NULL,
                     DUSK_CARRAY_LENGTH(branch_params),
@@ -4126,6 +4259,7 @@ static void duskGenerateSpvStmt(
             state->current_block,
             duskSpvCreateValue(
                 module,
+                &stmt->location,
                 SpvOpBranch,
                 NULL,
                 DUSK_CARRAY_LENGTH(header_branch_params),
@@ -4142,6 +4276,7 @@ static void duskGenerateSpvStmt(
             state->current_block,
             duskSpvCreateValue(
                 module,
+                &stmt->location,
                 SpvOpLoopMerge,
                 NULL,
                 DUSK_CARRAY_LENGTH(loop_merge_params),
@@ -4153,6 +4288,7 @@ static void duskGenerateSpvStmt(
             state->current_block,
             duskSpvCreateValue(
                 module,
+                &stmt->location,
                 SpvOpBranch,
                 NULL,
                 DUSK_CARRAY_LENGTH(header_cond_branch_params),
@@ -4173,6 +4309,7 @@ static void duskGenerateSpvStmt(
             state->current_block,
             duskSpvCreateValue(
                 module,
+                &stmt->location,
                 SpvOpBranchConditional,
                 NULL,
                 DUSK_CARRAY_LENGTH(cond_branch_params),
@@ -4191,6 +4328,7 @@ static void duskGenerateSpvStmt(
             state->current_block,
             duskSpvCreateValue(
                 module,
+                &stmt->location,
                 SpvOpBranch,
                 NULL,
                 DUSK_CARRAY_LENGTH(body_branch_params),
@@ -4208,6 +4346,7 @@ static void duskGenerateSpvStmt(
             state->current_block,
             duskSpvCreateValue(
                 module,
+                &stmt->location,
                 SpvOpBranch,
                 NULL,
                 DUSK_CARRAY_LENGTH(continue_branch_params),
@@ -4231,6 +4370,7 @@ static void duskGenerateSpvStmt(
             state->current_block,
             duskSpvCreateValue(
                 module,
+                &stmt->location,
                 SpvOpBranch,
                 NULL,
                 DUSK_CARRAY_LENGTH(branch_params),
@@ -4250,6 +4390,7 @@ static void duskGenerateSpvStmt(
             state->current_block,
             duskSpvCreateValue(
                 module,
+                &stmt->location,
                 SpvOpBranch,
                 NULL,
                 DUSK_CARRAY_LENGTH(branch_params),
@@ -4284,6 +4425,7 @@ static void duskGenerateSpvStmt(
                     };
                     DuskSpvValue *field_value = duskSpvCreateValue(
                         module,
+                        &stmt->location,
                         SpvOpCompositeExtract,
                         return_type->struct_.field_types[i],
                         DUSK_CARRAY_LENGTH(extract_params),
@@ -4299,6 +4441,7 @@ static void duskGenerateSpvStmt(
                         state->current_block,
                         duskSpvCreateValue(
                             module,
+                            &stmt->location,
                             SpvOpStore,
                             NULL,
                             DUSK_CARRAY_LENGTH(store_params),
@@ -4326,6 +4469,7 @@ static void duskGenerateSpvStmt(
                     state->current_block,
                     duskSpvCreateValue(
                         module,
+                        &stmt->location,
                         SpvOpStore,
                         NULL,
                         DUSK_CARRAY_LENGTH(store_params),
@@ -4336,7 +4480,8 @@ static void duskGenerateSpvStmt(
 
             duskSpvBlockAppend(
                 state->current_block,
-                duskSpvCreateValue(module, SpvOpReturn, NULL, 0, NULL));
+                duskSpvCreateValue(
+                    module, &stmt->location, SpvOpReturn, NULL, 0, NULL));
         } else {
             if (stmt->return_.expr) {
                 duskGenerateSpvExpr(module, state, stmt->return_.expr);
@@ -4348,6 +4493,7 @@ static void duskGenerateSpvStmt(
                     state->current_block,
                     duskSpvCreateValue(
                         module,
+                        &stmt->location,
                         SpvOpReturnValue,
                         NULL,
                         DUSK_CARRAY_LENGTH(params),
@@ -4355,7 +4501,8 @@ static void duskGenerateSpvStmt(
             } else {
                 duskSpvBlockAppend(
                     state->current_block,
-                    duskSpvCreateValue(module, SpvOpReturn, NULL, 0, NULL));
+                    duskSpvCreateValue(
+                        module, &stmt->location, SpvOpReturn, NULL, 0, NULL));
             }
         }
         break;
@@ -4363,7 +4510,8 @@ static void duskGenerateSpvStmt(
     case DUSK_STMT_DISCARD: {
         duskSpvBlockAppend(
             state->current_block,
-            duskSpvCreateValue(module, SpvOpKill, NULL, 0, NULL));
+            duskSpvCreateValue(
+                module, &stmt->location, SpvOpKill, NULL, 0, NULL));
         break;
     }
     }
@@ -4403,6 +4551,7 @@ static void duskGenerateSpvGlobalDecl(
         };
         decl->spv_value = duskSpvCreateValue(
             module,
+            &decl->location,
             SpvOpFunction,
             return_type,
             DUSK_CARRAY_LENGTH(op_params),
@@ -4448,6 +4597,7 @@ static void duskGenerateSpvGlobalDecl(
                     module,
                     duskSpvCreateValue(
                         module,
+                        &decl->location,
                         SpvOpExecutionMode,
                         NULL,
                         DUSK_CARRAY_LENGTH(execution_mode_params),
@@ -4478,6 +4628,7 @@ static void duskGenerateSpvGlobalDecl(
                         };
                         DuskSpvValue *input_value = duskSpvCreateValue(
                             module,
+                            &decl->location,
                             SpvOpVariable,
                             field_ptr_type,
                             DUSK_CARRAY_LENGTH(var_params),
@@ -4506,6 +4657,7 @@ static void duskGenerateSpvGlobalDecl(
 
                     param_decl->spv_value = duskSpvCreateValue(
                         module,
+                        &decl->location,
                         SpvOpCompositeConstruct,
                         param_decl->type,
                         field_count,
@@ -4527,6 +4679,7 @@ static void duskGenerateSpvGlobalDecl(
                     };
                     DuskSpvValue *input_value = duskSpvCreateValue(
                         module,
+                        &decl->location,
                         SpvOpVariable,
                         input_ptr_type,
                         DUSK_CARRAY_LENGTH(var_params),
@@ -4566,6 +4719,7 @@ static void duskGenerateSpvGlobalDecl(
                     };
                     DuskSpvValue *output_value = duskSpvCreateValue(
                         module,
+                        &decl->location,
                         SpvOpVariable,
                         field_ptr_type,
                         DUSK_CARRAY_LENGTH(var_params),
@@ -4596,6 +4750,7 @@ static void duskGenerateSpvGlobalDecl(
                 };
                 DuskSpvValue *output_value = duskSpvCreateValue(
                     module,
+                    &decl->location,
                     SpvOpVariable,
                     output_ptr_type,
                     DUSK_CARRAY_LENGTH(var_params),
@@ -4616,7 +4771,12 @@ static void duskGenerateSpvGlobalDecl(
             for (size_t i = 0; i < param_count; ++i) {
                 DuskDecl *param_decl = decl->function.parameter_decls_arr[i];
                 param_decl->spv_value = duskSpvCreateValue(
-                    module, SpvOpFunctionParameter, param_decl->type, 0, NULL);
+                    module,
+                    &decl->location,
+                    SpvOpFunctionParameter,
+                    param_decl->type,
+                    0,
+                    NULL);
                 duskSpvModuleAddToFunctionsSection(
                     module, param_decl->spv_value);
             }
@@ -4637,7 +4797,8 @@ static void duskGenerateSpvGlobalDecl(
             if (!duskSpvBlockIsTerminated(last_block)) {
                 duskSpvBlockAppend(
                     last_block,
-                    duskSpvCreateValue(module, SpvOpReturn, NULL, 0, NULL));
+                    duskSpvCreateValue(
+                        module, &decl->location, SpvOpReturn, NULL, 0, NULL));
             }
         }
 
@@ -4667,7 +4828,8 @@ static void duskGenerateSpvGlobalDecl(
 
         duskSpvModuleAddToFunctionsSection(
             module,
-            duskSpvCreateValue(module, SpvOpFunctionEnd, NULL, 0, NULL));
+            duskSpvCreateValue(
+                module, &decl->location, SpvOpFunctionEnd, NULL, 0, NULL));
 
         state->current_func = NULL;
         state->current_block = NULL;
@@ -4685,6 +4847,7 @@ static void duskGenerateSpvGlobalDecl(
         };
         decl->spv_value = duskSpvCreateValue(
             module,
+            &decl->location,
             SpvOpVariable,
             ptr_type,
             DUSK_CARRAY_LENGTH(params),
@@ -4743,6 +4906,7 @@ DuskSpvModule *duskGenerateSpvModule(DuskCompiler *compiler, DuskFile *file)
         module,
         duskSpvCreateValue(
             module,
+            NULL,
             SpvOpMemoryModel,
             NULL,
             DUSK_CARRAY_LENGTH(memory_model_params),
