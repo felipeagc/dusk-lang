@@ -3948,7 +3948,7 @@ static void duskGenerateSpvExpr(
                 // Constant
                 switch (scalar_type->kind) {
                 case DUSK_TYPE_INT: {
-                    uint32_t literals[2] = {};
+                    uint32_t literals[2] = {0, 0};
 
                     switch (expr->type->int_.bits) {
                     case 8: {
@@ -3994,7 +3994,7 @@ static void duskGenerateSpvExpr(
                     break;
                 }
                 case DUSK_TYPE_FLOAT: {
-                    uint32_t literals[2] = {};
+                    uint32_t literals[2] = {0, 0};
 
                     switch (expr->type->int_.bits) {
                     case 32: {
