@@ -19,9 +19,11 @@ add_library(
   dusk/dusk_ir.c
   dusk/spirv.h)
 target_include_directories(dusk PUBLIC dusk)
+set_property(TARGET dusk PROPERTY COMPILE_WARNING_AS_ERROR ON)
 
 add_executable(duskc duskc/duskc.c)
 target_link_libraries(duskc PRIVATE dusk)
+set_property(TARGET duskc PROPERTY COMPILE_WARNING_AS_ERROR ON)
 
 if (NOT MSVC)
   target_compile_options(
