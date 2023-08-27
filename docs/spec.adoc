@@ -16,7 +16,7 @@ fn main() void {
 }
 
 fn add1(param: int) int {
-	return param + 1;
+    return param + 1;
 }
 ----
 
@@ -44,24 +44,24 @@ Below you can see how entry points are defined and how their inputs and outputs 
 [source]
 ----
 type VsOutput struct {
-	[builtin(position)] pos: float4,
-	[location(0)] uv: float2,
+    [builtin(position)] pos: float4,
+    [location(0)] uv: float2,
 };
 
 [stage(vertex)]
 fn vs_main(
-	[location(0)] pos: float3,
-	[location(1)] uv: float2,
+    [location(0)] pos: float3,
+    [location(1)] uv: float2,
 ) VsOutput {
-	return VsOutput{
-		.pos = pos,
-		.uv = uv,
-	};
+    return VsOutput{
+        .pos = pos,
+        .uv = uv,
+    };
 }
 
 [stage(fragment)]
 fn fs_main(input: VsOutput) [location(0)] float4 {
-	return float4(input.uv, 0.0, 1.0);
+    return float4(input.uv, 0.0, 1.0);
 }
 ----
 
@@ -73,14 +73,14 @@ var img: @Image2DSampler(float);
 
 // Global buffers need a storage class. In this case, `uniform` is used.
 [set(1), binding(0)]
-var(uniform) uniform_buffer: struct(std140) {
+var<uniform> uniform_buffer: struct(std140) {
 	matrix: float4x4,
 	value: float,
 };
 
 // `block` is a required decorator for structs used as storage buffers.
 [set(2), binding(0)]
-var(storage) storage_buffer: struct(std430, block) {
+var<storage> storage_buffer: struct(std430, block) {
 	values: []float,
 };
 ----
@@ -181,12 +181,12 @@ They are used as follows:
 [set(0), binding(0)] var sampler : @Sampler();
 
 type MyStruct struct {
-	[offset(0)] a: int,
+    [offset(0)] a: int,
 };
 
 [stage(fragment)]
 fn fs_main([location(0)] in_pos: float3) [location(0)] float4 {
-	...
+    ...
 }
 ----
 
