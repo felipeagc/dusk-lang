@@ -1,5 +1,5 @@
 [binding(0)]
-var(uniform) buf: struct(std140) {
+var<uniform> buf: struct(std140) {
     a: float,
 };
 

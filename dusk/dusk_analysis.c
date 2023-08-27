@@ -252,6 +252,7 @@ static bool duskExprResolveInteger(
     case DUSK_EXPR_SCALAR_TYPE:
     case DUSK_EXPR_BOOL_TYPE:
     case DUSK_EXPR_VOID_TYPE:
+    case DUSK_EXPR_PTR_TYPE:
     case DUSK_EXPR_RUNTIME_ARRAY_TYPE:
     case DUSK_EXPR_STRUCT_TYPE: {
         return false;
@@ -276,7 +277,8 @@ static bool duskIsExprAssignable(DuskAnalyzerState *state, DuskExpr *expr)
             case DUSK_STORAGE_CLASS_INPUT:
             case DUSK_STORAGE_CLASS_OUTPUT:
             case DUSK_STORAGE_CLASS_STORAGE:
-            case DUSK_STORAGE_CLASS_WORKGROUP: return true;
+            case DUSK_STORAGE_CLASS_WORKGROUP:
+            case DUSK_STORAGE_CLASS_PHYSICAL_STORAGE: return true;
             case DUSK_STORAGE_CLASS_UNIFORM:
             case DUSK_STORAGE_CLASS_UNIFORM_CONSTANT:
             case DUSK_STORAGE_CLASS_PUSH_CONSTANT:
@@ -912,6 +914,25 @@ static void duskAnalyzeExpr(
         expr->as_type = duskTypeNewRuntimeArray(compiler, layout, sub_type);
 
         duskCheckSubtypeLayouts(compiler, expr->location, expr->as_type);
+        break;
+    }
+    case DUSK_EXPR_PTR_TYPE: {
+        DuskType *type_type = duskTypeNewBasic(compiler, DUSK_TYPE_TYPE);
+
+        duskAnalyzeExpr(
+            compiler, state, expr->ptr_type.sub_expr, type_type, false);
+        DuskType *sub_type = expr->ptr_type.sub_expr->as_type;
+        if (!sub_type) {
+            DUSK_ASSERT(duskArrayLength(compiler->errors_arr) > 0);
+            break;
+        }
+
+        expr->type = type_type;
+        expr->as_type = duskTypeNewPointer(
+            compiler,
+            sub_type,
+            expr->ptr_type.storage_class,
+            expr->ptr_type.alignment);
         break;
     }
     case DUSK_EXPR_STRUCT_TYPE: {

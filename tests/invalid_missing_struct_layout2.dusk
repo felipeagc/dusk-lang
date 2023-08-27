@@ -3,7 +3,7 @@ type Other struct {
 };
 
 [set(0), binding(0)]
-var(storage) storage_buffer: struct (block, std430) {
+var<storage> storage_buffer: struct (block, std430) {
     a: Other,
 };
 

@@ -21,7 +21,7 @@ static const char *tokenTypeToString(DuskTokenType token_type)
     case DUSK_TOKEN_INT_LITERAL: return "integer literal";
     case DUSK_TOKEN_FLOAT_LITERAL: return "float literal";
 
-    case DUSK_TOKEN_VAR: return "let";
+    case DUSK_TOKEN_VAR: return "var";
     case DUSK_TOKEN_FN: return "fn";
     case DUSK_TOKEN_CONST: return "const";
     case DUSK_TOKEN_STRUCT: return "struct";
@@ -40,6 +40,8 @@ static const char *tokenTypeToString(DuskTokenType token_type)
 
     case DUSK_TOKEN_VOID: return "void";
     case DUSK_TOKEN_BOOL: return "bool";
+
+    case DUSK_TOKEN_PTR: return "ptr";
 
     case DUSK_TOKEN_HALF: return "half";
     case DUSK_TOKEN_HALF2: return "half2";
@@ -210,7 +212,7 @@ tokenToString(DuskAllocator *allocator, const DuskToken *token)
     case DUSK_TOKEN_FLOAT_LITERAL:
         return duskSprintf(allocator, "%lf", token->float_);
 
-    case DUSK_TOKEN_VAR: return "let";
+    case DUSK_TOKEN_VAR: return "var";
     case DUSK_TOKEN_FN: return "fn";
     case DUSK_TOKEN_CONST: return "const";
     case DUSK_TOKEN_STRUCT: return "struct";
@@ -229,6 +231,8 @@ tokenToString(DuskAllocator *allocator, const DuskToken *token)
 
     case DUSK_TOKEN_VOID: return "void";
     case DUSK_TOKEN_BOOL: return "bool";
+
+    case DUSK_TOKEN_PTR: return "ptr";
 
     case DUSK_TOKEN_HALF: return "half";
     case DUSK_TOKEN_HALF2: return "half2";
@@ -966,6 +970,34 @@ static void parseAttributes(
     }
 }
 
+static DuskStorageClass
+parseStorageClass(DuskCompiler *compiler, TokenizerState *state)
+{
+    DuskToken storage_class_ident =
+        consumeToken(compiler, state, DUSK_TOKEN_IDENT);
+
+    DuskStorageClass storage_class = DUSK_STORAGE_CLASS_FUNCTION;
+    if (strcmp(storage_class_ident.str, "uniform") == 0) {
+        storage_class = DUSK_STORAGE_CLASS_UNIFORM;
+    } else if (strcmp(storage_class_ident.str, "storage") == 0) {
+        storage_class = DUSK_STORAGE_CLASS_STORAGE;
+    } else if (strcmp(storage_class_ident.str, "push_constant") == 0) {
+        storage_class = DUSK_STORAGE_CLASS_PUSH_CONSTANT;
+    } else if (strcmp(storage_class_ident.str, "workgroup") == 0) {
+        storage_class = DUSK_STORAGE_CLASS_WORKGROUP;
+    } else if (strcmp(storage_class_ident.str, "buffer") == 0) {
+        storage_class = DUSK_STORAGE_CLASS_PHYSICAL_STORAGE;
+    } else {
+        duskAddError(
+            compiler,
+            storage_class_ident.location,
+            "invalid storage class: '%s'",
+            storage_class_ident.str);
+        duskThrow(compiler);
+    }
+    return storage_class;
+}
+
 static DuskExpr *parsePrimaryExpr(DuskCompiler *compiler, TokenizerState *state)
 {
     DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
@@ -1528,6 +1560,36 @@ static DuskExpr *parsePrimaryExpr(DuskCompiler *compiler, TokenizerState *state)
         consumeToken(compiler, state, DUSK_TOKEN_RBRACKET);
 
         expr->array_type.sub_expr = parseExpr(compiler, state, true);
+        break;
+    }
+    case DUSK_TOKEN_PTR: {
+        expr->kind = DUSK_EXPR_PTR_TYPE;
+
+        consumeToken(compiler, state, DUSK_TOKEN_LESS);
+
+        DuskStorageClass storage_class = parseStorageClass(compiler, state);
+        consumeToken(compiler, state, DUSK_TOKEN_COMMA);
+        DuskExpr *sub_type_expr = parseExpr(compiler, state, true);
+
+        uint16_t alignment = 0;
+        if (storage_class == DUSK_STORAGE_CLASS_PHYSICAL_STORAGE) {
+            alignment = 16;
+        }
+
+        tokenizerNextToken(compiler, *state, &token);
+        if (token.type != DUSK_TOKEN_GREATER) {
+            consumeToken(compiler, state, DUSK_TOKEN_COMMA);
+
+            DuskToken alignment_token =
+                consumeToken(compiler, state, DUSK_TOKEN_INT_LITERAL);
+            alignment = alignment_token.int_;
+        }
+
+        consumeToken(compiler, state, DUSK_TOKEN_GREATER);
+
+        expr->ptr_type.sub_expr = sub_type_expr;
+        expr->ptr_type.alignment = alignment;
+        expr->ptr_type.storage_class = storage_class;
         break;
     }
     case DUSK_TOKEN_STRUCT: {
@@ -2371,27 +2433,10 @@ parseTopLevelDecl(DuskCompiler *compiler, TokenizerState *state)
         DuskStorageClass storage_class = DUSK_STORAGE_CLASS_UNIFORM_CONSTANT;
 
         tokenizerNextToken(compiler, *state, &next_token);
-        if (next_token.type == DUSK_TOKEN_LPAREN) {
-            consumeToken(compiler, state, DUSK_TOKEN_LPAREN);
-            DuskToken storage_class_ident =
-                consumeToken(compiler, state, DUSK_TOKEN_IDENT);
-            consumeToken(compiler, state, DUSK_TOKEN_RPAREN);
-
-            if (strcmp(storage_class_ident.str, "uniform") == 0) {
-                storage_class = DUSK_STORAGE_CLASS_UNIFORM;
-            } else if (strcmp(storage_class_ident.str, "storage") == 0) {
-                storage_class = DUSK_STORAGE_CLASS_STORAGE;
-            } else if (strcmp(storage_class_ident.str, "push_constant") == 0) {
-                storage_class = DUSK_STORAGE_CLASS_PUSH_CONSTANT;
-            } else if (strcmp(storage_class_ident.str, "workgroup") == 0) {
-                storage_class = DUSK_STORAGE_CLASS_WORKGROUP;
-            } else {
-                duskAddError(
-                    compiler,
-                    storage_class_ident.location,
-                    "invalid storage class: '%s'",
-                    storage_class_ident.str);
-            }
+        if (next_token.type == DUSK_TOKEN_LESS) {
+            consumeToken(compiler, state, DUSK_TOKEN_LESS);
+            storage_class = parseStorageClass(compiler, state);
+            consumeToken(compiler, state, DUSK_TOKEN_GREATER);
         }
 
         DuskToken name_token = consumeToken(compiler, state, DUSK_TOKEN_IDENT);

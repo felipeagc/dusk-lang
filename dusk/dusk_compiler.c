@@ -106,6 +106,7 @@ DuskCompiler *duskCompilerCreate(void)
     duskMapSet(compiler->keyword_map, "false", (void *)DUSK_TOKEN_FALSE);
     duskMapSet(compiler->keyword_map, "void", (void *)DUSK_TOKEN_VOID);
     duskMapSet(compiler->keyword_map, "bool", (void *)DUSK_TOKEN_BOOL);
+    duskMapSet(compiler->keyword_map, "ptr", (void *)DUSK_TOKEN_PTR);
 
     duskMapSet(compiler->keyword_map, "half", (void *)DUSK_TOKEN_HALF);
     duskMapSet(compiler->keyword_map, "half2", (void *)DUSK_TOKEN_HALF2);

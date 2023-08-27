@@ -82,6 +82,15 @@ uint32_t duskTypeAlignOf(
         break;
     }
 
+    case DUSK_TYPE_POINTER: {
+        alignment = 0;
+        if (type->pointer.storage_class ==
+            DUSK_STORAGE_CLASS_PHYSICAL_STORAGE) {
+            alignment = 8;
+        }
+        break;
+    }
+
     case DUSK_TYPE_TYPE:
     case DUSK_TYPE_VOID:
     case DUSK_TYPE_FUNCTION:
@@ -90,8 +99,7 @@ uint32_t duskTypeAlignOf(
     case DUSK_TYPE_UNTYPED_INT:
     case DUSK_TYPE_SAMPLER:
     case DUSK_TYPE_SAMPLED_IMAGE:
-    case DUSK_TYPE_IMAGE:
-    case DUSK_TYPE_POINTER: break;
+    case DUSK_TYPE_IMAGE: break;
     }
 
     return alignment;
@@ -184,6 +192,15 @@ uint32_t duskTypeSizeOf(
         break;
     }
 
+    case DUSK_TYPE_POINTER: {
+        size = 0;
+        if (type->pointer.storage_class ==
+            DUSK_STORAGE_CLASS_PHYSICAL_STORAGE) {
+            size = 8;
+        }
+        break;
+    }
+
     case DUSK_TYPE_TYPE:
     case DUSK_TYPE_VOID:
     case DUSK_TYPE_FUNCTION:
@@ -193,7 +210,6 @@ uint32_t duskTypeSizeOf(
     case DUSK_TYPE_SAMPLER:
     case DUSK_TYPE_SAMPLED_IMAGE:
     case DUSK_TYPE_IMAGE:
-    case DUSK_TYPE_POINTER: break;
     }
 
     return size;
@@ -213,6 +229,7 @@ static void duskReferenceGlobalOperands(void *user_data, DuskIRValue *operand)
             break;
         }
 
+        case DUSK_STORAGE_CLASS_PHYSICAL_STORAGE:
         case DUSK_STORAGE_CLASS_PARAMETER:
         case DUSK_STORAGE_CLASS_FUNCTION:
         case DUSK_STORAGE_CLASS_INPUT:
@@ -1384,8 +1401,9 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
     case DUSK_EXPR_STRING_LITERAL:
     case DUSK_EXPR_BOOL_TYPE:
     case DUSK_EXPR_ARRAY_TYPE:
-    case DUSK_EXPR_MATRIX_TYPE:
     case DUSK_EXPR_RUNTIME_ARRAY_TYPE:
+    case DUSK_EXPR_PTR_TYPE:
+    case DUSK_EXPR_MATRIX_TYPE:
     case DUSK_EXPR_SCALAR_TYPE:
     case DUSK_EXPR_VECTOR_TYPE:
     case DUSK_EXPR_VOID_TYPE: break;

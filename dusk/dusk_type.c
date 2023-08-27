@@ -364,6 +364,7 @@ const char *duskTypeToString(DuskAllocator *allocator, DuskType *type)
             storage_class = "push_constant";
             break;
         case DUSK_STORAGE_CLASS_WORKGROUP: storage_class = "workgroup"; break;
+        case DUSK_STORAGE_CLASS_PHYSICAL_STORAGE: storage_class = "buffer"; break;
         }
         type->string =
             duskSprintf(allocator, "@ptr(%s, %s)", sub_str, storage_class);
@@ -638,13 +639,14 @@ DuskType *duskTypeNewFunction(
 }
 
 DuskType *duskTypeNewPointer(
-    DuskCompiler *compiler, DuskType *sub, DuskStorageClass storage_class)
+    DuskCompiler *compiler, DuskType *sub, DuskStorageClass storage_class, uint16_t alignment)
 {
     DuskAllocator *allocator = duskArenaGetAllocator(compiler->main_arena);
     DuskType *type = DUSK_NEW(allocator, DuskType);
     type->kind = DUSK_TYPE_POINTER;
     type->pointer.sub = sub;
     type->pointer.storage_class = storage_class;
+    type->pointer.alignment = alignment;
     return duskTypeGetCached(compiler, type);
 }
 

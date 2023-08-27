@@ -260,6 +260,7 @@ typedef enum DuskStorageClass {
     DUSK_STORAGE_CLASS_OUTPUT,
     DUSK_STORAGE_CLASS_PUSH_CONSTANT,
     DUSK_STORAGE_CLASS_WORKGROUP,
+    DUSK_STORAGE_CLASS_PHYSICAL_STORAGE,
 } DuskStorageClass;
 // }}}
 
@@ -427,6 +428,7 @@ struct DuskType {
         struct {
             DuskType *sub;
             DuskStorageClass storage_class;
+            uint16_t alignment;
         } pointer;
         struct {
             DuskType *sampled_type;
@@ -485,7 +487,7 @@ DuskType *duskTypeNewFunction(
     size_t param_type_count,
     DuskType **param_types);
 DuskType *duskTypeNewPointer(
-    DuskCompiler *compiler, DuskType *sub, DuskStorageClass storage_class);
+    DuskCompiler *compiler, DuskType *sub, DuskStorageClass storage_class, uint16_t alignment);
 DuskType *duskTypeNewImage(
     DuskCompiler *compiler,
     DuskType *sampled_type,
@@ -933,6 +935,8 @@ typedef enum {
     DUSK_TOKEN_VOID,
     DUSK_TOKEN_BOOL,
 
+    DUSK_TOKEN_PTR,
+
     DUSK_TOKEN_HALF,
     DUSK_TOKEN_HALF2,
     DUSK_TOKEN_HALF2X2,
@@ -1195,6 +1199,7 @@ struct DuskStmt {
 typedef enum DuskExprKind {
     DUSK_EXPR_VOID_TYPE,
     DUSK_EXPR_BOOL_TYPE,
+    DUSK_EXPR_PTR_TYPE,
     DUSK_EXPR_SCALAR_TYPE,
     DUSK_EXPR_VECTOR_TYPE,
     DUSK_EXPR_MATRIX_TYPE,
@@ -1235,6 +1240,11 @@ struct DuskExpr {
             uint32_t cols;
             uint32_t rows;
         } matrix_type;
+        struct {
+            DuskStorageClass storage_class;
+            uint16_t alignment;
+            DuskExpr *sub_expr;
+        } ptr_type;
         int64_t int_literal;
         double float_literal;
         bool bool_literal;

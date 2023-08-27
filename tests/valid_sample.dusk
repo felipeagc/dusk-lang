@@ -3,12 +3,13 @@ type Hello struct {
     b: float,
 };
 
-var(push_constant) pc : struct (std140) {
+var<push_constant> pc : struct (std140) {
     a: float3,
+    some_buf: ptr<buffer, Hello, 16>,
 };
 
 [set(0), binding(0)]
-var(uniform) uniform : struct (std140) {
+var<uniform> uniform : struct (std140) {
     a: int,
     b: float,
     c: float3,
@@ -16,7 +17,7 @@ var(uniform) uniform : struct (std140) {
 };
 
 [set(0), binding(1), read_only]
-var(storage) camera_buffers: []struct (block, std430) {
+var<storage> camera_buffers: []struct (block, std430) {
     cameras: []struct (std430) {
         pos: float4,
         view: float4x4,

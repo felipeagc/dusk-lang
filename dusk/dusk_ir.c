@@ -252,7 +252,7 @@ DuskIRValue *duskIRVariableCreate(
 {
     DuskIRValue *value = DUSK_NEW(module->allocator, DuskIRValue);
     value->kind = DUSK_IR_VALUE_VARIABLE;
-    value->type = duskTypeNewPointer(module->compiler, type, storage_class);
+    value->type = duskTypeNewPointer(module->compiler, type, storage_class, 0);
     value->var.storage_class = storage_class;
 
     duskTypeMarkNotDead(value->type);
@@ -268,6 +268,7 @@ DuskIRValue *duskIRVariableCreate(
         duskArrayPush(&module->globals_arr, value);
         break;
     }
+    case DUSK_STORAGE_CLASS_PHYSICAL_STORAGE: DUSK_ASSERT(0); break;
     case DUSK_STORAGE_CLASS_PARAMETER:
     case DUSK_STORAGE_CLASS_FUNCTION: break;
     }
@@ -612,6 +613,7 @@ DuskIRValue *duskIRCreateAccessChain(
 {
     DUSK_ASSERT(base->type->kind == DUSK_TYPE_POINTER);
     DuskStorageClass storage_class = base->type->pointer.storage_class;
+    uint16_t alignment = base->type->pointer.alignment;
 
     DuskIRValue *inst = DUSK_NEW(module->allocator, DuskIRValue);
     inst->kind = DUSK_IR_VALUE_ACCESS_CHAIN;
@@ -628,8 +630,8 @@ DuskIRValue *duskIRCreateAccessChain(
         duskTypeMarkNotDead(indices[i]->type);
     }
 
-    inst->type =
-        duskTypeNewPointer(module->compiler, accessed_type, storage_class);
+    inst->type = duskTypeNewPointer(
+        module->compiler, accessed_type, storage_class, alignment);
     duskTypeMarkNotDead(inst->type);
 
     duskIRBlockAppendInst(block, inst);
@@ -887,6 +889,9 @@ static void duskEmitType(DuskIRModule *module, DuskType *type)
         case DUSK_STORAGE_CLASS_WORKGROUP:
             storage_class = SpvStorageClassWorkgroup;
             break;
+        case DUSK_STORAGE_CLASS_PHYSICAL_STORAGE:
+            storage_class = SpvStorageClassPhysicalStorageBuffer;
+            break;
         case DUSK_STORAGE_CLASS_PARAMETER: DUSK_ASSERT(0); break;
         }
 
@@ -1143,6 +1148,9 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
             break;
         case DUSK_STORAGE_CLASS_WORKGROUP:
             storage_class = SpvStorageClassWorkgroup;
+            break;
+        case DUSK_STORAGE_CLASS_PHYSICAL_STORAGE:
+            storage_class = SpvStorageClassPhysicalStorageBuffer;
             break;
         case DUSK_STORAGE_CLASS_PARAMETER: DUSK_ASSERT(0); break;
         }
@@ -1582,9 +1590,7 @@ static void duskEmitValue(DuskIRModule *module, DuskIRValue *value)
             glsl_inst = GLSLstd450MatrixInverse;
             break;
 
-        case DUSK_BUILTIN_FUNCTION_IMAGE:
-            op = SpvOpImage;
-            break;
+        case DUSK_BUILTIN_FUNCTION_IMAGE: op = SpvOpImage; break;
 
         case DUSK_BUILTIN_FUNCTION_IMAGE_SAMPLE:
             op = SpvOpImageSampleImplicitLod;
@@ -2050,11 +2056,21 @@ DuskArray(uint32_t)
     bool got_long_type = false;
     bool got_half_type = false;
     bool got_double_type = false;
+    bool got_buffer_pointer_type = false;
 
     for (size_t i = 0; i < duskArrayLength(compiler->types_arr); ++i) {
         DuskType *type = compiler->types_arr[i];
         if (type->emit) {
             type->id = duskReserveId(module);
+
+            if (!got_buffer_pointer_type && type->kind == DUSK_TYPE_POINTER &&
+                type->pointer.storage_class ==
+                    DUSK_STORAGE_CLASS_PHYSICAL_STORAGE) {
+                got_buffer_pointer_type = true;
+                duskArrayPush(
+                    &module->capabilities_arr,
+                    SpvCapabilityPhysicalStorageBufferAddresses);
+            }
 
             if (!got_byte_type && type->kind == DUSK_TYPE_INT &&
                 type->int_.bits == 8) {
