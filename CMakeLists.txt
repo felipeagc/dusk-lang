@@ -1,7 +1,9 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.5)
 project(dusk VERSION 1.0 LANGUAGES C)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+option(DUSK_ENABLE_SANITIZERS "enable sanitizers" OFF)
 
 add_library(
   dusk
@@ -26,15 +28,12 @@ target_link_libraries(duskc PRIVATE dusk)
 set_property(TARGET duskc PROPERTY COMPILE_WARNING_AS_ERROR ON)
 
 if (NOT MSVC)
-  target_compile_options(
-    dusk
-    PUBLIC
-    -Wall -Wextra -Wno-unused-function
-    -fsanitize=undefined
-  )
-  target_link_options(
-    dusk
-    PUBLIC
-    -fsanitize=undefined
-  )
+  target_compile_options(dusk PRIVATE -Wall -Wextra -Wno-unused-function)
+endif()
+
+if (DUSK_ENABLE_SANITIZERS)
+  if (NOT MSVC)
+    target_compile_options(dusk PUBLIC -fsanitize=undefined)
+    target_link_options(dusk PUBLIC -fsanitize=undefined)
+  endif()
 endif()

@@ -6,7 +6,7 @@ import os, subprocess
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
 if not os.path.exists("./build"):
-    subprocess.run(["cmake", "-Bbuild", os.getcwd()])
+    subprocess.run(["cmake", "-Bbuild", "-DDUSK_ENABLE_SANITIZERS=ON", "-DCMAKE_BUILD_TYPE=Debug", os.getcwd()])
 
 subprocess.run(["cmake", "--build", "build"])
 
