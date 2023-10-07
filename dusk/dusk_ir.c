@@ -689,7 +689,7 @@ DuskIRValue *duskIRCreateVectorShuffle(
     DUSK_ASSERT(vec1->type->vector.sub == vec2->type->vector.sub);
 
     inst->type = duskTypeNewVector(
-        module->compiler, vec1->type->vector.sub, index_count);
+        module->compiler, vec1->type->vector.sub, (uint32_t)index_count);
     duskTypeMarkNotDead(inst->type);
 
     duskIRBlockAppendInst(block, inst);
@@ -947,7 +947,7 @@ static void duskEmitType(DuskIRModule *module, DuskType *type)
             duskEmitType(module, param_type);
         }
 
-        uint32_t param_count = 2 + func_param_count;
+        uint32_t param_count = 2 + (uint32_t)func_param_count;
         uint32_t *params = DUSK_NEW_ARRAY(allocator, uint32_t, param_count);
 
         params[0] = type->id;

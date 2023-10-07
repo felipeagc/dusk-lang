@@ -62,7 +62,8 @@ void duskMapSet(DuskMap *map, const char *key, void *value)
 
     if (iters >= map->size) {
         _duskMapGrow(map);
-        return duskMapSet(map, key, value);
+        duskMapSet(map, key, value);
+        return;
     }
 
     map->slots[i].key = key;

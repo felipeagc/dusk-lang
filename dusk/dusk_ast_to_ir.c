@@ -134,7 +134,7 @@ uint32_t duskTypeSizeOf(
             elem_size = DUSK_ROUND_UP(16, elem_size);
             uint32_t elem_alignment =
                 duskTypeAlignOf(allocator, type->array.sub, layout);
-            size = DUSK_ROUND_UP(elem_alignment, elem_size) * type->array.size;
+            size = DUSK_ROUND_UP(elem_alignment, elem_size) * (uint32_t)type->array.size;
             break;
         }
 
@@ -144,7 +144,7 @@ uint32_t duskTypeSizeOf(
                 duskTypeSizeOf(allocator, type->array.sub, layout);
             uint32_t elem_alignment =
                 duskTypeAlignOf(allocator, type->array.sub, layout);
-            size = DUSK_ROUND_UP(elem_alignment, elem_size) * type->array.size;
+            size = DUSK_ROUND_UP(elem_alignment, elem_size) * (uint32_t)type->array.size;
             break;
         }
         }
@@ -209,7 +209,7 @@ uint32_t duskTypeSizeOf(
     case DUSK_TYPE_UNTYPED_INT:
     case DUSK_TYPE_SAMPLER:
     case DUSK_TYPE_SAMPLED_IMAGE:
-    case DUSK_TYPE_IMAGE:
+    case DUSK_TYPE_IMAGE: break;
     }
 
     return size;
@@ -1137,7 +1137,7 @@ duskGenerateExpr(DuskIRModule *module, DuskDecl *func_decl, DuskExpr *expr)
                     }
 
                     right_expr->ir_value = duskIRCreateArrayLength(
-                        module, block, struct_ptr, struct_member_index);
+                        module, block, struct_ptr, (uint32_t)struct_member_index);
                 } else {
                     DUSK_ASSERT(0);
                 }

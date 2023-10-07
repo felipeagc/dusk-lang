@@ -2182,7 +2182,7 @@ static void duskAnalyzeExpr(
                     right_expr->type = left_expr->type->vector.sub;
                 } else {
                     right_expr->type = duskTypeNewVector(
-                        compiler, left_expr->type->vector.sub, new_vec_dim);
+                        compiler, left_expr->type->vector.sub, (uint32_t)new_vec_dim);
                 }
 
                 break;

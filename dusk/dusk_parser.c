@@ -1582,7 +1582,7 @@ static DuskExpr *parsePrimaryExpr(DuskCompiler *compiler, TokenizerState *state)
 
             DuskToken alignment_token =
                 consumeToken(compiler, state, DUSK_TOKEN_INT_LITERAL);
-            alignment = alignment_token.int_;
+            alignment = (uint16_t)alignment_token.int_;
         }
 
         consumeToken(compiler, state, DUSK_TOKEN_GREATER);
