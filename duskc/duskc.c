@@ -1,3 +1,5 @@
+#define _CRT_SECURE_NO_WARNINGS
+
 #include <dusk.h>
 #include <dusk_internal.h>
 #include <stdio.h>
