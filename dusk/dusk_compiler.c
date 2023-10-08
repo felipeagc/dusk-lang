@@ -293,3 +293,28 @@ const char *duskGetBuiltinFunctionName(DuskBuiltinFunctionKind kind)
     if (kind >= DUSK_BUILTIN_FUNCTION_COUNT) return NULL;
     return DUSK_BUILTIN_FUNCTION_NAMES[kind];
 }
+
+char *duskCompilerGetErrorsStringMalloc(DuskCompiler *compiler)
+{
+    DuskStringBuilder *sb = duskStringBuilderCreate(NULL, 8192);
+
+#define LINE_BUF_LEN 4096
+
+    char line_buf[LINE_BUF_LEN];
+    for (size_t i = 0; i < duskArrayLength(compiler->errors_arr); ++i) {
+        DuskError err = compiler->errors_arr[i];
+        int len = snprintf(
+            line_buf,
+            LINE_BUF_LEN,
+            "%s:%zu:%zu: %s\n",
+            err.location.file->path,
+            err.location.line,
+            err.location.col,
+            err.message);
+        duskStringBuilderAppendLen(sb, line_buf, (size_t)len);
+    }
+
+    char *str = duskStringBuilderBuild(sb, NULL);
+    duskStringBuilderDestroy(sb);
+    return str;
+}

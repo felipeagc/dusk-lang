@@ -75,6 +75,9 @@ int main(int argc, char *argv[])
         duskCompile(compiler, in_path, text, text_size, &spirv_size);
 
     if (!spirv) {
+        char *errors = duskCompilerGetErrorsStringMalloc(compiler);
+        fprintf(stderr, "Compilation finished with errors:\n%s", errors);
+        free(errors);
         exit(1);
     }
 

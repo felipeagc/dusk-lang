@@ -170,7 +170,7 @@ static inline uint64_t duskStringMapHash(const char *string)
 {
     uint64_t hash = 14695981039346656037ULL;
     while (*string) {
-        hash = ((hash)*1099511628211) ^ (*string);
+        hash = ((hash) * 1099511628211) ^ (*string);
         ++string;
     }
     return hash;
@@ -209,8 +209,7 @@ void duskStringBuilderAppendLen(
 DUSK_PRINTF_FORMATTING(2, 3)
 void duskStringBuilderAppendFormat(
     DuskStringBuilder *sb, const char *format, ...);
-const char *
-duskStringBuilderBuild(DuskStringBuilder *sb, DuskAllocator *allocator);
+char *duskStringBuilderBuild(DuskStringBuilder *sb, DuskAllocator *allocator);
 // }}}
 
 // Typedefs {{{
@@ -487,7 +486,10 @@ DuskType *duskTypeNewFunction(
     size_t param_type_count,
     DuskType **param_types);
 DuskType *duskTypeNewPointer(
-    DuskCompiler *compiler, DuskType *sub, DuskStorageClass storage_class, uint16_t alignment);
+    DuskCompiler *compiler,
+    DuskType *sub,
+    DuskStorageClass storage_class,
+    uint16_t alignment);
 DuskType *duskTypeNewImage(
     DuskCompiler *compiler,
     DuskType *sampled_type,

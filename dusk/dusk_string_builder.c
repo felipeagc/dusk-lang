@@ -58,8 +58,7 @@ void duskStringBuilderAppendFormat(
     duskFree(sb->allocator, (void *)string);
 }
 
-const char *
-duskStringBuilderBuild(DuskStringBuilder *sb, DuskAllocator *allocator)
+char *duskStringBuilderBuild(DuskStringBuilder *sb, DuskAllocator *allocator)
 {
     char *new_str =
         (char *)duskAllocate(allocator, duskArrayLength(sb->arr) + 1);
